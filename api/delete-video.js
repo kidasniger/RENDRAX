@@ -1,6 +1,6 @@
 import { githubRequest, readBody, sameOrigin, send, publicError } from '../lib/kidas-server.js';
 
-const REPOSITORY = 'kidasniger/Kidas';
+const REPOSITORY = 'kidasniger/RENDRAX';
 const RENDER_WORKFLOW = 'render.yml';
 const VIDEO_ARTIFACT_NAME = 'video-mp4';
 const RUNS_PAGE_SIZE = 100;

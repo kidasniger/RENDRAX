@@ -3,7 +3,7 @@ import { githubRequest, send, publicError } from '../lib/kidas-server.js';
 export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
   try {
-    const response = await githubRequest('/repos/kidasniger/Kidas/releases?per_page=12');
+    const response = await githubRequest('/repos/kidasniger/RENDRAX/releases?per_page=12');
     const items = (response.data || []).map(release => ({
       id: release.id,
       tag_name: release.tag_name,

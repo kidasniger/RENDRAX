@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   const id = String(req.query?.id || '');
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de rendu invalide.' });
   try {
-    const runs = await githubRequest('/repos/kidasniger/Kidas/actions/runs?event=workflow_dispatch&per_page=100');
+    const runs = await githubRequest('/repos/kidasniger/RENDRAX/actions/runs?event=workflow_dispatch&per_page=100');
     const run = (runs.data.workflow_runs || []).find(item => item.display_title === `Rendu ${id}`);
     if (!run) return send(res, 200, { found: false });
     const result = {
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     };
     if (req.query?.details === '1' || (run.status === 'completed' && run.conclusion !== 'success')) {
       try {
-        const response = await githubRequest(`/repos/kidasniger/Kidas/actions/runs/${run.id}/jobs?per_page=20`);
+        const response = await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${run.id}/jobs?per_page=20`);
         const jobs = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
         const activeJob = jobs.find(item => item.status === 'in_progress') ||
           jobs.find(item => item.conclusion === 'failure') || jobs[0];
@@ -50,12 +50,12 @@ export default async function handler(req, res) {
           }
         }
       } catch (detailsError) {
-        console.warn('[Kidas job details]', detailsError?.status || detailsError?.name || 'error');
+        console.warn('[RENDRAX job details]', detailsError?.status || detailsError?.name || 'error');
       }
     }
     if (run.status === 'completed' && run.conclusion === 'success') {
       try {
-        const release = await githubRequest(`/repos/kidasniger/Kidas/releases/tags/${encodeURIComponent(id)}`);
+        const release = await githubRequest(`/repos/kidasniger/RENDRAX/releases/tags/${encodeURIComponent(id)}`);
         result.release = releaseSummary(release.data);
       } catch (error) {
         if (error.status !== 404) throw error;

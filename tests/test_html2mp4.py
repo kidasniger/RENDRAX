@@ -228,6 +228,33 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('args+=(--no-watermark)', workflow)
         self.assertIn('--no-watermark', cli)
 
+    def test_server_auth_and_dispatch_use_renamed_repository(self):
+        server = (ROOT / "lib" / "kidas-server.js").read_text(encoding="utf-8")
+        render_api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
+        job_api = (ROOT / "api" / "job.js").read_text(encoding="utf-8")
+        videos_api = (ROOT / "api" / "videos.js").read_text(encoding="utf-8")
+        delete_api = (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8")
+        self.assertIn("kidasniger/RENDRAX/.github/workflows/render.yml@refs/heads/main", server)
+        self.assertIn("payload.repository === 'kidasniger/RENDRAX'", server)
+        self.assertIn("/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches", render_api)
+        for source in (job_api, videos_api, delete_api):
+            self.assertIn("kidasniger/RENDRAX", source)
+            self.assertNotIn("kidasniger/Kidas", source)
+        self.assertNotIn("kidasniger/Kidas", server + render_api)
+
+    def test_favicon_uses_the_icon_from_logo_directory(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(
+            (ROOT / "docs" / "favicon.png").read_bytes(),
+            (ROOT / "logo" / "rendrax_icon_cutout.png").read_bytes()
+        )
+        self.assertEqual(
+            (ROOT / "docs" / "favicon.svg").read_text(encoding="utf-8"),
+            (ROOT / "docs" / "assets" / "rendrax-icon.svg").read_text(encoding="utf-8")
+        )
+        self.assertIn('href="/favicon.png?v=20261025-renderfix1"', page)
+        self.assertIn('href="/favicon.svg?v=20261025-renderfix1"', page)
+
     def test_animated_watermark_defaults_and_filter(self):
         from h2m.watermark import _overlay_filter, _make_apng, validate_watermark
         self.assertEqual(validate_watermark(), ("RENDRAX", "pulse", "bottom-right", 0.45, 0.07))

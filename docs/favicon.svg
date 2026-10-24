@@ -1,13 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
   <title>RENDRAX</title>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#00c7f5"/>
-      <stop offset=".52" stop-color="#316bff"/>
-      <stop offset="1" stop-color="#8050ef"/>
+    <linearGradient id="rendrax-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D4FF"/>
+      <stop offset="28%" stop-color="#155BFF"/>
+      <stop offset="68%" stop-color="#6D28FF"/>
+      <stop offset="100%" stop-color="#C000FF"/>
     </linearGradient>
+    <mask id="rendrax-play-hole" maskUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="120" height="120" fill="#fff"/>
+      <path d="M38 22 L82 42 L38 62 Z" fill="#000"/>
+    </mask>
   </defs>
-  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
-  <path d="M16 12h21c9 0 14 5 14 13 0 6-3 10-9 12l10 15H40L29 35h-3v17h-10V12zm10 9v7h10c3 0 5-1 5-4 0-2-2-3-5-3H26z" fill="#fff"/>
-  <path d="M33 24l10 6-10 6z" fill="#316bff"/>
+  <g mask="url(#rendrax-play-hole)">
+    <path d="M12 6 L62 6 C92 6 110 20 110 41.5 C110 61 94 71 76 75.5 L115 115 L76 115 L41 72 L48 70 L48 115 L14 115 C14 115 12 106 12 92 L12 6 Z" fill="url(#rendrax-gradient)"/>
+    <path d="M12 6 C24 10 40 18 48 22 L12 22 Z" fill="#00D4FF" opacity=".85"/>
+  </g>
+  <g fill="url(#rendrax-gradient)">
+    <path d="M93 56 L118 44 L102 63 Z"/>
+    <path d="M95 70 L112 62 L101 76 Z" opacity=".9"/>
+  </g>
 </svg>
