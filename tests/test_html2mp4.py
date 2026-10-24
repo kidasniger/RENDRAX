@@ -252,8 +252,8 @@ class Html2Mp4Tests(unittest.TestCase):
             (ROOT / "docs" / "favicon.svg").read_text(encoding="utf-8"),
             (ROOT / "docs" / "assets" / "rendrax-icon.svg").read_text(encoding="utf-8")
         )
-        self.assertRegex(page, r'href="/favicon\\.png\\?v=[^"]+"')
-        self.assertRegex(page, r'href="/favicon\\.svg\\?v=[^"]+"')
+        self.assertRegex(page, r'href="/favicon[.]png[?]v=[^"]+"')
+        self.assertRegex(page, r'href="/favicon[.]svg[?]v=[^"]+"')
 
     def test_animated_watermark_defaults_and_filter(self):
         from h2m.watermark import _overlay_filter, _make_apng, validate_watermark
