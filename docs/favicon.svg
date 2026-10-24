@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>RENDRAX</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00c7f5"/>
+      <stop offset=".52" stop-color="#316bff"/>
+      <stop offset="1" stop-color="#8050ef"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <path d="M16 12h21c9 0 14 5 14 13 0 6-3 10-9 12l10 15H40L29 35h-3v17h-10V12zm10 9v7h10c3 0 5-1 5-4 0-2-2-3-5-3H26z" fill="#fff"/>
+  <path d="M33 24l10 6-10 6z" fill="#316bff"/>
+</svg>
