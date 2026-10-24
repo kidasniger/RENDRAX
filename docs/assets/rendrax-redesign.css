@@ -70,8 +70,11 @@ main.rdx-main{
   background-size:28px 28px;mask-image:radial-gradient(ellipse at 50% 50%,black,transparent 78%);
 }
 .rdx-visual-fallback{position:absolute;inset:0;display:grid;place-items:center}
-.rdx-fallback-window{width:75%;max-width:360px;border:1px solid var(--bd);background:var(--surf);border-radius:15px;padding:14px;box-shadow:0 14px 38px rgba(24,48,83,.10)}
-.rdx-fallback-window span{display:block;height:6px;margin:10px 0;border-radius:8px;background:var(--bd)}
+.rdx-fallback-window{position:absolute;top:15%;left:8%;width:59%;max-width:300px;padding:13px 14px 15px;border:1px solid var(--bd);border-radius:16px;background:var(--surf);box-shadow:0 18px 44px rgba(19,38,69,.13);animation:rdx-float 6s ease-in-out infinite}
+.rdx-fallback-convert{position:absolute;top:47%;left:46%;z-index:3;display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:var(--ac);color:#fff;border:3px solid var(--surf);font-size:1.3rem;font-weight:800;box-shadow:0 9px 23px rgba(32,121,244,.28);animation:rdx-pulse 2.4s ease-in-out infinite}
+.rdx-fallback-video{position:absolute;right:7%;bottom:13%;width:40%;max-width:190px;transform:rotate(3deg);border:1px solid var(--bd);border-radius:17px;padding:8px;background:var(--surf);box-shadow:0 17px 40px rgba(19,38,69,.17);animation:rdx-float 5.2s ease-in-out -1.5s infinite}
+.rdx-fallback-window .rdx-code-lines{padding-top:10px;display:grid;gap:8px}
+.rdx-fallback-window .rdx-code-row span{display:inline;height:auto;margin:0;border-radius:0;background:none}
 .rdx-fallback-window span:nth-child(2){width:72%}.rdx-fallback-window span:nth-child(3){width:88%}.rdx-fallback-window span:nth-child(4){width:54%}
 html.rdx-motion-ready .rdx-visual-fallback{display:none}
 .rdx-motion-scene{position:absolute;inset:0;z-index:1}
@@ -257,3 +260,11 @@ html.rdx-ready .rdx-splash{opacity:0;visibility:hidden;pointer-events:none}
   .rdx-hero-actions{align-items:flex-start;flex-direction:column;gap:10px;margin-top:19px}
   .rdx-primary-link{width:100%}
 }
+
+
+/* Theme-aware wordmark assets: do not rely on the OS theme inside an external SVG. */
+.brand-logo[data-rdx-logo-dark],.rdx-splash-logo[data-rdx-logo-dark]{display:none}
+:root[data-theme="dark"] .brand-logo[data-rdx-logo-light],
+:root[data-theme="dark"] .rdx-splash-logo[data-rdx-logo-light]{display:none}
+:root[data-theme="dark"] .brand-logo[data-rdx-logo-dark],
+:root[data-theme="dark"] .rdx-splash-logo[data-rdx-logo-dark]{display:block}

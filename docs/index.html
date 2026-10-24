@@ -9,9 +9,12 @@
 <meta property="og:description" content="Transforme tes animations HTML en vidéos MP4 avec le son.">
 <meta property="og:type" content="website">
 
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
-  <link rel="apple-touch-icon" href="/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261025">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png?v=20261025">
+  <link rel="shortcut icon" href="/favicon.ico?v=20261025">
+  <link rel="apple-touch-icon" href="/favicon.png?v=20261025">
 <meta name="theme-color" content="#f3f6ff">
+<noscript><style>.rdx-splash{display:none!important}</style></noscript>
 <!-- Vercel Web Analytics: enable Analytics in the Vercel project dashboard. -->
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -244,7 +247,7 @@ ul#list button{box-shadow:none}
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 </style>
-<link rel="stylesheet" href="/assets/rendrax-redesign.css">
+<link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025">
 <script type="importmap">
 {"imports":{"react":"https://esm.sh/react@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client?external=react"}}
 </script>
@@ -261,7 +264,8 @@ ul#list button{box-shadow:none}
 <div id="rdx-splash" class="rdx-splash" aria-hidden="true">
   <div class="rdx-splash-inner">
     <div class="rdx-splash-mark"><img src="/assets/rendrax-icon.svg" alt=""></div>
-    <img class="rdx-splash-logo" src="/assets/rendrax-logo.svg" alt="RENDRAX">
+    <img class="rdx-splash-logo" data-rdx-logo-light src="/assets/rendrax-logo.svg?v=20261025" alt="RENDRAX">
+    <img class="rdx-splash-logo" data-rdx-logo-dark src="/assets/rendrax-logo-dark.svg?v=20261025" alt="" aria-hidden="true">
     <p class="rdx-splash-caption">Préparation de ton espace de rendu</p>
     <div class="rdx-splash-progress"><span></span></div>
   </div>
@@ -269,7 +273,10 @@ ul#list button{box-shadow:none}
 <main class="rdx-main">
   <header class="top rdx-hero">
     <div class="rdx-hero-copy">
-      <div class="brand"><img class="brand-logo" src="/assets/rendrax-logo.svg" alt="RENDRAX" width="520" height="120"></div>
+      <div class="brand">
+        <img class="brand-logo" data-rdx-logo-light src="/assets/rendrax-logo.svg?v=20261025" alt="RENDRAX" width="520" height="120">
+        <img class="brand-logo" data-rdx-logo-dark src="/assets/rendrax-logo-dark.svg?v=20261025" alt="" aria-hidden="true" width="520" height="120">
+      </div>
       <p class="rdx-eyebrow"><span class="rdx-live-dot" aria-hidden="true"></span> ATELIER DE RENDU · EN LIGNE</p>
       <h1 aria-label="HTML vers MP4">Le mouvement devient <span>vidéo.</span></h1>
       <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé.</p>
@@ -283,9 +290,30 @@ ul#list button{box-shadow:none}
         <span>Prêt à partager</span>
       </div>
     </div>
-    <div class="rdx-hero-visual" aria-label="Illustration animée de conversion HTML vers MP4">
+    <div class="rdx-hero-visual" role="img" aria-label="Illustration : un code HTML devient une vidéo MP4">
       <div class="rdx-visual-fallback" aria-hidden="true">
-        <div class="rdx-fallback-window"><span></span><span></span><span></span><span></span></div>
+        <div class="rdx-fallback-window">
+          <div class="rdx-windowbar"><i></i><i></i><i></i><b>animation.html</b></div>
+          <div class="rdx-code-lines">
+            <div class="rdx-code-row"><span class="rdx-line-num">01</span><span class="rdx-code-token">const</span><span>scene</span><span class="rdx-code-punct">=</span></div>
+            <div class="rdx-code-row"><span class="rdx-line-num">02</span><span class="rdx-code-token">animate</span><span class="rdx-code-punct">(</span><span class="rdx-code-string">"motion"</span><span class="rdx-code-punct">)</span></div>
+            <div class="rdx-code-row"><span class="rdx-line-num">03</span><span class="rdx-code-string">render(frame)</span></div>
+            <div class="rdx-code-row"><span class="rdx-line-num">04</span><span class="rdx-code-punct">→</span><span class="rdx-code-token">MP4</span></div>
+          </div>
+          <div class="rdx-code-progress"><span></span></div>
+        </div>
+        <div class="rdx-fallback-convert" aria-hidden="true">→</div>
+        <div class="rdx-fallback-video">
+          <div class="rdx-film-frame">
+            <div class="rdx-film-sun"></div>
+            <div class="rdx-film-hill"></div>
+            <div class="rdx-film-hill alt"></div>
+            <div class="rdx-play">▶</div>
+          </div>
+          <div class="rdx-video-caption"><span>RENDRAX.mp4</span><span>00:12</span></div>
+        </div>
+        <div class="rdx-float-pill rdx-pill-secure"><span class="rdx-live-dot"></span>Rendu sécurisé</div>
+        <div class="rdx-float-pill rdx-pill-quality"><span>✳</span><span>Image par image</span></div>
       </div>
       <div id="rdx-react-visual" aria-hidden="true"></div>
     </div>
@@ -802,6 +830,6 @@ loadList();
 initSecurity();
 resume();
 </script>
-<script type="module" src="/assets/rendrax-motion.js"></script>
+<script type="module" src="/assets/rendrax-motion.js?v=20261025"></script>
 </body>
 </html>

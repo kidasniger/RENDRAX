@@ -15,9 +15,6 @@
   </defs>
   <style>
     .wordmark { fill: #0A1026; }
-    @media (prefers-color-scheme: dark) {
-      .wordmark { fill: #FFFFFF; }
-    }
   </style>
   <g mask="url(#rendrax-play-hole)">
     <path d="M12 6 L62 6 C92 6 110 20 110 41.5 C110 61 94 71 76 75.5 L115 115 L76 115 L41 72 L48 70 L48 115 L14 115 C14 115 12 106 12 92 L12 6 Z" fill="url(#rendrax-gradient)"/>
