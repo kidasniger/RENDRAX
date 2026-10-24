@@ -47,14 +47,14 @@ export default async function handler(req, res) {
       tag: id
     };
     stage = 'déclenchement du workflow GitHub Actions';
-    await githubRequest('/repos/kidasniger/Kidas/actions/workflows/render.yml/dispatches', {
+    await githubRequest('/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches', {
       method: 'POST',
       body: { ref: 'main', inputs }
     });
     return send(res, 202, { id });
   } catch (error) {
     const status = Number(error?.status) || 500;
-    console.error('[Kidas render]', {
+    console.error('[RENDRAX render]', {
       stage,
       name: error?.name || 'Error',
       status,
