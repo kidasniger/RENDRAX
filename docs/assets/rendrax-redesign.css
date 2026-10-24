@@ -268,3 +268,12 @@ html.rdx-ready .rdx-splash{opacity:0;visibility:hidden;pointer-events:none}
 :root[data-theme="dark"] .rdx-splash-logo[data-rdx-logo-light]{display:none}
 :root[data-theme="dark"] .brand-logo[data-rdx-logo-dark],
 :root[data-theme="dark"] .rdx-splash-logo[data-rdx-logo-dark]{display:block}
+
+
+/* Safe fallback: never leave the converter behind a stalled splash screen. */
+.rdx-splash{animation:rdx-splash-timeout 4s ease forwards}
+@keyframes rdx-splash-timeout{
+  0%,74%{opacity:1;visibility:visible}
+  100%{opacity:0;visibility:hidden;pointer-events:none}
+}
+html.rdx-ready .rdx-splash{animation:none;opacity:0;visibility:hidden;pointer-events:none}
