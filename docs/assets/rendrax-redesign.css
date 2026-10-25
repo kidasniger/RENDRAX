@@ -281,3 +281,5 @@ html.rdx-ready .rdx-splash{animation:none;opacity:0;visibility:hidden;pointer-ev
 
 /* Contrast correction: WCAG AA for normal text on light surfaces. */
 :root:not([data-theme="dark"]){--ac:#3068f5}
+
+.rdx-privacy-notice{width:min(100% - 32px,1160px);margin:0 auto 10px;padding:12px 15px;border:1px solid var(--bd);border-radius:12px;background:var(--surf2);color:var(--mut);font-size:.84rem;line-height:1.55}
