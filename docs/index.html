@@ -264,7 +264,7 @@ ul#list button{box-shadow:none}
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 </style>
-<link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025-fix3">
+<link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025-security1">
 <script>
 (function(){
   var done = function(){ document.documentElement.classList.add('rdx-ready'); };
@@ -572,7 +572,7 @@ function workflowStepLabel(name) {
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
   if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
   if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification du MP4…';
-  if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
+  if (/Publier le MP4 \(Release/i.test(name || '')) return 'Envoi de la vidéo vers le stockage privé…';
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage sécurisé des fichiers temporaires…';
   return 'Préparation du rendu…';
 }
@@ -664,12 +664,12 @@ function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().e
 function showResult(rel) {
   const a = mp4Of(rel);
   const box = $('#res'); box.textContent = '';
-  if (!a) { box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.'; return; }
+  if (!a) { box.textContent = 'Rendu terminé, mais aucune vidéo n’a été trouvée dans le stockage privé.'; return; }
   const v = document.createElement('video');
   v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = a.browser_download_url;
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
-  dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
+  dl.className = 'btn'; dl.href = a.browser_download_url + '&download=1'; dl.download = a.name;
   dl.textContent = 'Télécharger (' + size(a.size) + ')';
   const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
   cp.onclick = async () => {
