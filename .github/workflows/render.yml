@@ -7,7 +7,7 @@ on:
       fichier:
         description: "Fichier HTML à convertir"
         required: true
-        default: "kidas.html"
+        default: "tests/fixtures/gsap-audio-timeline.html"
       scale:
         description: "Échelle (1 = 1080x1920, 0.5 = 540x960)"
         default: "1"
@@ -47,7 +47,7 @@ on:
         default: ""
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 jobs:
@@ -62,7 +62,9 @@ jobs:
         env:
           FICHIER: ${{ inputs.fichier }}
           BLOB_ID: ${{ inputs.blob_id }}
+          JOB_STATUS: ${{ job.status }}
         run: |
+          set -euo pipefail
           set -euo pipefail
           if [ -n "$BLOB_ID" ]; then
             [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
@@ -82,16 +84,10 @@ jobs:
             echo "fichier=kidas-tmp/input.html" >> "$GITHUB_OUTPUT"
           else
             case "$FICHIER" in
-              uploads/*)
-                git fetch --no-tags origin video-uploads
-                mkdir -p "$(dirname "$FICHIER")"
-                git show "FETCH_HEAD:$FICHIER" > "$FICHIER"
-                ;;
+              tests/fixtures/*.html) ;;
+              *) echo "::error::Sans import privé, seuls les exemples synthétiques de tests/fixtures sont autorisés."; exit 1 ;;
             esac
-            if [ ! -f "$FICHIER" ]; then
-              git fetch --depth=1 origin uploads
-              git checkout FETCH_HEAD -- "$FICHIER"
-            fi
+            test -f "$FICHIER" || { echo "::error::Exemple de test introuvable."; exit 1; }
             echo "fichier=$FICHIER" >> "$GITHUB_OUTPUT"
           fi
 
@@ -156,15 +152,30 @@ jobs:
           path: "**/*.mp4"
           if-no-files-found: error
 
-      - name: Publier le MP4 (Release, pour la page web)
+      - name: Publier le MP4 dans le stockage privé
         if: ${{ inputs.tag != '' }}
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
         run: |
-          gh release create "$TAG" $(find . -name '*.mp4' -not -path './.git/*') \
-            --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant vidéo invalide."; exit 1; }
+          MP4_PATH="$(find . -type f -name '*.mp4' -not -path './.git/*' -print -quit)"
+          test -n "$MP4_PATH" || { echo "::error::Aucun MP4 à publier."; exit 1; }
+          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible}"
+          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible}"
+          OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
+          OIDC_TOKEN="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "$OIDC_REQUEST_URL" | jq -er '.value')"
+          echo "::add-mask::${OIDC_TOKEN}"
+          PUBLISH_URL="$(curl --fail --silent --show-error --location --retry 2 \
+            -X POST "https://rendrax.vercel.app/api/publish-url" \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"id\":\"$TAG\",\"run_id\":\"$GITHUB_RUN_ID\"}" | jq -er '.url')"
+          curl --fail --silent --show-error --location --retry 2 \
+            --upload-file "$MP4_PATH" -H "Content-Type: video/mp4" "$PUBLISH_URL"
+          echo "MP4 envoyé dans le stockage privé."
       - name: Supprimer les fichiers temporaires
         if: always()
         env:
@@ -184,10 +195,12 @@ jobs:
               exit 0
             fi
             echo "::add-mask::${OIDC_TOKEN}"
+            CLEANUP_OWNER=false
+            if [ "$JOB_STATUS" != "success" ]; then CLEANUP_OWNER=true; fi
             curl --fail --silent --show-error --location --retry 2 \
               -X POST "https://rendrax.vercel.app/api/cleanup" \
               -H "Authorization: Bearer ${OIDC_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" \
+              --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"cleanup_owner\":${CLEANUP_OWNER}}" \
               || echo "::warning::Le nettoyage du HTML privé a échoué; vérifie les journaux Vercel."
           fi
