@@ -24,7 +24,7 @@ featured: false
 github: "https://github.com/kidasniger/RENDRAX"
 demo: "https://rendrax.vercel.app"
 website: "https://rendrax.vercel.app"
-documentation: "À renseigner"
+documentation: "https://github.com/kidasniger/RENDRAX"
 download: "À renseigner"
 icon: "https://raw.githubusercontent.com/kidasniger/RENDRAX/main/logo/rendrax_icon_cutout.png"
 cover: "À renseigner"
@@ -145,11 +145,11 @@ Convertissez des animations HTML en vidéos MP4 avec RENDRAX. Importez un fichie
 
 ## Open Graph Image
 
-À renseigner
+À créer
 
 ## Canonical URL
 
-À renseigner
+https://rendrax.vercel.app/
 
 # Informations supplémentaires
 
