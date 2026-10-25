@@ -7,6 +7,7 @@ import subprocess
 import time
 import urllib.request
 
+from h2m.deps import IS_TERMUX
 from h2m.ui import die
 
 
@@ -79,9 +80,8 @@ def launch_chrome(exe, tmp, width, height):
         cmd = [
             exe, mode,
             f"--remote-debugging-port={port}",
-            "--remote-allow-origins=*",
             f"--user-data-dir={tmp / ('profile' + str(n))}",
-            "--no-sandbox", "--no-zygote", "--disable-gpu", "--disable-dev-shm-usage",
+            "--disable-gpu", "--disable-dev-shm-usage",
             "--disable-extensions", "--disable-component-update",
             "--hide-scrollbars", "--mute-audio",
             "--no-first-run", "--no-default-browser-check",
@@ -93,6 +93,8 @@ def launch_chrome(exe, tmp, width, height):
             f"--window-size={width},{height}",
             "about:blank",
         ]
+        if IS_TERMUX:
+            cmd.extend(["--no-sandbox", "--no-zygote"])
         with open(log_path, "wb") as lf:
             proc = subprocess.Popen(cmd, stdout=lf, stderr=lf, start_new_session=True)
         t0 = time.time()
