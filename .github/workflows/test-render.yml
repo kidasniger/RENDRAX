@@ -54,6 +54,8 @@ jobs:
           python -c "import PIL; print('Pillow installé:', PIL.__version__)"
       - name: Tests unitaires
         run: python -m unittest discover -s tests -v
+      - name: Vérifier la syntaxe JavaScript de l’interface
+        run: python tests/check_frontend.py
       - name: Rendus de régression HTML/CSS/Canvas/Web Audio
         run: |
           set -euo pipefail
