@@ -1,4 +1,4 @@
-import { del, get, issueSignedToken, presignUrl } from '@vercel/blob';
+import { get, issueSignedToken, presignUrl } from '@vercel/blob';
 import { Readable } from 'node:stream';
 import {
   send, validJobId, validOwnerToken, verifyOwnerToken, publicError
@@ -27,7 +27,8 @@ export default async function handler(req, res) {
       }
       res.statusCode = 200;
       res.setHeader('Content-Type', 'video/mp4');
-      res.setHeader('Content-Length', String(result.blob.size || ''));
+      const contentLength = Number(result.blob?.size);
+      if (Number.isFinite(contentLength) && contentLength > 0) res.setHeader('Content-Length', String(contentLength));
       res.setHeader('Content-Disposition', `attachment; filename="${String(owner.name || 'RENDRAX').replace(/[^A-Za-z0-9._-]/g, '_')}.mp4"`);
       res.setHeader('Cache-Control', 'private, no-store');
       res.setHeader('Referrer-Policy', 'no-referrer');
