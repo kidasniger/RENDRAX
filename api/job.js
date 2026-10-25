@@ -22,9 +22,13 @@ function privateVideoSummary(id, owner, metadata, ownerToken, runUrl) {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
   const id = String(req.query?.id || '');
+  const ownerToken = String(req.query?.ownerToken || '');
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de rendu invalide.' });
 
   try {
+    if (!await verifyOwnerToken(id, ownerToken)) {
+      return send(res, 403, { error: 'Clé privée invalide pour cette vidéo.' });
+    }
     const runs = await githubRequest('/repos/kidasniger/RENDRAX/actions/runs?event=workflow_dispatch&per_page=100');
     const run = (runs.data.workflow_runs || []).find(item => item.display_title === `Rendu ${id}`);
     if (!run) return send(res, 200, { found: false });
@@ -60,7 +64,6 @@ export default async function handler(req, res) {
     }
 
     if (run.status === 'completed' && run.conclusion === 'success') {
-      const ownerToken = String(req.query?.ownerToken || '');
       const owner = await verifyOwnerToken(id, ownerToken);
       if (!owner) return send(res, 403, { error: 'Clé privée invalide pour cette vidéo.' });
       const output = await head(`outputs/${id}.mp4`);
