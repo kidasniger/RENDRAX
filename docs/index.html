@@ -821,7 +821,7 @@ async function go() {
     setSteps(0); status('Vérification de sécurité…');
     const uploadCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
+    const signed = await api('/upload-url', { method: 'POST', body: { id, ownerToken, captchaToken: uploadCaptcha, name: f.name.replace(/\\.html?$/i, '') } });
     await uploadPrivateBlob(signed.url, f);
     uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
