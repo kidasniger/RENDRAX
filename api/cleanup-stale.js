@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { del, list } from '@vercel/blob';
+import { del, head, list } from '@vercel/blob';
 import { publicError, send } from '../lib/kidas-server.js';
 
 const MAX_AGE_MS = 48 * 60 * 60 * 1000;
@@ -43,7 +43,26 @@ export default async function handler(req, res) {
       hasMore = Boolean(page.hasMore && cursor);
     }
 
-    const targets = stale.flatMap(item => [item.pathname, `owners/${item.id}.json`]);
+    // Remove orphaned owner metadata only when no successful MP4 exists.
+    // An input-cleanup failure must not revoke a user's access to a finished render.
+    const targets = [];
+    for (let i = 0; i < stale.length; i += 50) {
+      const batch = stale.slice(i, i + 50);
+      const outputExists = await Promise.all(batch.map(async item => {
+        try {
+          await head(`outputs/${item.id}.mp4`);
+          return true;
+        } catch (error) {
+          const status = Number(error?.status || error?.statusCode);
+          if (status === 404) return false;
+          throw error;
+        }
+      }));
+      batch.forEach((item, index) => {
+        targets.push(item.pathname);
+        if (!outputExists[index]) targets.push(`owners/${item.id}.json`);
+      });
+    }
     for (let i = 0; i < targets.length; i += 100) {
       await del(targets.slice(i, i + 100));
     }
