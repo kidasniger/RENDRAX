@@ -57,6 +57,8 @@ jobs:
       - name: Vérifier la syntaxe JavaScript de l’interface
         run: python tests/check_frontend.py
       - name: Rendus de régression HTML/CSS/Canvas/Web Audio
+        env:
+          RENDRAX_CHROME_NO_SANDBOX: "1"
         run: |
           set -euo pipefail
           for file in tests/fixtures/css-animation.html tests/fixtures/canvas-animation.html tests/fixtures/webaudio.html tests/fixtures/static.html tests/fixtures/start-button.html tests/fixtures/gsap-audio-timeline.html tests/fixtures/gsap-duration-audio-timeline.html; do
