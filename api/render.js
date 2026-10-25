@@ -1,5 +1,8 @@
-import { head } from '@vercel/blob';
-import { githubRequest, readBody, safeName, sameOrigin, send, validJobId, verifyTurnstile, publicError } from '../lib/kidas-server.js';
+import { del, head, put } from '@vercel/blob';
+import {
+  githubRequest, ownerTokenHash, readBody, safeName, sameOrigin, send,
+  validJobId, validOwnerToken, verifyTurnstile, publicError
+} from '../lib/kidas-server.js';
 
 const MAX_BYTES = 50 * 1000 * 1000;
 const FORMATS = new Set(['auto', 'portrait', 'landscape', 'square']);
@@ -8,17 +11,28 @@ const DURATIONS = new Set(['0', '10', '30', '60', '120', '300']);
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
-  const { id, captchaToken, scale, test, duration, format, name, watermark = true } = readBody(req);
+
+  const {
+    id, ownerToken, captchaToken, scale, test, duration, format, name,
+    watermark = true
+  } = readBody(req);
+
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
+  if (!validOwnerToken(ownerToken)) return send(res, 400, { error: 'Clé privée de cette vidéo invalide.' });
   if (!['0.5', '1'].includes(String(scale)) ||
-      !['0', '10'].includes(String(test)) || !DURATIONS.has(String(duration)) || !FORMATS.has(String(format)) ||
+      !['0', '10'].includes(String(test)) ||
+      !DURATIONS.has(String(duration)) ||
+      !FORMATS.has(String(format)) ||
       (typeof watermark !== 'boolean' && !['true', 'false'].includes(String(watermark).toLowerCase()))) {
     return send(res, 400, { error: 'Réglages de conversion invalides.' });
   }
+
   const watermarkEnabled = typeof watermark === 'boolean'
     ? watermark
     : String(watermark).toLowerCase() === 'true';
   let stage = 'vérification de sécurité';
+  let ownerRecordCreated = false;
+
   try {
     await verifyTurnstile(req, captchaToken);
     stage = 'lecture du HTML dans le stockage privé';
@@ -27,6 +41,7 @@ export default async function handler(req, res) {
       error.status = 503;
       throw error;
     }
+
     const pathname = `incoming/${id}.html`;
     const metadata = await head(pathname);
     if (Number(metadata.size) > MAX_BYTES) {
@@ -34,9 +49,23 @@ export default async function handler(req, res) {
       error.status = 413;
       throw error;
     }
-    stage = 'préparation du déclenchement du rendu';
+
+    stage = 'création de l’accès privé à la vidéo';
+    await put(`owners/${id}.json`, JSON.stringify({
+      id,
+      tokenHash: ownerTokenHash(ownerToken),
+      name: safeName(name),
+      createdAt: new Date().toISOString()
+    }), {
+      access: 'private',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      allowOverwrite: false
+    });
+    ownerRecordCreated = true;
+
     const inputs = {
-      fichier: 'kidas.html',
+      fichier: 'tests/fixtures/gsap-audio-timeline.html',
       blob_id: id,
       scale: String(scale),
       test: String(test),
@@ -46,6 +75,7 @@ export default async function handler(req, res) {
       nom: safeName(name),
       tag: id
     };
+
     stage = 'déclenchement du workflow GitHub Actions';
     await githubRequest('/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches', {
       method: 'POST',
@@ -53,6 +83,11 @@ export default async function handler(req, res) {
     });
     return send(res, 202, { id });
   } catch (error) {
+    if (ownerRecordCreated) {
+      try { await del(`owners/${id}.json`); } catch (cleanupError) {
+        console.warn('[RENDRAX owner cleanup]', cleanupError?.name || 'error');
+      }
+    }
     const status = Number(error?.status) || 500;
     console.error('[RENDRAX render]', {
       stage,
@@ -62,7 +97,7 @@ export default async function handler(req, res) {
     });
     if (status >= 500) {
       return send(res, 502, {
-        error: `Échec pendant l’étape : ${stage}. Ouvre les journaux Functions de Vercel si l’erreur persiste.`,
+        error: `Échec pendant l’étape : ${stage}. Réessaie ; si le problème persiste, consulte les journaux Vercel.`,
         stage
       });
     }
