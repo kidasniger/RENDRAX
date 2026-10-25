@@ -38,13 +38,15 @@ jobs:
       - name: Installer websocket-client
         timeout-minutes: 3
         run: |
-          python -m pip install --disable-pip-version-check --no-input --retries 2 --timeout 20 websocket-client Pillow
+          python -m pip install --disable-pip-version-check --no-input --retries 2 --timeout 20 websocket-client Pillow PyYAML
           python -c "import websocket; print('websocket-client installé:', websocket.__version__)"
           python -c "import PIL; print('Pillow installé:', PIL.__version__)"
       - name: Tests unitaires
         run: python -m unittest discover -s tests -v
       - name: Vérifier la syntaxe JavaScript de l’interface
         run: python tests/check_frontend.py
+      - name: Vérifier les workflows et les permissions OIDC
+        run: python tests/check_workflows.py
       - name: Rendus de régression HTML/CSS/Canvas/Web Audio
         env:
           RENDRAX_CHROME_NO_SANDBOX: "1"
