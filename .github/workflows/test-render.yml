@@ -18,28 +18,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Installer FFmpeg et ffprobe (binaires statiques en cache)
-        id: static_ffmpeg
-        continue-on-error: true
-        timeout-minutes: 6
-        uses: FedericoCarboni/setup-ffmpeg@37062fbf7149fc5578d6c57e08aed62458b375d6 # v3.1
-        with:
-          ffmpeg-version: release
-
-      - name: Installer FFmpeg depuis Ubuntu si le téléchargement échoue
-        if: steps.static_ffmpeg.outcome == 'failure'
+      - name: Installer FFmpeg et ffprobe depuis Ubuntu
         timeout-minutes: 8
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          ffmpeg -version | head -n 1
-          ffprobe -version | head -n 1
 
       - name: Vérifier les outils média
         run: |
