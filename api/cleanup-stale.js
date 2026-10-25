@@ -34,14 +34,18 @@ export default async function handler(req, res) {
         const pathname = String(blob.pathname || '');
         if (!PATH_PATTERN.test(pathname)) continue;
         const uploadedAt = new Date(blob.uploadedAt).getTime();
-        if (Number.isFinite(uploadedAt) && uploadedAt < cutoff) stale.push(pathname);
+        if (Number.isFinite(uploadedAt) && uploadedAt < cutoff) {
+          const id = pathname.slice('incoming/'.length, -'.html'.length);
+          stale.push({ pathname, id });
+        }
       }
       cursor = page.cursor;
       hasMore = Boolean(page.hasMore && cursor);
     }
 
-    for (let i = 0; i < stale.length; i += 100) {
-      await del(stale.slice(i, i + 100));
+    const targets = stale.flatMap(item => [item.pathname, `owners/${item.id}.json`]);
+    for (let i = 0; i < targets.length; i += 100) {
+      await del(targets.slice(i, i + 100));
     }
 
     return send(res, 200, {
