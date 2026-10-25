@@ -93,7 +93,7 @@ def launch_chrome(exe, tmp, width, height):
             f"--window-size={width},{height}",
             "about:blank",
         ]
-        if IS_TERMUX:
+        if IS_TERMUX or os.environ.get("RENDRAX_CHROME_NO_SANDBOX") == "1":
             cmd.extend(["--no-sandbox", "--no-zygote"])
         with open(log_path, "wb") as lf:
             proc = subprocess.Popen(cmd, stdout=lf, stderr=lf, start_new_session=True)
