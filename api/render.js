@@ -1,7 +1,7 @@
-import { del, head, put } from '@vercel/blob';
+import { head } from '@vercel/blob';
 import {
-  githubRequest, ownerTokenHash, readBody, safeName, sameOrigin, send,
-  validJobId, validOwnerToken, verifyTurnstile, publicError
+  githubRequest, readBody, safeName, sameOrigin, send, validJobId,
+  validOwnerToken, verifyOwnerToken, verifyTurnstile, publicError
 } from '../lib/kidas-server.js';
 
 const MAX_BYTES = 50 * 1000 * 1000;
@@ -31,17 +31,14 @@ export default async function handler(req, res) {
     ? watermark
     : String(watermark).toLowerCase() === 'true';
   let stage = 'vérification de sécurité';
-  let ownerRecordCreated = false;
-
   try {
     await verifyTurnstile(req, captchaToken);
-    stage = 'lecture du HTML dans le stockage privé';
-    if (!process.env.BLOB_STORE_ID) {
-      const error = new Error('Le stockage Blob privé doit être connecté au projet Vercel.');
-      error.status = 503;
-      throw error;
+    stage = 'vérification de la clé privée de cette vidéo';
+    if (!await verifyOwnerToken(id, ownerToken)) {
+      return send(res, 403, { error: 'Clé privée invalide pour cette vidéo.' });
     }
 
+    stage = 'lecture du HTML dans le stockage privé';
     const pathname = `incoming/${id}.html`;
     const metadata = await head(pathname);
     if (Number(metadata.size) > MAX_BYTES) {
@@ -49,20 +46,6 @@ export default async function handler(req, res) {
       error.status = 413;
       throw error;
     }
-
-    stage = 'création de l’accès privé à la vidéo';
-    await put(`owners/${id}.json`, JSON.stringify({
-      id,
-      tokenHash: ownerTokenHash(ownerToken),
-      name: safeName(name),
-      createdAt: new Date().toISOString()
-    }), {
-      access: 'private',
-      contentType: 'application/json',
-      addRandomSuffix: false,
-      allowOverwrite: false
-    });
-    ownerRecordCreated = true;
 
     const inputs = {
       fichier: 'tests/fixtures/gsap-audio-timeline.html',
@@ -83,11 +66,6 @@ export default async function handler(req, res) {
     });
     return send(res, 202, { id });
   } catch (error) {
-    if (ownerRecordCreated) {
-      try { await del(`owners/${id}.json`); } catch (cleanupError) {
-        console.warn('[RENDRAX owner cleanup]', cleanupError?.name || 'error');
-      }
-    }
     const status = Number(error?.status) || 500;
     console.error('[RENDRAX render]', {
       stage,
