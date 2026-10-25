@@ -383,7 +383,7 @@ def render(html_path, args):
                 out_final, tmp / "watermarked.mp4",
                 text=getattr(args, "watermark_text", "RENDRAX"),
                 animation=getattr(args, "watermark_animation", "pulse"),
-                position=getattr(args, "watermark_position", "bottom-right"),
+                position=getattr(args, "watermark_position", "right-center"),
                 opacity=float(getattr(args, "watermark_opacity", 0.45)),
                 size=float(getattr(args, "watermark_size", 0.07)),
             )

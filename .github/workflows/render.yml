@@ -32,7 +32,7 @@ on:
         description: "Ajouter le filigrane animé RENDRAX au MP4"
         type: boolean
         required: false
-        default: true
+        default: false
       nom:
         description: "Nom du MP4 (défaut : nom du fichier HTML)"
         required: false

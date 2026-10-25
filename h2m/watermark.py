@@ -5,15 +5,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 ANIMATIONS = {"pulse", "fade", "float", "fixed"}
-POSITIONS = {"bottom-right", "bottom-left", "top-right", "top-left", "center"}
+POSITIONS = {"right-center", "bottom-right", "bottom-left", "top-right", "top-left", "center"}
 FPS = 20
 DURATION_MS = 2000
 
 
-def validate_watermark(text="RENDRAX", animation="pulse", position="bottom-right",
+def validate_watermark(text="RENDRAX", animation="pulse", position="right-center",
                        opacity=0.45, size=0.07):
     if not isinstance(text, str) or not text.strip() or len(text) > 80:
         raise ValueError("Le texte du filigrane doit contenir de 1 à 80 caractères.")
@@ -47,64 +47,60 @@ def _font(size, bold=False):
 
 
 def _make_apng(path, frame_width, frame_height, text, animation, opacity, size):
-    """Create a compact RGBA animation with the repository's real RENDRAX icon."""
-    target_height = max(18, round(frame_height * size))
-    font_size = max(12, round(target_height * 0.72))
-    font = _font(font_size, bold=True)
-    probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    text_box = probe.textbbox((0, 0), text, font=font, stroke_width=0)
-    text_width = max(1, text_box[2] - text_box[0])
-    text_height = max(1, text_box[3] - text_box[1])
-    pad = max(3, round(target_height * 0.08))
-    gap = max(4, round(target_height * 0.12))
-    icon_height = max(12, round(target_height * 0.86))
-    icon_path = Path(__file__).resolve().parents[1] / "logo" / "rendrax_icon_cutout.png"
-    if icon_path.is_file():
-        with Image.open(icon_path) as original:
-            icon = original.convert("RGBA")
-        icon_width = max(1, round(icon.width * icon_height / icon.height))
-        icon = icon.resize((icon_width, icon_height), Image.Resampling.LANCZOS)
-    else:
-        # A geometric fallback avoids making rendering depend on an optional artwork file.
-        icon_width = icon_height
-        icon = Image.new("RGBA", (icon_width, icon_height), (0, 0, 0, 0))
-        d = ImageDraw.Draw(icon)
-        d.polygon([(icon_width // 2, 0), (icon_width, icon_height // 2),
-                   (icon_width // 2, icon_height), (0, icon_height // 2)],
-                  fill=(255, 255, 255, 255))
-    canvas_width = pad * 2 + icon_width + gap + text_width
-    canvas_height = max(icon_height, text_height) + pad * 2
-    frame_count = FPS * DURATION_MS // 1000
-    frames = []
-    for index in range(frame_count):
-        phase = 2 * math.pi * index / frame_count
+    """Convert the supplied animated RENDRAX GIF into a transparent APNG watermark."""
+    gif_path = Path(__file__).resolve().parents[1] / "logo" / "rendrax-watermark.gif"
+    if not gif_path.is_file():
+        raise RuntimeError("Le fichier du logo animé RENDRAX est absent.")
+
+    # Read frames first so each original delay and the total animation duration are preserved.
+    raw_frames = []
+    with Image.open(gif_path) as source:
+        for index in range(getattr(source, "n_frames", 1)):
+            source.seek(index)
+            raw_frames.append((
+                source.convert("RGBA").copy(),
+                max(20, int(source.info.get("duration", 100))),
+            ))
+    if not raw_frames:
+        raise RuntimeError("Le logo animé RENDRAX ne contient aucune image.")
+
+    total_duration = sum(delay for _, delay in raw_frames)
+    # Keep the logo legible but discreet on portrait, landscape and square videos.
+    target_height = max(20, round(min(frame_height * size, frame_width * 0.083)))
+    frames, durations = [], []
+    cumulative_ms = 0
+    for frame, delay_ms in raw_frames:
+        scale = target_height / max(1, frame.height)
+        target_width = max(1, round(frame.width * scale))
+        frame = frame.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        phase = (cumulative_ms + delay_ms / 2) / max(1, total_duration)
+        wave = (math.sin(2 * math.pi * phase) + 1) / 2
         if animation == "pulse":
-            factor = 0.72 + 0.28 * math.sin(phase)
+            factor = 0.70 + 0.30 * wave
         elif animation == "fade":
-            factor = 0.5 + 0.5 * math.sin(phase)
+            factor = 0.15 + 0.85 * wave
         else:
             factor = 1.0
-        alpha = max(0, min(255, round(255 * opacity * factor)))
-        frame = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
-        rgba_icon = icon.copy()
-        # Scale the logo's alpha channel by the chosen watermark opacity.
-        channel = rgba_icon.getchannel("A").point(lambda value: round(value * alpha / 255))
-        rgba_icon.putalpha(channel)
-        icon_y = (canvas_height - icon_height) // 2
-        frame.alpha_composite(rgba_icon, (pad, icon_y))
-        draw = ImageDraw.Draw(frame)
-        text_y = (canvas_height - text_height) // 2 - text_box[1]
-        draw.text((pad + icon_width + gap, text_y), text, font=font,
-                  fill=(255, 255, 255, alpha), stroke_width=0)
+        alpha_factor = max(0.0, min(1.0, opacity * factor))
+        alpha = frame.getchannel("A").point(lambda value, f=alpha_factor: round(value * f))
+        frame.putalpha(alpha)
         frames.append(frame)
+        durations.append(delay_ms)
+        cumulative_ms += delay_ms
+
     path.parent.mkdir(parents=True, exist_ok=True)
     frames[0].save(
-        path, format="PNG", save_all=True, append_images=frames[1:],
-        duration=DURATION_MS // frame_count, loop=0, disposal=0, blend=0,
-        optimize=False,
+        path,
+        format="PNG",
+        save_all=True,
+        append_images=frames[1:],
+        duration=durations,
+        loop=0,
+        disposal=[2] * len(frames),
+        blend=[0] * len(frames),
+        optimize=True,
     )
-    return canvas_width, canvas_height
-
+    return frames[0].size
 
 def _ffprobe_dimensions(path):
     result = subprocess.run(
@@ -126,7 +122,9 @@ def _ffprobe_dimensions(path):
 
 def _overlay_filter(position, animation, frame_width, frame_height):
     margin_x, margin_y = f"W*0.025", f"H*0.025"
-    if position == "bottom-right":
+    if position == "right-center":
+        x, y = f"W-w-{margin_x}", "H*0.55-h/2"
+    elif position == "bottom-right":
         x, y = f"W-w-{margin_x}", f"H-h-{margin_y}"
     elif position == "bottom-left":
         x, y = margin_x, f"H-h-{margin_y}"
@@ -143,7 +141,7 @@ def _overlay_filter(position, animation, frame_width, frame_height):
 
 
 def apply_watermark(source, destination, text="RENDRAX", animation="pulse",
-                    position="bottom-right", opacity=0.45, size=0.07):
+                    position="right-center", opacity=0.45, size=0.07):
     """Overlay an animated PNG; copy audio packets unchanged to preserve sync."""
     text, animation, position, opacity, size = validate_watermark(
         text, animation, position, opacity, size

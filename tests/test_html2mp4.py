@@ -249,10 +249,10 @@ class Html2Mp4Tests(unittest.TestCase):
         for filename in ("favicon.ico", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
             self.assertTrue((ROOT / "docs" / filename).is_file(), filename)
         for link in (
-            'href="/favicon.ico" sizes="any"',
-            'href="/favicon-32x32.png"',
-            'href="/favicon-16x16.png"',
-            'href="/apple-touch-icon.png"',
+            'href="/favicon.ico?v=20261025-rendrax4" sizes="any"',
+            'href="/favicon-32x32.png?v=20261025-rendrax4"',
+            'href="/favicon-16x16.png?v=20261025-rendrax4"',
+            'href="/apple-touch-icon.png?v=20261025-rendrax4"',
         ):
             self.assertIn(link, page)
         self.assertEqual(
@@ -263,13 +263,15 @@ class Html2Mp4Tests(unittest.TestCase):
             (ROOT / "docs" / "assets" / "rendrax-logo-dark.svg").read_bytes(),
             (ROOT / "logo" / "rendrax_x5f_horizontal_x5f_light.svg").read_bytes()
         )
-        self.assertIn('src="/favicon-32x32.png"', page)
+        self.assertIn('src="/favicon-32x32.png?v=20261025-rendrax4"', page)
         self.assertIn('src="/_vercel/insights/script.js"', page)
 
     def test_animated_watermark_defaults_and_filter(self):
         from h2m.watermark import _overlay_filter, _make_apng, validate_watermark
-        self.assertEqual(validate_watermark(), ("RENDRAX", "pulse", "bottom-right", 0.45, 0.07))
-        filt = _overlay_filter("bottom-right", "pulse", 320, 180)
+        self.assertEqual(validate_watermark(), ("RENDRAX", "pulse", "right-center", 0.45, 0.07))
+        filt = _overlay_filter("right-center", "pulse", 320, 180)
+        self.assertIn("W-w-W*0.025", filt)
+        self.assertIn("H*0.55-h/2", filt)
         self.assertIn("[1:v]format=rgba", filt)
         self.assertIn("overlay=", filt)
         with tempfile.TemporaryDirectory() as td:
@@ -277,13 +279,13 @@ class Html2Mp4Tests(unittest.TestCase):
             _make_apng(apng, 320, 180, "RENDRAX", "pulse", 0.45, 0.07)
             from PIL import Image
             with Image.open(apng) as anim:
-                self.assertEqual(anim.n_frames, 40)
-                self.assertEqual(anim.size[0] > 0, True)
-                alphas = []
-                for idx in (0, 10, 20, 30):
-                    anim.seek(idx)
-                    alphas.append(anim.convert("RGBA").getchannel("A").getextrema()[1])
-                self.assertGreater(max(alphas), min(alphas))
+                with Image.open(ROOT / "logo" / "rendrax-watermark.gif") as source_gif:
+                    self.assertEqual(anim.n_frames, source_gif.n_frames)
+                self.assertGreater(anim.size[0], 0)
+                self.assertGreater(anim.size[1], 0)
+                self.assertLess(anim.size[1], 320)
+                anim.seek(0)
+                self.assertGreater(anim.convert("RGBA").getchannel("A").getextrema()[1], 0)
 
     def test_watermark_integrates_real_mp4_and_keeps_audio(self):
         ffmpeg = shutil.which("ffmpeg")
@@ -306,7 +308,7 @@ class Html2Mp4Tests(unittest.TestCase):
             ], check=True, timeout=60)
             shutil.copy2(source, original)
             apply_watermark(source, destination, text="RENDRAX", animation="pulse",
-                            position="bottom-right", opacity=0.45, size=0.07)
+                            position="right-center", opacity=0.45, size=0.07)
             self.assertTrue(source.is_file())
             self.assertFalse(destination.exists())
             probe = subprocess.run([

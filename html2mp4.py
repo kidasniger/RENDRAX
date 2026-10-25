@@ -72,7 +72,7 @@ def main():
     ap.set_defaults(watermark=True)
     ap.add_argument("--watermark-text", default="RENDRAX", help="texte du filigrane (1 à 80 caractères)")
     ap.add_argument("--watermark-animation", choices=("pulse", "fade", "float", "fixed"), default="pulse", help="animation du filigrane")
-    ap.add_argument("--watermark-position", choices=("bottom-right", "bottom-left", "top-right", "top-left", "center"), default="bottom-right", help="position du filigrane")
+    ap.add_argument("--watermark-position", choices=("right-center", "bottom-right", "bottom-left", "top-right", "top-left", "center"), default="right-center", help="position du logo animé (côté droit, à mi-hauteur par défaut)")
     ap.add_argument("--watermark-opacity", type=float, default=0.45, help="opacité du filigrane, entre 0.1 et 1")
     ap.add_argument("--watermark-size", type=float, default=0.07, help="taille relative du texte, entre 0.02 et 0.12")
     ap.add_argument("--name", default="", help="nom du MP4 (sans extension) ; défaut : nom du fichier HTML")
