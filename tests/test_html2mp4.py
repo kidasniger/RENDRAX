@@ -261,7 +261,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("api/publish-url", workflow)
         self.assertNotIn("gh release create", workflow)
         self.assertNotIn("actions/upload-artifact@v4", workflow)
-        self.assertIn("content is private", page.lower())
+        self.assertIn("mp4 sont privés", page.lower())
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
