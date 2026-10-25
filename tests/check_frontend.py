@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for RENDRAX's inline JavaScript and privacy-sensitive references."""
+"""Syntax-check frontend and server JavaScript, and guard privacy regressions."""
 from pathlib import Path
 import re
 import subprocess
@@ -28,10 +28,18 @@ def main() -> None:
     if not scripts:
         raise SystemExit("No executable inline scripts found.")
 
+    checked = []
     with tempfile.TemporaryDirectory(prefix="rendrax-js-check-") as temp_dir:
         for index, (_, source) in enumerate(scripts, start=1):
             path = Path(temp_dir) / f"inline-{index}.mjs"
             path.write_text(source, encoding="utf-8")
+            checked.append((f"inline JavaScript block {index}", path))
+
+        for directory in (ROOT / "api", ROOT / "lib"):
+            for path in sorted(directory.glob("*.js")):
+                checked.append((str(path.relative_to(ROOT)), path))
+
+        for label, path in checked:
             result = subprocess.run(
                 ["node", "--check", str(path)],
                 capture_output=True,
@@ -41,11 +49,14 @@ def main() -> None:
             )
             if result.returncode:
                 raise SystemExit(
-                    f"Inline JavaScript block {index} has a syntax error:\n"
+                    f"JavaScript syntax error in {label}:\n"
                     f"{result.stdout}{result.stderr}"
                 )
 
-    print(f"Syntax OK: {len(scripts)} inline JavaScript block(s); privacy checks OK.")
+    print(
+        f"Syntax OK: {len(scripts)} inline JavaScript block(s), "
+        f"{len(checked) - len(scripts)} server module(s); privacy checks OK."
+    )
 
 
 if __name__ == "__main__":
