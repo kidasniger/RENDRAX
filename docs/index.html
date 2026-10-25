@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="RENDRAX transforme tes animations HTML en vidéos MP4 avec le son, grâce à un rendu image par image.">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Convertis des animations HTML en MP4. Les profils compatibles sont rendus image par image ; les limites du mode universel sont annoncées avant le rendu.">
 <meta name="application-name" content="RENDRAX">
 <meta property="og:title" content="RENDRAX — HTML vers MP4">
 <meta property="og:description" content="Transforme tes animations HTML en vidéos MP4 avec le son.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://rendrax.vercel.app/">
+<link rel="canonical" href="https://rendrax.vercel.app/">
   <link rel="shortcut icon" href="/favicon.ico?v=20261025-rendrax4">
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20261025-rendrax4" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=20261025-rendrax4">
@@ -24,33 +27,46 @@
 <script>
 (function(){
   const root = document.documentElement;
-  let timer = null;
-  function updateThemeFromLocalTime(){
-    const now = new Date();
-    const hour = now.getHours();
-    const dark = hour < 7 || hour >= 19;
+  const key = 'rendrax_theme';
+  const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function preference(){
+    try {
+      const value = localStorage.getItem(key);
+      return value === 'light' || value === 'dark' ? value : 'system';
+    } catch (e) { return 'system'; }
+  }
+  function applyTheme(){
+    const pref = preference();
+    const dark = pref === 'dark' || (pref === 'system' && !!(media && media.matches));
     root.dataset.theme = dark ? 'dark' : 'light';
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = dark ? '#080b18' : '#f3f6ff';
-
-    const next = new Date(now);
-    next.setHours(dark ? 7 : 19, 0, 0, 0);
-    if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
-    if (timer !== null) window.clearTimeout(timer);
-    timer = window.setTimeout(updateThemeFromLocalTime, Math.max(1000, next.getTime() - now.getTime() + 100));
+    const btn = document.getElementById('themeToggle');
+    if (btn) {
+      const label = pref === 'dark' ? 'Sombre' : pref === 'light' ? 'Clair' : 'Système';
+      btn.textContent = 'Thème : ' + label;
+      btn.setAttribute('aria-label', 'Changer le thème (actuel : ' + label + ')');
+    }
   }
-  updateThemeFromLocalTime();
-  document.addEventListener('visibilitychange', function(){
-    if (!document.hidden) updateThemeFromLocalTime();
-  });
-  window.addEventListener('focus', updateThemeFromLocalTime);
-})();
+  window.__rendraxCycleTheme = function(){
+    const modes = ['system', 'light', 'dark'];
+    const next = modes[(modes.indexOf(preference()) + 1) % modes.length];
+    try { localStorage.setItem(key, next); } catch (e) {}
+    applyTheme();
+  };
+  if (media) {
+    const onChange = () => { if (preference() === 'system') applyTheme(); };
+    if (media.addEventListener) media.addEventListener('change', onChange);
+    else if (media.addListener) media.addListener(onChange);
+  }
+  applyTheme();
+})();;
 </script>
 <title>HTML → MP4 · RENDRAX</title>
 <style>
 :root{
   --bg:#f3f6ff;--surf:#ffffff;--surf2:#f4f6ff;--tx:#11162b;--mut:#65708b;--bd:#dfe6f7;
-  --ac:#316bff;--ac2:#6d49ef;--on:#ffffff;--ok:#0e956a;--err:#cc3655;--warn:#98600a;
+  --ac:#2d64ef;--ac2:#6d49ef;--on:#ffffff;--ok:#0e956a;--err:#cc3655;--warn:#98600a;
   --r:22px;--rs:14px;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--shadow:0 12px 34px rgba(34,62,130,.065);color-scheme:light
 }
 :root[data-theme="dark"]{
@@ -248,10 +264,7 @@ ul#list button{box-shadow:none}
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 </style>
-<link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025-fix3">
-<script type="importmap">
-{"imports":{"react":"https://esm.sh/react@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client?external=react"}}
-</script>
+<link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025-security1">
 <script>
 (function(){
   var done = function(){ document.documentElement.classList.add('rdx-ready'); };
@@ -277,18 +290,19 @@ ul#list button{box-shadow:none}
       <div class="brand">
         <img class="brand-logo" data-rdx-logo-light src="/assets/rendrax-logo.svg?v=20261025-fix3" alt="RENDRAX" width="520" height="120">
         <img class="brand-logo" data-rdx-logo-dark src="/assets/rendrax-logo-dark.svg?v=20261025-fix3" alt="" aria-hidden="true" width="520" height="120">
+        <button id="themeToggle" class="sec rdx-theme-toggle" type="button" aria-label="Changer le thème (actuel : système)">Thème : Système</button>
       </div>
       <p class="rdx-eyebrow"><span class="rdx-live-dot" aria-hidden="true"></span> ATELIER DE RENDU · EN LIGNE</p>
       <h1 aria-label="HTML vers MP4">Le mouvement devient <span>vidéo.</span></h1>
-      <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé.</p>
+      <p class="sub">Transforme tes animations HTML en vidéos MP4. Les profils compatibles bénéficient d’un rendu synchronisé ; les autres pages utilisent un mode universel.</p>
       <div class="rdx-hero-actions">
         <a class="rdx-primary-link" href="#fileCard">Commencer une conversion <span aria-hidden="true">→</span></a>
         <p>Fichiers HTML ou HTM · 50 Mo maximum</p>
       </div>
       <div class="rdx-hero-meta" aria-label="Points clés">
         <span>HTML vers MP4</span>
-        <span>Rendu sécurisé</span>
-        <span>Prêt à partager</span>
+        <span>HTML temporaire privé</span>
+        <span>MP4 privé</span>
       </div>
     </div>
     <div class="rdx-hero-visual" role="img" aria-label="Illustration : un code HTML devient une vidéo MP4">
@@ -316,7 +330,7 @@ ul#list button{box-shadow:none}
         <div class="rdx-float-pill rdx-pill-secure"><span class="rdx-live-dot"></span>Rendu sécurisé</div>
         <div class="rdx-float-pill rdx-pill-quality"><span>✳</span><span>Image par image</span></div>
       </div>
-      <div id="rdx-react-visual" aria-hidden="true"></div>
+      
     </div>
   </header>
 
@@ -340,9 +354,9 @@ ul#list button{box-shadow:none}
       <div class="field">
         <label for="mode">Qualité</label>
         <select id="mode">
-          <option value="full">Complète · 1080×1920</option>
-          <option value="half">Allégée · 540×960</option>
-          <option value="test">Aperçu · 10 s · 540×960</option>
+          <option value="full">Complète · selon le format</option>
+          <option value="half">Allégée · selon le format</option>
+          <option value="test">Test rapide · 10 s · basse résolution</option>
         </select>
       </div>
       <div class="field">
@@ -364,6 +378,7 @@ ul#list button{box-shadow:none}
           <option value="120">2 minutes</option>
           <option value="300">5 minutes</option>
         </select>
+        <p class="mut"><small>En mode automatique, RENDRAX détecte la durée lorsqu’elle est disponible. En mode universel, une durée inconnue peut être limitée à 60 secondes.</small></p>
       </div>
       <div class="field field-wide">
         <label class="checkline" for="watermark">
@@ -373,7 +388,7 @@ ul#list button{box-shadow:none}
         <p class="mut">Optionnel. Active cette option pour ajouter le filigrane animé RENDRAX au MP4.</p>
       </div>
     </div>
-    <p class="mut" role="note">RENDRAX détecte automatiquement le type d’animation, la fréquence d’images et la qualité d’encodage. Il active aussi l’écran de démarrage lorsqu’il est présent. Le HTML source reste intact.</p>
+    <p class="mut" role="note">Les profils reconnus sont rendus image par image. Les pages génériques utilisent une capture en temps réel : fluidité, durée et audio peuvent varier. Le HTML source est stocké temporairement en privé puis supprimé. Les nouveaux MP4 sont privés ; le lien de lecture donne accès à toute personne qui le possède.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
@@ -395,7 +410,8 @@ ul#list button{box-shadow:none}
   </section>
 
   <section class="card" aria-labelledby="h-hist">
-    <div class="row"><h2 id="h-hist">Vidéos générées</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
+    <div class="row"><h2 id="h-hist">Mes vidéos privées</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
+    <p class="mut"><small>Les vidéos créées depuis ce navigateur apparaissent ici. Les anciennes vidéos déjà publiées dans des <a href="https://github.com/kidasniger/RENDRAX/releases" rel="noopener noreferrer">GitHub Releases</a> peuvent encore être publiques.</small></p>
     <ul id="list"><li class="empty">Chargement…</li></ul>
   </section>
 
@@ -403,6 +419,8 @@ ul#list button{box-shadow:none}
 
 <script>
 const API = '/api';
+const JOBS_KEY = 'rendrax_jobs';
+const ownerKey = id => 'rendrax_owner_' + id;
 const MODES = {
   full: { scale: '1', test: '0' },
   half: { scale: '0.5', test: '0' },
@@ -417,8 +435,22 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 };
+function storedJobs() {
+  try {
+    const value = JSON.parse(store.get(JOBS_KEY) || '[]');
+    return Array.isArray(value) ? value.filter(item => item && /^v[a-z0-9]{12,40}$/.test(item.id)) : [];
+  } catch (e) { return []; }
+}
+function rememberJob(id, name, createdAt) {
+  const jobs = storedJobs().filter(item => item.id !== id);
+  jobs.unshift({ id, name: String(name || 'RENDRAX'), createdAt: createdAt || new Date().toISOString() });
+  store.set(JOBS_KEY, JSON.stringify(jobs.slice(0, 50)));
+}
+function forgetJob(id) {
+  store.set(JOBS_KEY, JSON.stringify(storedJobs().filter(item => item.id !== id)));
+}
 
-let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
+let busy = false, cancelled = false, currentRunId = null, currentJobId = null, activeDispatchAccepted = false, currentUploadXhr = null, fileText = '', verdict = null;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
@@ -540,7 +572,7 @@ function workflowStepLabel(name) {
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
   if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
   if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification du MP4…';
-  if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
+  if (/Publier le MP4 \(Release/i.test(name || '')) return 'Envoi de la vidéo vers le stockage privé…';
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage sécurisé des fichiers temporaires…';
   return 'Préparation du rendu…';
 }
@@ -550,6 +582,7 @@ function setBusy(b) {
   $('#go').hidden = b;
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
+  if (!b) { currentJobId = null; activeDispatchAccepted = false; currentUploadXhr = null; }
 }
 function analyze(t) {
   const count = (s, sub) => s.split(sub).length - 1;
@@ -631,12 +664,12 @@ function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().e
 function showResult(rel) {
   const a = mp4Of(rel);
   const box = $('#res'); box.textContent = '';
-  if (!a) { box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.'; return; }
+  if (!a) { box.textContent = 'Rendu terminé, mais aucune vidéo n’a été trouvée dans le stockage privé.'; return; }
   const v = document.createElement('video');
   v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = a.browser_download_url;
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
-  dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
+  dl.className = 'btn'; dl.href = a.browser_download_url + '&download=1'; dl.download = a.name;
   dl.textContent = 'Télécharger (' + size(a.size) + ')';
   const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
   cp.onclick = async () => {
@@ -658,35 +691,63 @@ function showResult(rel) {
 }
 async function loadList() {
   const ul = $('#list');
-  try {
-    const data = await api('/videos');
+  const jobs = storedJobs();
+  const requests = jobs.map(item => ({
+    id: item.id,
+    ownerToken: store.get(ownerKey(item.id))
+  })).filter(item => item.ownerToken);
+  if (!requests.length) {
     ul.textContent = '';
-    const items = data.items || [];
-    if (!items.length) { ul.innerHTML = '<li class="empty">Aucune vidéo générée.</li>'; return; }
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Aucune vidéo privée enregistrée dans ce navigateur.';
+    ul.append(li);
+    return;
+  }
+  try {
+    const data = await api('/videos', { method: 'POST', body: { items: requests } });
+    ul.textContent = '';
+    const items = (data.items || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'Aucune vidéo terminée. Les rendus en échec ne figurent pas dans cet historique.';
+      ul.append(li);
+      return;
+    }
     for (const r of items) {
       const a = mp4Of(r);
       if (!a) continue;
       const li = document.createElement('li');
       const meta = document.createElement('div'); meta.className = 'meta';
       const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
+      l.referrerPolicy = 'no-referrer';
       const d = document.createElement('small');
       d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
       meta.append(l, d);
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
       del.setAttribute('aria-label', 'Supprimer la vidéo ' + a.name);
       del.onclick = async () => {
-        if (!confirm('Supprimer définitivement cette vidéo ?')) return;
+        if (!confirm('Supprimer définitivement cette vidéo privée ?')) return;
         del.disabled = true;
         try {
-          await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
-          loadList();
-        } catch (e) { del.disabled = false; alert(explain(e)); }
+          const ownerToken = store.get(ownerKey(r.id));
+          await api('/delete-video', { method: 'POST', body: { id: r.id, ownerToken } });
+          store.set(ownerKey(r.id), null);
+          forgetJob(r.id);
+          await loadList();
+        } catch (e) {
+          del.disabled = false;
+          alert(explain(e));
+        }
       };
       li.append(meta, del); ul.append(li);
     }
   } catch (e) {
     ul.textContent = '';
-    const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
+    const li = document.createElement('li'); li.className = 'empty';
+    li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
   }
 }
 async function waitJob(id, t0) {
@@ -696,7 +757,8 @@ async function waitJob(id, t0) {
     await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
-    const job = await api('/job?id=' + encodeURIComponent(id) + (showDetails ? '&details=1' : ''));
+    const ownerToken = store.get(ownerKey(id)) || '';
+    const job = await api('/job?id=' + encodeURIComponent(id) + '&ownerToken=' + encodeURIComponent(ownerToken) + (showDetails ? '&details=1' : ''));
     const elapsed = mmss(Date.now() - t0);
     if (!job.found) {
       setSteps(1); status('Démarrage du rendu… (' + elapsed + ')');
@@ -714,6 +776,11 @@ async function waitJob(id, t0) {
       }
       hint('Le suivi identifie automatiquement l’étape en cours. Tu peux quitter cette page : il reprendra à ton retour.');
       continue;
+    }
+    if (job.conclusion === 'cancelled') {
+      const e = new Error('annulé');
+      e.cancelled = true;
+      throw e;
     }
     if (job.conclusion !== 'success') {
       const failedStep = job.currentStep || lastWorkflowStep;
@@ -738,7 +805,9 @@ function fail(e, step) {
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
 async function cleanupUpload(id) {
-  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
+  const ownerToken = store.get(ownerKey(id));
+  if (!ownerToken) return;
+  try { await api('/cleanup', { method: 'POST', body: { id, ownerToken } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
@@ -757,7 +826,7 @@ async function go() {
     setSteps(0); status('Vérification de sécurité…');
     const uploadCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
+    const signed = await api('/upload-url', { method: 'POST', body: { id, ownerToken, captchaToken: uploadCaptcha, name: f.name.replace(/\.html?$/i, '') } });
     await uploadPrivateBlob(signed.url, f);
     uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -765,33 +834,47 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
+      id, ownerToken, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
       duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: f.name.replace(/\.html?$/i, '')
     }});
-    dispatchAccepted = true;
+    dispatchAccepted = true; activeDispatchAccepted = true;
     store.set('kidas_job', JSON.stringify({ id, t0 }));
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
+    if (uploadComplete && !dispatchAccepted) await cleanupUpload(id);
+    if (!dispatchAccepted) { store.set(ownerKey(id), null); forgetJob(id); }
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
   setBusy(false);
 }
 async function cancel() {
-  cancelled = true;
+  if (!busy || !currentJobId) return;
   $('#cancel').disabled = true;
-  status('Annulation en cours…');
-  if (currentUploadXhr) currentUploadXhr.abort();
-  if (currentRunId) {
-    try { await api('/cancel', { method: 'POST', body: { runId: currentRunId } }); } catch (e) {}
+  if (!activeDispatchAccepted) {
+    cancelled = true;
+    if (currentUploadXhr) currentUploadXhr.abort();
+    status('Annulation de l’envoi en cours…');
+    return;
+  }
+  status('Demande d’annulation au serveur…');
+  try {
+    const ownerToken = store.get(ownerKey(currentJobId));
+    await api('/cancel', { method: 'POST', body: { id: currentJobId, ownerToken } });
+    status('Demande acceptée ; attente de confirmation de l’annulation…');
+  } catch (e) {
+    cancelled = false;
+    $('#cancel').disabled = false;
+    status('Annulation non confirmée : ' + explain(e) + ' Le rendu peut continuer.', 'err');
   }
 }
 async function resume() {
   const raw = store.get('kidas_job'); if (!raw) return;
   let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
   if (!job.id || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
+  if (!store.get(ownerKey(job.id))) { store.set('kidas_job', null); return; }
+  currentJobId = job.id; activeDispatchAccepted = true;
   cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(2); status('Reprise du suivi du rendu…');
   try { await finish(await waitJob(job.id, job.t0)); }
   catch (e) { fail(e, Math.max(currentStepIndex(), 2)); }
@@ -801,6 +884,7 @@ $('#file').onchange = checkFile;
 $('#go').onclick = go;
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
+$('#themeToggle').onclick = () => { if (window.__rendraxCycleTheme) window.__rendraxCycleTheme(); };
 $('#prevBtn').onclick = () => {
   const p = $('#prev'), btn = $('#prevBtn');
   if (!p.hidden) { resetPreview(); return; }
@@ -831,6 +915,5 @@ loadList();
 initSecurity();
 resume();
 </script>
-<script type="module" src="/assets/rendrax-motion.js?v=20261025-fix3"></script>
 </body>
 </html>

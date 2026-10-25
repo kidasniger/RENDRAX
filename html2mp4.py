@@ -10,7 +10,7 @@ Utilisation (Termux ou Linux) :
     python html2mp4.py                 # scanne le dossier du script
     python html2mp4.py ~/storage/downloads
     python html2mp4.py --test 10       # rendu rapide des 10 premières secondes
-    python html2mp4.py --file kidas.html   # sans menu (utilisé par GitHub Actions)
+    python html2mp4.py --file tests/fixtures/gsap-audio-timeline.html   # exemple synthétique
     python html2mp4.py --fps 24 --scale 0.5
 
 Menu : ↑/↓ naviguer · Espace choisir · Entrée confirmer · q quitter

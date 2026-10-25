@@ -21,12 +21,12 @@ technologies:
   - "GitHub Actions"
   - "Cloudflare Turnstile"
 featured: false
-github: "https://github.com/kidasniger/Kidas"
+github: "https://github.com/kidasniger/RENDRAX"
 demo: "https://rendrax.vercel.app"
 website: "À renseigner"
 documentation: "À renseigner"
 download: "À renseigner"
-icon: "https://raw.githubusercontent.com/kidasniger/Kidas/main/logo/rendrax_icon_cutout.png"
+icon: "https://raw.githubusercontent.com/kidasniger/RENDRAX/main/logo/rendrax_icon_cutout.png"
 cover: "À renseigner"
 ---
 
@@ -48,7 +48,7 @@ RENDRAX convertit des animations HTML en vidéos MP4 à l’aide d’un rendu c�
 - Rendre image par image les profils reconnus, avec prise en charge audio spécifique à chaque profil.
 - Suivre l’avancement du rendu et consulter le journal du workflow.
 - Prévisualiser, télécharger, partager et copier le lien du MP4 généré.
-- Consulter l’historique des vidéos publiées et demander leur suppression depuis l’interface.
+- Consulter l’historique privé des vidéos créées depuis le navigateur et supprimer uniquement ses propres rendus.
 
 # Technologies
 
@@ -107,7 +107,7 @@ RENDRAX convertit des animations HTML en vidéos MP4 à l’aide d’un rendu c�
 
 # Liens
 
-- GitHub: "https://github.com/kidasniger/Kidas"
+- GitHub: "https://github.com/kidasniger/RENDRAX"
 - Démo: "https://rendrax.vercel.app"
 - Site web: "À renseigner"
 - Documentation: "À renseigner"
@@ -153,4 +153,4 @@ Convertissez des animations HTML en vidéos MP4 avec RENDRAX. Importez un fichie
 
 # Informations supplémentaires
 
-Le fichier HTML importé est envoyé vers un stockage privé temporaire, puis récupéré par le workflow de rendu autorisé. Le nettoyage du fichier temporaire est prévu à la fin du workflow. Les vidéos générées par le flux actuel sont publiées comme pièces jointes de GitHub Releases et peuvent donc être accessibles publiquement. Les profils reconnus peuvent bénéficier d’un rendu image par image ; pour les pages génériques, le rendu fonctionne en temps réel et la synchronisation audio ou la fluidité ne sont pas garanties pour toutes les animations.
+Le HTML importé est conservé temporairement dans un stockage privé puis supprimé à la fin du workflow. Les nouveaux MP4 sont également stockés dans un Blob privé ; leur URL d’accès contient une clé secrète et doit être partagée uniquement avec les personnes autorisées. Les anciennes vidéos publiées dans les GitHub Releases avant cette mise à jour restent publiques tant que leurs Releases ne sont pas supprimées. Les profils reconnus bénéficient d’un rendu image par image ; pour les pages génériques, le rendu fonctionne en temps réel et la synchronisation audio ou la fluidité ne sont pas garanties pour toutes les animations.

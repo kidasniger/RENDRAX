@@ -18,26 +18,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Installer FFmpeg et ffprobe (binaires statiques en cache)
-        id: static_ffmpeg
-        continue-on-error: true
-        timeout-minutes: 6
-        uses: FedericoCarboni/setup-ffmpeg@37062fbf7149fc5578d6c57e08aed62458b375d6 # v3.1
-        with:
-          ffmpeg-version: release
-
-      - name: Installer FFmpeg depuis Ubuntu si le téléchargement échoue
-        if: steps.static_ffmpeg.outcome == 'failure'
+      - name: Installer FFmpeg et ffprobe depuis Ubuntu
         timeout-minutes: 8
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          ffmpeg -version | head -n 1
-          ffprobe -version | head -n 1
 
       - name: Vérifier les outils média
         run: |
@@ -47,22 +38,26 @@ jobs:
       - name: Installer websocket-client
         timeout-minutes: 3
         run: |
-          python -m pip install --disable-pip-version-check --no-input --retries 2 --timeout 20 websocket-client Pillow
+          python -m pip install --disable-pip-version-check --no-input --retries 2 --timeout 20 websocket-client Pillow PyYAML
           python -c "import websocket; print('websocket-client installé:', websocket.__version__)"
           python -c "import PIL; print('Pillow installé:', PIL.__version__)"
       - name: Tests unitaires
         run: python -m unittest discover -s tests -v
+      - name: Vérifier la syntaxe JavaScript de l’interface
+        run: python tests/check_frontend.py
+      - name: Vérifier les workflows et les permissions OIDC
+        run: python tests/check_workflows.py
       - name: Rendus de régression HTML/CSS/Canvas/Web Audio
+        env:
+          RENDRAX_CHROME_NO_SANDBOX: "1"
         run: |
           set -euo pipefail
-          python html2mp4.py --file kidas.html --fps auto --scale 0.5 --test 2 --duration 2 --format auto --quality auto
-          python html2mp4.py --file uploads/vmv7j3erf.html --fps auto --scale 0.5 --test 2 --duration 2 --format portrait --quality auto
           for file in tests/fixtures/css-animation.html tests/fixtures/canvas-animation.html tests/fixtures/webaudio.html tests/fixtures/static.html tests/fixtures/start-button.html tests/fixtures/gsap-audio-timeline.html tests/fixtures/gsap-duration-audio-timeline.html; do
             python html2mp4.py --file "$file" --fps auto --scale 0.5 --test 2 --duration 2 --format landscape --quality auto
           done
           python html2mp4.py --file tests/fixtures/start-overlay.html --fps auto --scale 0.5 --test 2 --duration 2 --format landscape --quality auto 2>&1 | tee /tmp/rendrax-start-overlay.log
           grep -q "Bouton de démarrage activé automatiquement" /tmp/rendrax-start-overlay.log
-          for file in kidas_test.mp4 uploads/vmv7j3erf_test.mp4 tests/fixtures/css-animation_test.mp4 tests/fixtures/canvas-animation_test.mp4 tests/fixtures/webaudio_test.mp4 tests/fixtures/static_test.mp4 tests/fixtures/start-button_test.mp4 tests/fixtures/start-overlay_test.mp4 tests/fixtures/gsap-audio-timeline_test.mp4 tests/fixtures/gsap-duration-audio-timeline_test.mp4; do
+          for file in tests/fixtures/css-animation_test.mp4 tests/fixtures/canvas-animation_test.mp4 tests/fixtures/webaudio_test.mp4 tests/fixtures/static_test.mp4 tests/fixtures/start-button_test.mp4 tests/fixtures/start-overlay_test.mp4 tests/fixtures/gsap-audio-timeline_test.mp4 tests/fixtures/gsap-duration-audio-timeline_test.mp4; do
             test -s "$file"
             ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of csv=p=0 "$file"
           done
