@@ -1,5 +1,7 @@
 import { send } from '../lib/kidas-server.js';
 
+const REPOSITORY = 'kidasniger/RENDRAX';
+
 // Les vidéos sont publiées dans des GitHub Releases publiques. Tant que RENDRAX
 // ne dispose pas d'une preuve de propriété par vidéo, une suppression anonyme
 // pourrait effacer le résultat d'un autre utilisateur. Refuser par défaut.
