@@ -135,6 +135,7 @@ jobs:
           NOM: ${{ inputs.nom }}
           QUALITE: "auto"
           WATERMARK: ${{ inputs.watermark }}
+          RENDRAX_CHROME_NO_SANDBOX: "1"
         run: |
           args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE")
           if [[ "${WATERMARK,,}" != "true" ]]; then
@@ -143,6 +144,12 @@ jobs:
           else
             echo "Filigrane animé RENDRAX activé."
           fi
+          # HTML utilisateur = code non fiable : ne pas transmettre les jetons du runner au navigateur.
+          while IFS='=' read -r env_name _; do
+            case "$env_name" in
+              *TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*) unset "$env_name" ;;
+            esac
+          done < <(env)
           python html2mp4.py "${args[@]}"
 
       - name: Publier le MP4 dans le stockage privé
