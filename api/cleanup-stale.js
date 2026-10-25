@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       ownerRecordsScanned += blobs.length;
       for (const blob of blobs) {
         const pathname = String(blob.pathname || '');
-        const match = pathname.match(/^owners\\/(v[a-z0-9]{12,40})\\.json$/);
+        const match = pathname.match(/^owners\/(v[a-z0-9]{12,40})\.json$/);
         if (!match) continue;
         const uploadedAt = new Date(blob.uploadedAt).getTime();
         if (Number.isFinite(uploadedAt) && uploadedAt < cutoff) ownerIds.add(match[1]);
