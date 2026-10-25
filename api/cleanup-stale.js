@@ -43,14 +43,34 @@ export default async function handler(req, res) {
       hasMore = Boolean(page.hasMore && cursor);
     }
 
-    // Remove orphaned owner metadata only when no successful MP4 exists.
-    // An input-cleanup failure must not revoke a user's access to a finished render.
-    const targets = [];
-    for (let i = 0; i < stale.length; i += 50) {
-      const batch = stale.slice(i, i + 50);
-      const outputExists = await Promise.all(batch.map(async item => {
+    // Also find old owner records whose upload URL was issued but whose upload never began.
+    const ownerIds = new Set(stale.map(item => item.id));
+    let ownerCursor;
+    let ownersHasMore = true;
+    let ownerRecordsScanned = 0;
+    for (let pageNumber = 0; pageNumber < MAX_PAGES && ownersHasMore; pageNumber += 1) {
+      const page = await list({ prefix: 'owners/', limit: PAGE_SIZE, cursor: ownerCursor });
+      const blobs = Array.isArray(page.blobs) ? page.blobs : [];
+      ownerRecordsScanned += blobs.length;
+      for (const blob of blobs) {
+        const pathname = String(blob.pathname || '');
+        const match = pathname.match(/^owners\\/(v[a-z0-9]{12,40})\\.json$/);
+        if (!match) continue;
+        const uploadedAt = new Date(blob.uploadedAt).getTime();
+        if (Number.isFinite(uploadedAt) && uploadedAt < cutoff) ownerIds.add(match[1]);
+      }
+      ownerCursor = page.cursor;
+      ownersHasMore = Boolean(page.hasMore && ownerCursor);
+    }
+
+    // Preserve owner metadata for successful MP4s even if source cleanup failed.
+    const targets = stale.map(item => item.pathname);
+    const candidates = Array.from(ownerIds);
+    for (let i = 0; i < candidates.length; i += 50) {
+      const batch = candidates.slice(i, i + 50);
+      const outputExists = await Promise.all(batch.map(async id => {
         try {
-          await head(`outputs/${item.id}.mp4`);
+          await head(`outputs/${id}.mp4`);
           return true;
         } catch (error) {
           const status = Number(error?.status || error?.statusCode);
@@ -58,9 +78,8 @@ export default async function handler(req, res) {
           throw error;
         }
       }));
-      batch.forEach((item, index) => {
-        targets.push(item.pathname);
-        if (!outputExists[index]) targets.push(`owners/${item.id}.json`);
+      batch.forEach((id, index) => {
+        if (!outputExists[index]) targets.push(`owners/${id}.json`);
       });
     }
     for (let i = 0; i < targets.length; i += 100) {
@@ -72,7 +91,8 @@ export default async function handler(req, res) {
       scanned,
       deleted: stale.length,
       olderThanHours: 48,
-      morePending: hasMore
+      ownerRecordsScanned,
+      morePending: hasMore || ownersHasMore
     });
   } catch (error) {
     const result = publicError(error);
