@@ -777,6 +777,11 @@ async function waitJob(id, t0) {
       hint('Le suivi identifie automatiquement l’étape en cours. Tu peux quitter cette page : il reprendra à ton retour.');
       continue;
     }
+    if (job.conclusion === 'cancelled') {
+      const e = new Error('annulé');
+      e.cancelled = true;
+      throw e;
+    }
     if (job.conclusion !== 'success') {
       const failedStep = job.currentStep || lastWorkflowStep;
       const where = failedStep ? workflowStepLabel(failedStep).replace(/…$/, '') : '';
@@ -857,8 +862,7 @@ async function cancel() {
   try {
     const ownerToken = store.get(ownerKey(currentJobId));
     await api('/cancel', { method: 'POST', body: { id: currentJobId, ownerToken } });
-    cancelled = true;
-    status('Annulation confirmée par le serveur…');
+    status('Demande acceptée ; attente de confirmation de l’annulation…');
   } catch (e) {
     cancelled = false;
     $('#cancel').disabled = false;
