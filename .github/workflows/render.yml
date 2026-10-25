@@ -56,15 +56,15 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Préparer le HTML source
         id: source
         env:
           FICHIER: ${{ inputs.fichier }}
           BLOB_ID: ${{ inputs.blob_id }}
-          JOB_STATUS: ${{ job.status }}
         run: |
-          set -euo pipefail
           set -euo pipefail
           if [ -n "$BLOB_ID" ]; then
             [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
@@ -173,6 +173,7 @@ jobs:
         if: always()
         env:
           BLOB_ID: ${{ inputs.blob_id }}
+          JOB_STATUS: ${{ job.status }}
         run: |
           rm -rf kidas-tmp
           if [ -n "$BLOB_ID" ]; then
