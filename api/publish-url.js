@@ -1,27 +1,24 @@
 import { issueSignedToken, presignUrl } from '@vercel/blob';
-import { githubRequest, readBody, send, validJobId, verifyGitHubActionsRequest, publicError } from '../lib/kidas-server.js';
+import {
+  send, validJobId, verifyGitHubActionsRequest, verifyRenderRun, publicError
+} from '../lib/kidas-server.js';
 
 const MAX_VIDEO_BYTES = 250 * 1000 * 1000;
+const URL_TTL_MS = 4 * 60 * 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
-  const { id, run_id: runId } = readBody(req);
+  const { id, run_id: runId } = req.body || {};
   if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) {
     return send(res, 400, { error: 'Identifiant de rendu invalide.' });
   }
 
   try {
     await verifyGitHubActionsRequest(req, runId);
-    const { data: run } = await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${runId}`);
-    if (run?.display_title !== `Rendu ${id}` ||
-        run?.path !== '.github/workflows/render.yml' ||
-        run?.event !== 'workflow_dispatch' ||
-        run?.head_branch !== 'main') {
-      return send(res, 403, { error: 'Ce workflow ne peut pas publier cette vidéo.' });
-    }
+    await verifyRenderRun(id, runId);
 
     const pathname = `outputs/${id}.mp4`;
-    const validUntil = Date.now() + 10 * 60 * 1000;
+    const validUntil = Date.now() + URL_TTL_MS;
     const token = await issueSignedToken({
       pathname,
       operations: ['put'],
