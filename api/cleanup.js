@@ -21,7 +21,13 @@ export default async function handler(req, res) {
     }
 
     await del(`incoming/${id}.html`);
-    if (fromBrowser || cleanupOwner === true) {
+    if (fromBrowser) {
+      await del(`owners/${id}.json`);
+    } else if (cleanupOwner === true) {
+      try { await del(`outputs/${id}.mp4`); } catch (error) {
+        const status = Number(error?.status || error?.statusCode);
+        if (status !== 404) throw error;
+      }
       await del(`owners/${id}.json`);
     }
     return send(res, 200, { success: true });
