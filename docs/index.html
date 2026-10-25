@@ -800,7 +800,9 @@ function fail(e, step) {
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
 async function cleanupUpload(id) {
-  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
+  const ownerToken = store.get(ownerKey(id));
+  if (!ownerToken) return;
+  try { await api('/cleanup', { method: 'POST', body: { id, ownerToken } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
