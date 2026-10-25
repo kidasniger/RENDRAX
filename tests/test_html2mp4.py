@@ -242,18 +242,27 @@ class Html2Mp4Tests(unittest.TestCase):
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)
 
-    def test_favicon_uses_the_icon_from_logo_directory(self):
+    def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        for filename in ("favicon.ico", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
+            self.assertTrue((ROOT / "docs" / filename).is_file(), filename)
+        for link in (
+            'href="/favicon.ico" sizes="any"',
+            'href="/favicon-32x32.png"',
+            'href="/favicon-16x16.png"',
+            'href="/apple-touch-icon.png"',
+        ):
+            self.assertIn(link, page)
         self.assertEqual(
-            (ROOT / "docs" / "favicon.png").read_bytes(),
-            (ROOT / "logo" / "rendrax_icon_cutout.png").read_bytes()
+            (ROOT / "docs" / "assets" / "rendrax-logo.svg").read_bytes(),
+            (ROOT / "logo" / "rendrax_x5f_horizontal_x5f_dark.svg").read_bytes()
         )
         self.assertEqual(
-            (ROOT / "docs" / "favicon.svg").read_text(encoding="utf-8"),
-            (ROOT / "docs" / "assets" / "rendrax-icon.svg").read_text(encoding="utf-8")
+            (ROOT / "docs" / "assets" / "rendrax-logo-dark.svg").read_bytes(),
+            (ROOT / "logo" / "rendrax_x5f_horizontal_x5f_light.svg").read_bytes()
         )
-        self.assertRegex(page, r'href="/favicon[.]png[?]v=[^"]+"')
-        self.assertRegex(page, r'href="/favicon[.]svg[?]v=[^"]+"')
+        self.assertIn('src="/favicon-32x32.png"', page)
+        self.assertIn('src="/_vercel/insights/script.js"', page)
 
     def test_animated_watermark_defaults_and_filter(self):
         from h2m.watermark import _overlay_filter, _make_apng, validate_watermark
