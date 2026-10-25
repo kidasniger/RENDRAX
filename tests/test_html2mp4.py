@@ -83,7 +83,10 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertEqual(renderer.detect_profile(self.EDITPRO)[0], "editpro")
 
     def test_kidas_patch_freezes_time_state(self):
-        text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
+        text = (
+            "<!doctype html><html><head><style>.stage {width:1080px;height:1920px}</style></head>"
+            "<body><script>const [t,setT]=useState(0), AUD='data:audio/mp3;base64,QUJD', D=4;</script></body></html>"
+        )
         patched, profile = renderer.patch_html(text)
         self.assertEqual(profile, "kidas")
         self.assertIn("window.__manual||__s(v)", patched)
