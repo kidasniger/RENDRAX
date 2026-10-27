@@ -26,7 +26,9 @@ export default async function handler(req, res) {
     const signed = await presignUrl(token, { pathname, operation: 'get', access: 'private', validUntil });
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    return res.redirect(302, signed.presignedUrl);
+    res.statusCode = 302;
+    res.setHeader('Location', signed.presignedUrl);
+    return res.end();
   } catch (error) {
     if (Number(error?.status || error?.statusCode) === 404) {
       return send(res, 404, { error: 'Fichier privé introuvable.' });
