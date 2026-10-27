@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="RENDRAX transforme tes animations HTML en vidéos MP4 avec le son, ou en images PNG, JPEG et WebP, grâce à un rendu image par image.">
 <meta name="application-name" content="RENDRAX">
@@ -249,9 +250,6 @@ ul#list button{box-shadow:none}
 }
 </style>
 <link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025-fix3">
-<script type="importmap">
-{"imports":{"react":"https://esm.sh/react@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client?external=react"}}
-</script>
 <script>
 (function(){
   var done = function(){ document.documentElement.classList.add('rdx-ready'); };
@@ -453,6 +451,22 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 };
+const JOBS_KEY = 'rendrax_jobs';
+const ownerKey = id => 'rendrax_owner_' + id;
+function storedJobs() {
+  try {
+    const value = JSON.parse(store.get(JOBS_KEY) || '[]');
+    return Array.isArray(value) ? value.filter(item => item && /^v[a-z0-9]{12,40}$/.test(item.id)) : [];
+  } catch (e) { return []; }
+}
+function rememberJob(id, name, createdAt, output) {
+  const jobs = storedJobs().filter(item => item.id !== id);
+  jobs.unshift({ id, name: String(name || 'RENDRAX'), createdAt: createdAt || new Date().toISOString(), output: output || 'mp4' });
+  store.set(JOBS_KEY, JSON.stringify(jobs.slice(0, 50)));
+}
+function forgetJob(id) {
+  store.set(JOBS_KEY, JSON.stringify(storedJobs().filter(item => item.id !== id)));
+}
 
 const isImageOutput = () => $('#output').value !== 'mp4';
 function syncOutput() {
@@ -466,7 +480,7 @@ function syncOutput() {
   renderVerdict();
 }
 
-let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
+let busy = false, cancelled = false, currentRunId = null, currentJobId = null, activeDispatchAccepted = false, currentUploadXhr = null, fileText = '', verdict = null;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
@@ -699,7 +713,7 @@ function kindOf(name) {
 function showResult(rel) {
   const a = mediaOf(rel);
   const box = $('#res'); box.textContent = '';
-  if (!a) { box.textContent = 'Rendu terminé, mais aucun fichier trouvé dans la publication.'; return; }
+  if (!a) { box.textContent = 'Rendu terminé, mais aucun fichier n’a été trouvé dans le stockage privé.'; return; }
   const video = isVideoName(a.name);
   let preview;
   if (video) {
@@ -711,13 +725,13 @@ function showResult(rel) {
   }
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
-  dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
+  dl.className = 'btn'; dl.href = a.browser_download_url + '&download=1'; dl.download = a.name;
   dl.textContent = 'Télécharger (' + size(a.size) + ')';
-  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
+  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien privé';
   cp.onclick = async () => {
     try { await navigator.clipboard.writeText(a.browser_download_url); cp.textContent = 'Lien copié ✓'; }
     catch (e) { window.prompt('Copie ce lien :', a.browser_download_url); }
-    setTimeout(() => { cp.textContent = 'Copier le lien'; }, 2000);
+    setTimeout(() => { cp.textContent = 'Copier le lien privé'; }, 2000);
   };
   bar.append(dl, cp);
   if (navigator.share) {
@@ -739,35 +753,63 @@ function showResult(rel) {
 }
 async function loadList() {
   const ul = $('#list');
-  try {
-    const data = await api('/videos');
+  const jobs = storedJobs();
+  const requests = jobs.map(item => ({
+    id: item.id,
+    ownerToken: store.get(ownerKey(item.id))
+  })).filter(item => item.ownerToken);
+  if (!requests.length) {
     ul.textContent = '';
-    const items = data.items || [];
-    if (!items.length) { ul.innerHTML = '<li class="empty">Aucun fichier généré.</li>'; return; }
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Aucun rendu privé enregistré dans ce navigateur.';
+    ul.append(li);
+    return;
+  }
+  try {
+    const data = await api('/videos', { method: 'POST', body: { items: requests } });
+    ul.textContent = '';
+    const items = (data.items || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'Aucun fichier terminé. Les rendus en échec ne figurent pas dans cet historique.';
+      ul.append(li);
+      return;
+    }
     for (const r of items) {
       const a = mediaOf(r);
       if (!a) continue;
       const li = document.createElement('li');
       const meta = document.createElement('div'); meta.className = 'meta';
       const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
+      l.referrerPolicy = 'no-referrer';
       const d = document.createElement('small');
-      d.textContent = kindOf(a.name) + ' · ' + new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
+      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
       meta.append(l, d);
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
       del.setAttribute('aria-label', 'Supprimer le fichier ' + a.name);
       del.onclick = async () => {
-        if (!confirm('Supprimer définitivement ce fichier ?')) return;
+        if (!confirm('Supprimer définitivement ce rendu privé ?')) return;
         del.disabled = true;
         try {
-          await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
-          loadList();
-        } catch (e) { del.disabled = false; alert(explain(e)); }
+          const ownerToken = store.get(ownerKey(r.id));
+          await api('/delete-video', { method: 'POST', body: { id: r.id, ownerToken } });
+          store.set(ownerKey(r.id), null);
+          forgetJob(r.id);
+          await loadList();
+        } catch (e) {
+          del.disabled = false;
+          alert(explain(e));
+        }
       };
       li.append(meta, del); ul.append(li);
     }
   } catch (e) {
     ul.textContent = '';
-    const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
+    const li = document.createElement('li'); li.className = 'empty';
+    li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
   }
 }
 async function waitJob(id, t0) {
@@ -777,7 +819,8 @@ async function waitJob(id, t0) {
     await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
-    const job = await api('/job?id=' + encodeURIComponent(id) + (showDetails ? '&details=1' : ''));
+    const ownerToken = store.get(ownerKey(id)) || '';
+    const job = await api('/job?id=' + encodeURIComponent(id) + '&ownerToken=' + encodeURIComponent(ownerToken) + (showDetails ? '&details=1' : ''));
     const elapsed = mmss(Date.now() - t0);
     if (!job.found) {
       setSteps(1); status('Démarrage du rendu… (' + elapsed + ')');
@@ -796,6 +839,7 @@ async function waitJob(id, t0) {
       hint('Le suivi identifie automatiquement l’étape en cours. Tu peux quitter cette page : il reprendra à ton retour.');
       continue;
     }
+    if (job.conclusion === 'cancelled') { const e = new Error('annulé'); e.cancelled = true; throw e; }
     if (job.conclusion !== 'success') {
       const failedStep = job.currentStep || lastWorkflowStep;
       const where = failedStep ? workflowStepLabel(failedStep).replace(/…$/, '') : '';
@@ -803,7 +847,7 @@ async function waitJob(id, t0) {
       e.url = job.html_url; throw e;
     }
     if (job.release) return job.release;
-    setSteps(3); status('Publication du ' + (isImageOutput() ? 'fichier' : 'MP4') + '… (' + elapsed + ')');
+    setSteps(3); status('Finalisation du rendu privé… (' + elapsed + ')');
   }
   throw new Error('Délai dépassé (plus de 95 minutes).');
 }
@@ -819,7 +863,9 @@ function fail(e, step) {
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
 async function cleanupUpload(id) {
-  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
+  const ownerToken = store.get(ownerKey(id));
+  if (!ownerToken) return;
+  try { await api('/cleanup', { method: 'POST', body: { id, ownerToken } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
@@ -837,13 +883,18 @@ async function go() {
   const m = img ? { scale: $('#imgscale').value, test: '0' } : MODES[$('#mode').value];
   const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
+  const output = $('#output').value;
+  const ownerToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
+  store.set(ownerKey(id), ownerToken);
+  rememberJob(id, f.name.replace(/\.html?$/i, ''), new Date(t0).toISOString(), output);
+  currentJobId = id; activeDispatchAccepted = false;
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
     setSteps(0); status('Vérification de sécurité…');
     const uploadCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
+    const signed = await api('/upload-url', { method: 'POST', body: { id, ownerToken, captchaToken: uploadCaptcha, output, name: f.name.replace(/\.html?$/i, '') } });
     await uploadPrivateBlob(signed.url, f);
     uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -851,36 +902,54 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
+      id, ownerToken, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
       duration: img ? '0' : $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked,
-      output: $('#output').value, instant: img ? String(Math.round(instant * 100) / 100) : '0',
+      output, instant: img ? String(Math.round(instant * 100) / 100) : '0',
       fullPage: img && $('#fullpage').checked, transparent: img && $('#transparent').checked && $('#output').value !== 'jpeg',
       name: f.name.replace(/\.html?$/i, '')
     }});
-    dispatchAccepted = true;
-    store.set('kidas_job', JSON.stringify({ id, t0 }));
+    dispatchAccepted = true; activeDispatchAccepted = true;
+    store.set('kidas_job', JSON.stringify({ id, t0, output }));
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
+    if (!dispatchAccepted) {
+      await cleanupUpload(id);
+      store.set(ownerKey(id), null);
+      forgetJob(id);
+    }
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
   setBusy(false);
 }
 async function cancel() {
-  cancelled = true;
+  if (!busy || !currentJobId) return;
   $('#cancel').disabled = true;
-  status('Annulation en cours…');
-  if (currentUploadXhr) currentUploadXhr.abort();
-  if (currentRunId) {
-    try { await api('/cancel', { method: 'POST', body: { runId: currentRunId } }); } catch (e) {}
+  if (!activeDispatchAccepted) {
+    cancelled = true;
+    if (currentUploadXhr) currentUploadXhr.abort();
+    status('Annulation de l’envoi en cours…');
+    return;
+  }
+  status('Demande d’annulation au serveur…');
+  try {
+    const ownerToken = store.get(ownerKey(currentJobId));
+    await api('/cancel', { method: 'POST', body: { id: currentJobId, ownerToken } });
+    status('Demande acceptée ; attente de confirmation de l’annulation…');
+  } catch (e) {
+    cancelled = false;
+    $('#cancel').disabled = false;
+    status('Annulation non confirmée : ' + explain(e) + ' Le rendu peut continuer.', 'err');
   }
 }
 async function resume() {
   const raw = store.get('kidas_job'); if (!raw) return;
   let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
   if (!job.id || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
+  if (!store.get(ownerKey(job.id))) { store.set('kidas_job', null); return; }
+  currentJobId = job.id; activeDispatchAccepted = true;
+  if (job.output && [...$('#output').options].some(o => o.value === job.output)) { $('#output').value = job.output; syncOutput(); }
   cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(2); status('Reprise du suivi du rendu…');
   try { await finish(await waitJob(job.id, job.t0)); }
   catch (e) { fail(e, Math.max(currentStepIndex(), 2)); }
