@@ -1,0 +1,16 @@
+# Never commit user-provided HTML uploads
+/uploads/
+
+# Local renders and test artifacts
+*.mp4
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+
+# Local credentials
+.env
+.env.*
+!.env.example
