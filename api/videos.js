@@ -8,13 +8,15 @@ function videoItem(id, owner, metadata, ownerToken) {
   const outputType = ['mp4', 'png', 'jpeg', 'webp'].includes(owner.output) ? owner.output : 'mp4';
   return {
     id,
+    private: true,
+    ownerToken,
     tag_name: id,
     name: owner.name || 'RENDRAX',
     created_at: owner.createdAt || metadata.uploadedAt?.toISOString?.() || new Date().toISOString(),
     assets: [{
       name: `${owner.name || 'RENDRAX'}.${outputType}`,
       size: Number(metadata.size) || 0,
-      browser_download_url: `/api/video?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(ownerToken)}&output=${encodeURIComponent(outputType)}`
+      browser_download_url: `/api/video?id=${encodeURIComponent(id)}`
     }]
   };
 }
