@@ -445,6 +445,17 @@ const MODES = {
   test: { scale: '0.5', test: '10' }
 };
 const MAX_BYTES = 50e6;
+function createOwnerToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+function readPrivateOutputs() {
+  try {
+    const value = JSON.parse(store.get('kidas_private_outputs') || '[]');
+    return Array.isArray(value) ? value.filter(item => item && item.private && item.id && item.ownerToken) : [];
+  } catch (e) { return []; }
+}
 const $ = s => document.querySelector(s);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const mmss = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -466,7 +477,7 @@ function syncOutput() {
   renderVerdict();
 }
 
-let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
+let busy = false, cancelled = false, currentRunId = null, currentJobId = null, currentOwnerToken = null, currentUploadXhr = null, fileText = '', verdict = null;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
@@ -739,45 +750,66 @@ function showResult(rel) {
 }
 async function loadList() {
   const ul = $('#list');
+  let remoteItems = [], remoteError = null;
   try {
     const data = await api('/videos');
-    ul.textContent = '';
-    const items = data.items || [];
-    if (!items.length) { ul.innerHTML = '<li class="empty">Aucun fichier généré.</li>'; return; }
-    for (const r of items) {
-      const a = mediaOf(r);
-      if (!a) continue;
-      const li = document.createElement('li');
-      const meta = document.createElement('div'); meta.className = 'meta';
-      const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
-      const d = document.createElement('small');
-      d.textContent = kindOf(a.name) + ' · ' + new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
-      meta.append(l, d);
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
-      del.setAttribute('aria-label', 'Supprimer le fichier ' + a.name);
+    remoteItems = Array.isArray(data.items) ? data.items : [];
+  } catch (e) {
+    remoteError = e;
+  }
+  const privateItems = readPrivateOutputs();
+  const privateIds = new Set(privateItems.map(item => String(item.id)));
+  const items = [...privateItems, ...remoteItems.filter(item => !privateIds.has(String(item.tag_name || item.id)))];
+  ul.textContent = '';
+  if (!items.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = remoteError ? 'Historique indisponible : ' + explain(remoteError) : 'Aucun fichier généré.';
+    ul.append(li);
+    return;
+  }
+  for (const r of items) {
+    const a = mediaOf(r);
+    if (!a) continue;
+    const li = document.createElement('li');
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
+    const d = document.createElement('small');
+    d.textContent = kindOf(a.name) + (r.private ? ' · privé' : ' · release publique') +
+      ' · ' + new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
+    meta.append(l, d);
+    li.append(meta);
+    if (r.private && r.ownerToken) {
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
+      del.setAttribute('aria-label', 'Supprimer le fichier privé ' + a.name);
       del.onclick = async () => {
-        if (!confirm('Supprimer définitivement ce fichier ?')) return;
+        if (!confirm('Supprimer définitivement ce fichier privé ?')) return;
         del.disabled = true;
         try {
-          await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
+          await api('/delete-video', { method: 'POST', body: { id: r.id, ownerToken: r.ownerToken } });
+          store.set('kidas_private_outputs', JSON.stringify(readPrivateOutputs().filter(item => item.id !== r.id)));
           loadList();
         } catch (e) { del.disabled = false; alert(explain(e)); }
       };
-      li.append(meta, del); ul.append(li);
+      li.append(del);
     }
-  } catch (e) {
-    ul.textContent = '';
-    const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
+    ul.append(li);
+  }
+  if (remoteError && privateItems.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.textContent = 'Les anciens fichiers publics ne sont pas disponibles pour le moment.';
+    ul.append(li);
   }
 }
-async function waitJob(id, t0) {
+async function waitJob(id, t0, ownerToken) {
   let polls = 0, lastWorkflowStep = '';
   while (Date.now() - t0 < 95 * 60000) {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
-    const job = await api('/job?id=' + encodeURIComponent(id) + (showDetails ? '&details=1' : ''));
+    const job = await api('/job?id=' + encodeURIComponent(id) + '&ownerToken=' + encodeURIComponent(ownerToken) + (showDetails ? '&details=1' : ''));
     const elapsed = mmss(Date.now() - t0);
     if (!job.found) {
       setSteps(1); status('Démarrage du rendu… (' + elapsed + ')');
@@ -808,6 +840,11 @@ async function waitJob(id, t0) {
   throw new Error('Délai dépassé (plus de 95 minutes).');
 }
 async function finish(rel) {
+  if (rel && rel.private && rel.ownerToken) {
+    const saved = readPrivateOutputs().filter(item => item.id !== rel.id);
+    saved.unshift(rel);
+    store.set('kidas_private_outputs', JSON.stringify(saved.slice(0, 30)));
+  }
   showResult(rel); setSteps(4); status('Terminé ✓', 'ok'); hint('');
   store.set('kidas_job', null); loadList();
 }
@@ -818,8 +855,8 @@ function fail(e, step) {
   hint(''); store.set('kidas_job', null);
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
-async function cleanupUpload(id) {
-  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
+async function cleanupUpload(id, ownerToken) {
+  try { await api('/cleanup', { method: 'POST', body: { id, ownerToken } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
@@ -836,14 +873,19 @@ async function go() {
   }
   const m = img ? { scale: $('#imgscale').value, test: '0' } : MODES[$('#mode').value];
   const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  const ownerToken = createOwnerToken();
+  const output = $('#output').value;
+  const name = f.name.replace(/\\.html?$/i, '');
   const t0 = Date.now();
+  currentJobId = id; currentOwnerToken = ownerToken;
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
-  let step = 0, uploadComplete = false, dispatchAccepted = false;
+  let step = 0, uploadComplete = false, uploadUrlIssued = false, dispatchAccepted = false;
   try {
     setSteps(0); status('Vérification de sécurité…');
     const uploadCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
+    const signed = await api('/upload-url', { method: 'POST', body: { id, ownerToken, output, name, captchaToken: uploadCaptcha } });
+    uploadUrlIssued = true;
     await uploadPrivateBlob(signed.url, f);
     uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -851,18 +893,18 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
+      id, ownerToken, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
       duration: img ? '0' : $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked,
       output: $('#output').value, instant: img ? String(Math.round(instant * 100) / 100) : '0',
       fullPage: img && $('#fullpage').checked, transparent: img && $('#transparent').checked && $('#output').value !== 'jpeg',
       name: f.name.replace(/\.html?$/i, '')
     }});
     dispatchAccepted = true;
-    store.set('kidas_job', JSON.stringify({ id, t0 }));
+    store.set('kidas_job', JSON.stringify({ id, t0, ownerToken, output, name }));
     step = 2;
-    await finish(await waitJob(id, t0));
+    await finish(await waitJob(id, t0, ownerToken));
   } catch (e) {
-    if (uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
+    if (uploadUrlIssued && !dispatchAccepted) await cleanupUpload(id, ownerToken);
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
@@ -873,16 +915,18 @@ async function cancel() {
   $('#cancel').disabled = true;
   status('Annulation en cours…');
   if (currentUploadXhr) currentUploadXhr.abort();
-  if (currentRunId) {
-    try { await api('/cancel', { method: 'POST', body: { runId: currentRunId } }); } catch (e) {}
+  if (currentJobId && currentOwnerToken) {
+    try { await api('/cancel', { method: 'POST', body: { id: currentJobId, ownerToken: currentOwnerToken } }); } catch (e) {}
   }
 }
 async function resume() {
   const raw = store.get('kidas_job'); if (!raw) return;
   let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
   if (!job.id || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
+  if (!job.ownerToken) return store.set('kidas_job', null);
+  currentJobId = job.id; currentOwnerToken = job.ownerToken;
   cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(2); status('Reprise du suivi du rendu…');
-  try { await finish(await waitJob(job.id, job.t0)); }
+  try { await finish(await waitJob(job.id, job.t0, job.ownerToken)); }
   catch (e) { fail(e, Math.max(currentStepIndex(), 2)); }
   setBusy(false);
 }
