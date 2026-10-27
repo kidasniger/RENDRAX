@@ -1,4 +1,4 @@
-import { githubRequest, send, publicError } from '../lib/kidas-server.js';
+import { githubRequest, isMediaAsset, send, publicError } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       created_at: release.created_at,
       html_url: release.html_url,
       assets: (release.assets || [])
-        .filter(asset => asset.name.toLowerCase().endsWith('.mp4'))
+        .filter(asset => isMediaAsset(asset.name))
         .map(asset => ({
           name: asset.name,
           size: asset.size,

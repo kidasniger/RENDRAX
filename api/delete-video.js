@@ -2,7 +2,7 @@ import { githubRequest, readBody, sameOrigin, send, publicError } from '../lib/k
 
 const REPOSITORY = 'kidasniger/RENDRAX';
 const RENDER_WORKFLOW = 'render.yml';
-const VIDEO_ARTIFACT_NAME = 'video-mp4';
+const RENDER_ARTIFACT_NAMES = new Set(['video-mp4', 'image-export']);
 const RUNS_PAGE_SIZE = 100;
 const MAX_RUN_PAGES = 20;
 
@@ -31,7 +31,7 @@ async function findRenderRun(tag) {
   throw error;
 }
 
-async function deleteVideoArtifact(runId) {
+async function deleteRenderArtifacts(runId) {
   const { data } = await githubRequest(
     `/repos/${REPOSITORY}/actions/runs/${runId}/artifacts?per_page=100`
   );
@@ -39,7 +39,7 @@ async function deleteVideoArtifact(runId) {
   let removed = 0;
 
   for (const artifact of artifacts) {
-    if (artifact.name !== VIDEO_ARTIFACT_NAME) continue;
+    if (!RENDER_ARTIFACT_NAMES.has(artifact.name)) continue;
     try {
       await githubRequest(
         `/repos/${REPOSITORY}/actions/artifacts/${artifact.id}`,
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
   const { releaseId, tag } = readBody(req);
   if (!/^\d+$/.test(String(releaseId || '')) || !/^[A-Za-z0-9._-]{1,100}$/.test(String(tag || ''))) {
-    return send(res, 400, { error: 'Vidéo ou identifiant invalide.' });
+    return send(res, 400, { error: 'Fichier ou identifiant invalide.' });
   }
 
   try {
@@ -69,14 +69,14 @@ export default async function handler(req, res) {
       `/repos/${REPOSITORY}/releases/${releaseId}`
     );
     if (release?.tag_name !== tag) {
-      return send(res, 400, { error: 'La vidéo et le tag ne correspondent pas.' });
+      return send(res, 400, { error: 'Le fichier et le tag ne correspondent pas.' });
     }
 
     // Delete the Actions artifact first. If the token lacks Actions write
     // permission, keep the public Release and tag intact so the operation can
     // be retried after the token permissions are fixed.
     const run = await findRenderRun(tag);
-    const artifactsRemoved = run ? await deleteVideoArtifact(run.id) : 0;
+    const artifactsRemoved = run ? await deleteRenderArtifacts(run.id) : 0;
 
     await githubRequest(
       `/repos/${REPOSITORY}/releases/${releaseId}`,

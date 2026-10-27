@@ -1,4 +1,4 @@
-import { githubRequest, send, validJobId, publicError } from '../lib/kidas-server.js';
+import { githubRequest, isMediaAsset, send, validJobId, publicError } from '../lib/kidas-server.js';
 
 function releaseSummary(release) {
   return {
@@ -8,7 +8,7 @@ function releaseSummary(release) {
     created_at: release.created_at,
     html_url: release.html_url,
     assets: (release.assets || [])
-      .filter(asset => asset.name.toLowerCase().endsWith('.mp4'))
+      .filter(asset => isMediaAsset(asset.name))
       .map(asset => ({
         name: asset.name,
         size: asset.size,

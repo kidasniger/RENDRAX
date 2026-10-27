@@ -45,6 +45,7 @@ RENDRAX convertit des animations HTML en vidéos MP4 à l’aide d’un rendu c�
 - Prévisualiser la page HTML avant de lancer la conversion.
 - Choisir la résolution, la cadence d’images, le format et la durée maximale du rendu.
 - Générer une vidéo MP4 avec Chromium et FFmpeg côté serveur.
+- Exporter une page HTML en image PNG, JPEG ou WebP : définition ×1 à ×3, instant de capture choisi (position exacte dans les animations reconnues), page entière, fond transparent. En ligne de commande : `python html2mp4.py --file page.html --to png --scale 2 --at 4`.
 - Rendre image par image les profils reconnus, avec prise en charge audio spécifique à chaque profil.
 - Suivre l’avancement du rendu et consulter le journal du workflow.
 - Prévisualiser, télécharger, partager et copier le lien du MP4 généré.

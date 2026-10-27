@@ -4,15 +4,28 @@ import { githubRequest, readBody, safeName, sameOrigin, send, validJobId, verify
 const MAX_BYTES = 50 * 1000 * 1000;
 const FORMATS = new Set(['auto', 'portrait', 'landscape', 'square']);
 const DURATIONS = new Set(['0', '10', '30', '60', '120', '300']);
+const OUTPUTS = new Set(['mp4', 'png', 'jpeg', 'webp']);
+const VIDEO_SCALES = ['0.5', '1'];
+const IMAGE_SCALES = ['1', '2', '3'];
+const MAX_IMAGE_SECONDS = 900;
+
+const asBool = value => typeof value === 'boolean' ? value : String(value).toLowerCase() === 'true';
+const isBoolLike = value => typeof value === 'boolean' || ['true', 'false'].includes(String(value).toLowerCase());
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
-  const { id, captchaToken, scale, test, duration, format, name, watermark = true } = readBody(req);
+  const { id, captchaToken, scale, test, duration, format, name, watermark = true,
+          output = 'mp4', instant = 0, fullPage = false, transparent = false } = readBody(req);
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
-  if (!['0.5', '1'].includes(String(scale)) ||
+  if (!OUTPUTS.has(String(output))) return send(res, 400, { error: 'Type de sortie invalide.' });
+  const isImage = String(output) !== 'mp4';
+  const instantValue = Number(instant);
+  if (!(isImage ? IMAGE_SCALES : VIDEO_SCALES).includes(String(scale)) ||
       !['0', '10'].includes(String(test)) || !DURATIONS.has(String(duration)) || !FORMATS.has(String(format)) ||
-      (typeof watermark !== 'boolean' && !['true', 'false'].includes(String(watermark).toLowerCase()))) {
+      !isBoolLike(watermark) || !isBoolLike(fullPage) || !isBoolLike(transparent) ||
+      !Number.isFinite(instantValue) || instantValue < 0 || instantValue > MAX_IMAGE_SECONDS ||
+      (isImage && String(test) !== '0')) {
     return send(res, 400, { error: 'Réglages de conversion invalides.' });
   }
   const watermarkEnabled = typeof watermark === 'boolean'
@@ -43,6 +56,10 @@ export default async function handler(req, res) {
       duration: String(duration),
       format: String(format),
       watermark: String(watermarkEnabled),
+      sortie: String(output),
+      instant: String(Math.round(instantValue * 100) / 100),
+      pleine_page: String(asBool(fullPage)),
+      transparent: String(asBool(transparent)),
       nom: safeName(name),
       tag: id
     };

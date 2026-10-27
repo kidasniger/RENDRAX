@@ -9,7 +9,7 @@ on:
         required: true
         default: "kidas.html"
       scale:
-        description: "Échelle (1 = 1080x1920, 0.5 = 540x960)"
+        description: "Échelle (vidéo : 1 = 1080x1920, 0.5 = 540x960 ; image : 1, 2 ou 3 = définition ×1, ×2, ×3)"
         default: "1"
       test:
         description: "Secondes à rendre (0 = vidéo entière)"
@@ -33,8 +33,32 @@ on:
         type: boolean
         required: false
         default: false
+      sortie:
+        description: "Type de sortie : vidéo MP4 ou image"
+        type: choice
+        options:
+          - mp4
+          - png
+          - jpeg
+          - webp
+        required: false
+        default: "mp4"
+      instant:
+        description: "Image : instant de la capture en secondes (0 = première image)"
+        required: false
+        default: "0"
+      pleine_page:
+        description: "Image : capturer toute la hauteur de la page"
+        type: boolean
+        required: false
+        default: false
+      transparent:
+        description: "Image PNG/WebP : fond transparent"
+        type: boolean
+        required: false
+        default: false
       nom:
-        description: "Nom du MP4 (défaut : nom du fichier HTML)"
+        description: "Nom du fichier de sortie (défaut : nom du fichier HTML)"
         required: false
         default: ""
       tag:
@@ -101,6 +125,7 @@ jobs:
 
       - name: Installer FFmpeg et ffprobe (binaires statiques en cache)
         id: static_ffmpeg
+        if: ${{ inputs.sortie == 'mp4' }}
         continue-on-error: true
         timeout-minutes: 6
         uses: FedericoCarboni/setup-ffmpeg@37062fbf7149fc5578d6c57e08aed62458b375d6 # v3.1
@@ -108,7 +133,7 @@ jobs:
           ffmpeg-version: release
 
       - name: Installer FFmpeg depuis Ubuntu si le téléchargement échoue
-        if: steps.static_ffmpeg.outcome == 'failure'
+        if: ${{ inputs.sortie == 'mp4' && steps.static_ffmpeg.outcome == 'failure' }}
         timeout-minutes: 8
         run: |
           sudo apt-get update -qq
@@ -117,6 +142,7 @@ jobs:
           ffprobe -version | head -n 1
 
       - name: Vérifier les outils média
+        if: ${{ inputs.sortie == 'mp4' }}
         run: |
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
@@ -129,6 +155,7 @@ jobs:
           python -c "import PIL; print('Pillow installé:', PIL.__version__)"
 
       - name: Rendre la vidéo
+        if: ${{ inputs.sortie == 'mp4' }}
         env:
           FICHIER: ${{ steps.source.outputs.fichier }}
           FPS: "auto"
@@ -149,7 +176,27 @@ jobs:
           fi
           python html2mp4.py "${args[@]}"
 
+      - name: Rendre l'image
+        if: ${{ inputs.sortie != 'mp4' }}
+        env:
+          FICHIER: ${{ steps.source.outputs.fichier }}
+          SORTIE: ${{ inputs.sortie }}
+          SCALE: ${{ inputs.scale }}
+          INSTANT: ${{ inputs.instant }}
+          FORMAT: ${{ inputs.format }}
+          NOM: ${{ inputs.nom }}
+          PLEINE_PAGE: ${{ inputs.pleine_page }}
+          TRANSPARENT: ${{ inputs.transparent }}
+        run: |
+          # Les images vont dans un dossier dédié : le dépôt contient déjà des PNG (logos, icônes) qui ne doivent pas être publiés.
+          args=(--file "$FICHIER" --to "$SORTIE" --scale "$SCALE" --at "$INSTANT" --format "$FORMAT" --name "$NOM" --outdir rendrax-out)
+          [[ "${PLEINE_PAGE,,}" == "true" ]] && args+=(--full-page)
+          [[ "${TRANSPARENT,,}" == "true" ]] && args+=(--transparent)
+          python html2mp4.py "${args[@]}"
+          ls -la rendrax-out
+
       - name: Publier le MP4 (artefact)
+        if: ${{ inputs.sortie == 'mp4' }}
         uses: actions/upload-artifact@v4
         with:
           name: video-mp4
@@ -157,7 +204,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publier le MP4 (Release, pour la page web)
-        if: ${{ inputs.tag != '' }}
+        if: ${{ inputs.sortie == 'mp4' && inputs.tag != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -165,12 +212,29 @@ jobs:
         run: |
           gh release create "$TAG" $(find . -name '*.mp4' -not -path './.git/*') \
             --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
+      - name: Publier l'image (artefact)
+        if: ${{ inputs.sortie != 'mp4' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-export
+          path: rendrax-out/*
+          if-no-files-found: error
+
+      - name: Publier l'image (Release, pour la page web)
+        if: ${{ inputs.sortie != 'mp4' && inputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$TAG" rendrax-out/* \
+            --title "Image $TAG" --notes "Générée par le workflow Rendu vidéo."
       - name: Supprimer les fichiers temporaires
         if: always()
         env:
           BLOB_ID: ${{ inputs.blob_id }}
         run: |
-          rm -rf kidas-tmp
+          rm -rf kidas-tmp rendrax-out
           if [ -n "$BLOB_ID" ]; then
             if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
               echo "::warning::OIDC indisponible; le HTML privé doit être supprimé depuis le stockage Vercel."

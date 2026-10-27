@@ -82,3 +82,12 @@ jobs:
           test "$duration_unique_frames" -ge 10
           echo "Tests terminés : profils audio, CSS, Canvas et Web Audio vérifiés."
           echo "Tests terminés : profils audio, CSS, Canvas, Web Audio et rendu RENDRAX IA silencieux vérifiés."
+      - name: Rendus d'images (PNG, JPEG, WebP)
+        run: |
+          set -euo pipefail
+          python html2mp4.py --file tests/fixtures/static.html --to png --scale 2 --outdir img-out
+          python html2mp4.py --file tests/fixtures/canvas-animation.html --to jpeg --at 1 --format landscape --outdir img-out
+          python html2mp4.py --file tests/fixtures/start-overlay.html --to webp --at 1 --format landscape --outdir img-out
+          python html2mp4.py --file uploads/vmv7j3erf.html --to png --at 4 --outdir img-out
+          for f in img-out/*; do test -s "$f"; file "$f"; done
+          test "$(ls img-out | wc -l)" -eq 4

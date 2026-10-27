@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="RENDRAX transforme tes animations HTML en vidéos MP4 avec le son, grâce à un rendu image par image.">
+<meta name="description" content="RENDRAX transforme tes animations HTML en vidéos MP4 avec le son, ou en images PNG, JPEG et WebP, grâce à un rendu image par image.">
 <meta name="application-name" content="RENDRAX">
 <meta property="og:title" content="RENDRAX — HTML vers MP4">
-<meta property="og:description" content="Transforme tes animations HTML en vidéos MP4 avec le son.">
+<meta property="og:description" content="Transforme tes animations et designs HTML en vidéos MP4 ou en images.">
 <meta property="og:type" content="website">
   <link rel="shortcut icon" href="/favicon.ico?v=20261025-rendrax4">
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20261025-rendrax4" sizes="any">
@@ -280,13 +280,13 @@ ul#list button{box-shadow:none}
       </div>
       <p class="rdx-eyebrow"><span class="rdx-live-dot" aria-hidden="true"></span> ATELIER DE RENDU · EN LIGNE</p>
       <h1 aria-label="HTML vers MP4">Le mouvement devient <span>vidéo.</span></h1>
-      <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé.</p>
+      <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé, ou en images PNG, JPEG et WebP pour tes designs graphiques.</p>
       <div class="rdx-hero-actions">
         <a class="rdx-primary-link" href="#fileCard">Commencer une conversion <span aria-hidden="true">→</span></a>
         <p>Fichiers HTML ou HTM · 50 Mo maximum</p>
       </div>
       <div class="rdx-hero-meta" aria-label="Points clés">
-        <span>HTML vers MP4</span>
+        <span>HTML vers MP4 ou image</span>
         <span>Rendu sécurisé</span>
         <span>Prêt à partager</span>
       </div>
@@ -338,11 +338,12 @@ ul#list button{box-shadow:none}
     <div class="head"><span class="num" aria-hidden="true">02</span><h2 id="h-set">Réglages</h2></div>
     <div class="grid">
       <div class="field">
-        <label for="mode">Qualité</label>
-        <select id="mode">
-          <option value="full">Complète · 1080×1920</option>
-          <option value="half">Allégée · 540×960</option>
-          <option value="test">Aperçu · 10 s · 540×960</option>
+        <label for="output">Sortie</label>
+        <select id="output">
+          <option value="mp4">Vidéo MP4</option>
+          <option value="png">Image PNG</option>
+          <option value="jpeg">Image JPEG</option>
+          <option value="webp">Image WebP</option>
         </select>
       </div>
       <div class="field">
@@ -354,7 +355,15 @@ ul#list button{box-shadow:none}
           <option value="square">Carré · 1:1</option>
         </select>
       </div>
-      <div class="field">
+      <div class="field" data-only="video">
+        <label for="mode">Qualité</label>
+        <select id="mode">
+          <option value="full">Complète · 1080×1920</option>
+          <option value="half">Allégée · 540×960</option>
+          <option value="test">Aperçu · 10 s · 540×960</option>
+        </select>
+      </div>
+      <div class="field" data-only="video">
         <label for="duration">Durée maximale</label>
         <select id="duration">
           <option value="0">Automatique</option>
@@ -365,7 +374,34 @@ ul#list button{box-shadow:none}
           <option value="300">5 minutes</option>
         </select>
       </div>
-      <div class="field field-wide">
+      <div class="field" data-only="image" hidden>
+        <label for="imgscale">Définition</label>
+        <select id="imgscale">
+          <option value="1">Standard · ×1</option>
+          <option value="2">Haute · ×2 (Retina)</option>
+          <option value="3">Très haute · ×3</option>
+        </select>
+      </div>
+      <div class="field" data-only="image" hidden>
+        <label for="instant">Instant de la capture (s)</label>
+        <input id="instant" type="number" min="0" max="900" step="0.1" value="0" inputmode="decimal">
+      </div>
+      <div class="field field-wide" data-only="image" hidden>
+        <p class="mut">0 = première image. Pour une animation reconnue, l’image est prise à cet instant précis de la vidéo. Pour une autre page, l’animation tourne pendant ce temps avant la capture (5 minutes maximum).</p>
+      </div>
+      <div class="field field-wide" data-only="image" hidden>
+        <label class="checkline" for="fullpage">
+          <input id="fullpage" type="checkbox">
+          <span>Capturer toute la hauteur de la page</span>
+        </label>
+      </div>
+      <div class="field field-wide" data-only="image" hidden>
+        <label class="checkline" for="transparent">
+          <input id="transparent" type="checkbox">
+          <span>Fond transparent (PNG et WebP)</span>
+        </label>
+      </div>
+      <div class="field field-wide" data-only="video">
         <label class="checkline" for="watermark">
           <input id="watermark" type="checkbox">
           <span>Ajouter le filigrane animé RENDRAX</span>
@@ -376,7 +412,7 @@ ul#list button{box-shadow:none}
     <p class="mut" role="note">RENDRAX détecte automatiquement le type d’animation, la fréquence d’images et la qualité d’encodage. Il active aussi l’écran de démarrage lorsqu’il est présent. Le HTML source reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
-    <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
+    <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span><span id="goLabel">Générer MP4</span></button>
     <button id="cancel" class="danger" type="button" hidden>Annuler le rendu</button>
   </section>
 
@@ -395,7 +431,7 @@ ul#list button{box-shadow:none}
   </section>
 
   <section class="card" aria-labelledby="h-hist">
-    <div class="row"><h2 id="h-hist">Vidéos générées</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
+    <div class="row"><h2 id="h-hist">Fichiers générés</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
     <ul id="list"><li class="empty">Chargement…</li></ul>
   </section>
 
@@ -417,6 +453,18 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 };
+
+const isImageOutput = () => $('#output').value !== 'mp4';
+function syncOutput() {
+  const img = isImageOutput();
+  document.querySelectorAll('[data-only]').forEach(el => { el.hidden = el.dataset.only !== (img ? 'image' : 'video'); });
+  $('#goLabel').textContent = img ? 'Générer l’image' : 'Générer MP4';
+  const noAlpha = $('#output').value === 'jpeg';
+  $('#transparent').disabled = noAlpha;
+  if (noAlpha) $('#transparent').checked = false;
+  store.set('rdx_output', $('#output').value);
+  renderVerdict();
+}
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
@@ -528,8 +576,8 @@ function status(msg, cls, url) {
 }
 function hint(msg) { const h = $('#hint'); h.hidden = !msg; h.textContent = msg || ''; }
 function workflowStepIndex(name) {
-  if (/Publier le MP4|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
-  if (/Rendre la vidéo/i.test(name || '')) return 2;
+  if (/Publier (le MP4|l['’]image)|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
+  if (/Rendre (la vidéo|l['’]image)/i.test(name || '')) return 2;
   if (/Préparer le HTML source|Installer FFmpeg|Vérifier les outils média|Installer websocket-client|Set up job|actions\/checkout|setup-python/i.test(name || '')) return 1;
   return 2;
 }
@@ -539,6 +587,9 @@ function workflowStepLabel(name) {
   if (/Vérifier les outils média/i.test(name || '')) return 'Vérification des outils de rendu…';
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
   if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
+  if (/Rendre l['’]image/i.test(name || '')) return 'Capture de l’image…';
+  if (/Publier l['’]image \(artefact\)/i.test(name || '')) return 'Finalisation et vérification de l’image…';
+  if (/Publier l['’]image \(Release/i.test(name || '')) return 'Publication de l’image…';
   if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification du MP4…';
   if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage sécurisé des fichiers temporaires…';
@@ -600,8 +651,20 @@ async function checkFile() {
   try { fileText = await f.text(); v = analyze(fileText); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.' }; }
   if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
   $('#prevBtn').hidden = false;
-  if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
-  else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
+  renderVerdict(v);
+}
+function renderVerdict(v = verdict) {
+  if (!v || v.kind === 'invalid') return;
+  const img = isImageOutput();
+  if (v.kind === 'generic') {
+    showVerdict(v, 'warn', img
+      ? '⚠ Page non reconnue comme animation synchronisée : elle sera capturée telle qu’elle s’affiche. Avec un instant supérieur à 0, l’animation tourne ce temps avant la capture.'
+      : '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
+  } else {
+    showVerdict(v, 'ok', img
+      ? '✓ Fichier reconnu : ' + v.label + '. L’image sera prise à l’instant choisi, au pixel près.'
+      : '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
+  }
 }
 function setFile(files) {
   if (!files || !files.length) return;
@@ -627,13 +690,25 @@ function uploadPrivateBlob(url, file) {
     xhr.send(file);
   });
 }
-function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().endsWith('.mp4')); }
+function mediaOf(rel) { return (rel.assets || []).find(x => /\.(mp4|png|jpe?g|webp)$/i.test(x.name)); }
+const isVideoName = name => /\.mp4$/i.test(name);
+function kindOf(name) {
+  const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+  return /^mp4$/i.test(ext) ? 'Vidéo MP4' : 'Image ' + (/^jpe?g$/i.test(ext) ? 'JPEG' : ext.toUpperCase());
+}
 function showResult(rel) {
-  const a = mp4Of(rel);
+  const a = mediaOf(rel);
   const box = $('#res'); box.textContent = '';
-  if (!a) { box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.'; return; }
-  const v = document.createElement('video');
-  v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = a.browser_download_url;
+  if (!a) { box.textContent = 'Rendu terminé, mais aucun fichier trouvé dans la publication.'; return; }
+  const video = isVideoName(a.name);
+  let preview;
+  if (video) {
+    preview = document.createElement('video');
+    preview.controls = true; preview.playsInline = true; preview.preload = 'metadata'; preview.src = a.browser_download_url;
+  } else {
+    preview = document.createElement('img');
+    preview.className = 'rdx-result-image'; preview.alt = 'Image générée : ' + a.name; preview.src = a.browser_download_url;
+  }
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
   dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
@@ -651,10 +726,16 @@ function showResult(rel) {
     bar.append(sh);
   }
   const info = document.createElement('small');
-  v.addEventListener('loadedmetadata', () => {
-    info.textContent = 'Durée ' + mmss(v.duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
-  });
-  box.append(v, info, bar);
+  if (video) {
+    preview.addEventListener('loadedmetadata', () => {
+      info.textContent = 'Durée ' + mmss(preview.duration * 1000) + ' · ' + preview.videoWidth + '×' + preview.videoHeight + ' · ' + size(a.size);
+    });
+  } else {
+    preview.addEventListener('load', () => {
+      info.textContent = kindOf(a.name) + ' · ' + preview.naturalWidth + '×' + preview.naturalHeight + ' · ' + size(a.size);
+    });
+  }
+  box.append(preview, info, bar);
 }
 async function loadList() {
   const ul = $('#list');
@@ -662,20 +743,20 @@ async function loadList() {
     const data = await api('/videos');
     ul.textContent = '';
     const items = data.items || [];
-    if (!items.length) { ul.innerHTML = '<li class="empty">Aucune vidéo générée.</li>'; return; }
+    if (!items.length) { ul.innerHTML = '<li class="empty">Aucun fichier généré.</li>'; return; }
     for (const r of items) {
-      const a = mp4Of(r);
+      const a = mediaOf(r);
       if (!a) continue;
       const li = document.createElement('li');
       const meta = document.createElement('div'); meta.className = 'meta';
       const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
       const d = document.createElement('small');
-      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
+      d.textContent = kindOf(a.name) + ' · ' + new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
       meta.append(l, d);
       const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
-      del.setAttribute('aria-label', 'Supprimer la vidéo ' + a.name);
+      del.setAttribute('aria-label', 'Supprimer le fichier ' + a.name);
       del.onclick = async () => {
-        if (!confirm('Supprimer définitivement cette vidéo ?')) return;
+        if (!confirm('Supprimer définitivement ce fichier ?')) return;
         del.disabled = true;
         try {
           await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
@@ -722,7 +803,7 @@ async function waitJob(id, t0) {
       e.url = job.html_url; throw e;
     }
     if (job.release) return job.release;
-    setSteps(3); status('Publication du MP4… (' + elapsed + ')');
+    setSteps(3); status('Publication du ' + (isImageOutput() ? 'fichier' : 'MP4') + '… (' + elapsed + ')');
   }
   throw new Error('Délai dépassé (plus de 95 minutes).');
 }
@@ -748,7 +829,12 @@ async function go() {
   if (!f) { setSteps(-1); return status('Choisis ou dépose un fichier HTML.', 'err'); }
   if (!verdict) await checkFile();
   if (!verdict || verdict.kind === 'invalid') { setSteps(-1); return status('Fichier refusé : il n’a pas été importé.', 'err'); }
-  const m = MODES[$('#mode').value];
+  const img = isImageOutput();
+  const instant = Number($('#instant').value || 0);
+  if (img && (!Number.isFinite(instant) || instant < 0 || instant > 900)) {
+    setSteps(-1); return status('L’instant de capture doit être compris entre 0 et 900 secondes.', 'err');
+  }
+  const m = img ? { scale: $('#imgscale').value, test: '0' } : MODES[$('#mode').value];
   const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
@@ -766,7 +852,10 @@ async function go() {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
       id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
-      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: f.name.replace(/\.html?$/i, '')
+      duration: img ? '0' : $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked,
+      output: $('#output').value, instant: img ? String(Math.round(instant * 100) / 100) : '0',
+      fullPage: img && $('#fullpage').checked, transparent: img && $('#transparent').checked && $('#output').value !== 'jpeg',
+      name: f.name.replace(/\.html?$/i, '')
     }});
     dispatchAccepted = true;
     store.set('kidas_job', JSON.stringify({ id, t0 }));
@@ -798,6 +887,10 @@ async function resume() {
   setBusy(false);
 }
 $('#file').onchange = checkFile;
+$('#output').onchange = syncOutput;
+const savedOutput = store.get('rdx_output');
+if (savedOutput && [...$('#output').options].some(o => o.value === savedOutput)) $('#output').value = savedOutput;
+syncOutput();
 $('#go').onclick = go;
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
