@@ -36,9 +36,16 @@ export default async function handler(req, res) {
     }
 
     await deleteIfExists(`incoming/${id}.html`);
-    if (fromBrowser || cleanupOwner === true) {
+    if (fromBrowser) {
+      // The browser is abandoning an upload before a workflow starts: remove the
+      // temporary record and any output associated with this never-started job.
       await deleteOutputs(id);
       await deleteIfExists(`owners/${id}.json`);
+    } else if (cleanupOwner === true) {
+      // A failed workflow still needs its owner record so /api/job can authenticate
+      // the owner and report the real failed step instead of a misleading token error.
+      // cleanup-stale.js removes orphaned owner records after 48 hours.
+      await deleteOutputs(id);
     }
     return send(res, 200, { success: true });
   } catch (error) {
