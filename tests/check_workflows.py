@@ -27,6 +27,11 @@ def main() -> None:
     for required in ("api/source-url", "api/publish-url", "source_url_b64", "publish_url_b64", "inputs.sortie", "image/png", "image/jpeg", "image/webp"):
         if required not in render_text:
             raise SystemExit(f"Configuration de rendu privé manquante : {required}")
+    for signed_url in ('echo "::add-mask::${SOURCE_URL}"', 'echo "::add-mask::${PUBLISH_URL}"'):
+        if signed_url in render_text:
+            raise SystemExit("Ne pas masquer les URL signées avant leur transfert : GitHub supprimerait les outputs du job.")
+    if 'echo "::add-mask::${OIDC_TOKEN}"' not in render_text:
+        raise SystemExit("Le jeton OIDC doit rester masqué dans les journaux.")
     if "api/runner-source" in render_text or "actions/upload-artifact@v4" in render_text or "gh release create" in render_text:
         raise SystemExit("Ancien flux de source/artefact public encore présent.")
 
