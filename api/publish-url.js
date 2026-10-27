@@ -14,8 +14,7 @@ export default async function handler(req, res) {
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const id = String(body.id || '');
   const runId = String(body.run_id || '');
-  const output = String(body.output || 'mp4');
-  if (!validJobId(id) || !/^\\d{1,20}$/.test(runId) || !OUTPUTS.has(output)) {
+  if (!validJobId(id) || !/^\\d{1,20}$/.test(runId)) {
     return send(res, 400, { error: 'Identifiant ou format de rendu invalide.' });
   }
 
@@ -23,7 +22,8 @@ export default async function handler(req, res) {
     await verifyGitHubActionsRequest(req, runId);
     await verifyRenderRun(id, runId);
     const owner = await readOwnerRecord(id);
-    if (!owner || owner.output !== output) {
+    const output = String(owner?.output || '');
+    if (!owner || !OUTPUTS.has(output)) {
       return send(res, 403, { error: 'La publication ne correspond pas au rendu privé demandé.' });
     }
 
