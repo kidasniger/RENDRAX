@@ -1,15 +1,17 @@
 import { head, issueSignedToken, presignUrl } from '@vercel/blob';
 import {
-  send, validJobId, validOwnerToken, verifyOwnerToken, publicError
+  readBody, sameOrigin, send, validJobId, validOwnerToken, verifyOwnerToken, publicError
 } from '../lib/kidas-server.js';
 
 const MIME = { mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' };
 const URL_TTL_MS = 5 * 60 * 1000;
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
-  const id = String(req.query?.id || '');
-  const ownerToken = String(req.query?.ownerToken || '');
+  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+  const body = readBody(req);
+  const id = String(body.id || '');
+  const ownerToken = String(body.ownerToken || '');
   if (!validJobId(id) || !validOwnerToken(ownerToken)) {
     return send(res, 400, { error: 'Identifiant ou clé privée invalide.' });
   }
@@ -24,11 +26,7 @@ export default async function handler(req, res) {
     const validUntil = Date.now() + URL_TTL_MS;
     const token = await issueSignedToken({ pathname, operations: ['get'], validUntil });
     const signed = await presignUrl(token, { pathname, operation: 'get', access: 'private', validUntil });
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.statusCode = 302;
-    res.setHeader('Location', signed.presignedUrl);
-    return res.end();
+    return send(res, 200, { url: signed.presignedUrl, expiresAt: validUntil });
   } catch (error) {
     if (Number(error?.status || error?.statusCode) === 404) {
       return send(res, 404, { error: 'Fichier privé introuvable.' });
