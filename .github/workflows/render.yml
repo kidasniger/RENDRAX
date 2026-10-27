@@ -7,9 +7,9 @@ on:
       fichier:
         description: "Fichier HTML à convertir"
         required: true
-        default: "tests/fixtures/gsap-audio-timeline.html"
+        default: "kidas.html"
       scale:
-        description: "Échelle (1 = qualité complète, 0.5 = allégée)"
+        description: "Échelle (1 = 1080x1920, 0.5 = 540x960)"
         default: "1"
       test:
         description: "Secondes à rendre (0 = vidéo entière)"
@@ -33,30 +33,6 @@ on:
         type: boolean
         required: false
         default: false
-      sortie:
-        description: "Type de sortie : vidéo MP4 ou image"
-        type: choice
-        options:
-          - mp4
-          - png
-          - jpeg
-          - webp
-        required: false
-        default: "mp4"
-      instant:
-        description: "Image : instant de la capture en secondes (0 = première image)"
-        required: false
-        default: "0"
-      pleine_page:
-        description: "Image : capturer toute la hauteur de la page"
-        type: boolean
-        required: false
-        default: false
-      transparent:
-        description: "Image PNG/WebP : fond transparent"
-        type: boolean
-        required: false
-        default: false
       nom:
         description: "Nom du MP4 (défaut : nom du fichier HTML)"
         required: false
@@ -71,84 +47,77 @@ on:
         default: ""
 
 permissions:
-  contents: read
+  contents: write
+  id-token: write
 
 jobs:
-  prepare:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      id-token: write
-    outputs:
-      source_url_b64: ${{ steps.signed.outputs.source_url_b64 }}
-      publish_url_b64: ${{ steps.signed.outputs.publish_url_b64 }}
-    steps:
-      - name: Signer les accès privés au HTML et au MP4
-        id: signed
-        env:
-          BLOB_ID: ${{ inputs.blob_id }}
-          TAG: ${{ inputs.tag }}
-          SORTIE: ${{ inputs.sortie }}
-        run: |
-          set -euo pipefail
-          echo "source_url_b64=" >> "$GITHUB_OUTPUT"
-          echo "publish_url_b64=" >> "$GITHUB_OUTPUT"
-          if [ -z "$BLOB_ID" ]; then
-            if [ -n "$TAG" ]; then
-              echo "::error::Un rendu publié doit avoir un identifiant privé."
-              exit 1
-            fi
-            exit 0
-          fi
-
-          [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
-          [ "$TAG" = "$BLOB_ID" ] || { echo "::error::Les identifiants du HTML et de la vidéo doivent correspondre."; exit 1; }
-          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible}"
-          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible}"
-
-          OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
-          OIDC_TOKEN="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "$OIDC_REQUEST_URL" | jq -er '.value')"
-          echo "::add-mask::${OIDC_TOKEN}"
-
-          SOURCE_URL="$(curl --fail --silent --show-error --location --retry 2 \
-            "https://rendrax.vercel.app/api/source-url?id=${BLOB_ID}&run_id=${GITHUB_RUN_ID}" \
-            -H "Authorization: Bearer ${OIDC_TOKEN}" | jq -er '.url')"
-          PUBLISH_URL="$(curl --fail --silent --show-error --location --retry 2 \
-            -X POST "https://rendrax.vercel.app/api/publish-url" \
-            -H "Authorization: Bearer ${OIDC_TOKEN}" \
-            -H "Content-Type: application/json" \
-            --data "{\"id\":\"${TAG}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"output\":\"${SORTIE}\"}" | jq -er '.url')"
-
-          # Do not register the signed URLs with add-mask: GitHub then treats the
-          # derived job outputs as secrets and suppresses them, leaving the render
-          # job without either URL. Never print these values; pass them only as
-          # encoded job outputs. Each URL is scoped to one private object and expires.
-          echo "source_url_b64=$(printf '%s' "$SOURCE_URL" | base64 -w0)" >> "$GITHUB_OUTPUT"
-          echo "publish_url_b64=$(printf '%s' "$PUBLISH_URL" | base64 -w0)" >> "$GITHUB_OUTPUT"
-
   render:
-    needs: prepare
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    permissions:
-      contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Préparer le HTML source
+        id: source
+        env:
+          FICHIER: ${{ inputs.fichier }}
+          BLOB_ID: ${{ inputs.blob_id }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BLOB_ID" ]; then
+            [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
+            : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible; vérifie id-token: write}"
+            : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible; vérifie id-token: write}"
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
+            OIDC_TOKEN="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "$OIDC_REQUEST_URL" | jq -er '.value')"
+            echo "::add-mask::${OIDC_TOKEN}"
+            mkdir -p kidas-tmp
+            curl --fail --silent --show-error --location --retry 2 \
+              -H "Authorization: Bearer ${OIDC_TOKEN}" \
+              "https://rendrax.vercel.app/api/runner-source?id=${BLOB_ID}&run_id=${GITHUB_RUN_ID}" \
+              --output kidas-tmp/input.html
+            test -s kidas-tmp/input.html || { echo "::error::Le HTML temporaire est vide."; exit 1; }
+            echo "fichier=kidas-tmp/input.html" >> "$GITHUB_OUTPUT"
+          else
+            case "$FICHIER" in
+              uploads/*)
+                git fetch --no-tags origin video-uploads
+                mkdir -p "$(dirname "$FICHIER")"
+                git show "FETCH_HEAD:$FICHIER" > "$FICHIER"
+                ;;
+            esac
+            if [ ! -f "$FICHIER" ]; then
+              git fetch --depth=1 origin uploads
+              git checkout FETCH_HEAD -- "$FICHIER"
+            fi
+            echo "fichier=$FICHIER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Installer FFmpeg et ffprobe depuis Ubuntu
+      - name: Installer FFmpeg et ffprobe (binaires statiques en cache)
+        id: static_ffmpeg
+        continue-on-error: true
+        timeout-minutes: 6
+        uses: FedericoCarboni/setup-ffmpeg@37062fbf7149fc5578d6c57e08aed62458b375d6 # v3.1
+        with:
+          ffmpeg-version: release
+
+      - name: Installer FFmpeg depuis Ubuntu si le téléchargement échoue
+        if: steps.static_ffmpeg.outcome == 'failure'
         timeout-minutes: 8
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+
+      - name: Vérifier les outils média
+        run: |
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
 
@@ -159,36 +128,7 @@ jobs:
           python -c "import websocket; print('websocket-client installé:', websocket.__version__)"
           python -c "import PIL; print('Pillow installé:', PIL.__version__)"
 
-      - name: Préparer le HTML source
-        id: source
-        env:
-          FICHIER: ${{ inputs.fichier }}
-          BLOB_ID: ${{ inputs.blob_id }}
-          SOURCE_URL_B64: ${{ needs.prepare.outputs.source_url_b64 }}
-        run: |
-          set -euo pipefail
-          if [ -n "$BLOB_ID" ]; then
-            [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
-            [ -n "$SOURCE_URL_B64" ] || { echo "::error::URL privée de la source absente."; exit 1; }
-            SOURCE_URL="$(printf '%s' "$SOURCE_URL_B64" | base64 --decode)"
-            echo "::add-mask::$SOURCE_URL"
-            mkdir -p kidas-tmp
-            curl --fail --silent --show-error --location --retry 2 \
-              "$SOURCE_URL" --output kidas-tmp/input.html
-            unset SOURCE_URL SOURCE_URL_B64
-            test -s kidas-tmp/input.html || { echo "::error::Le HTML temporaire est vide."; exit 1; }
-            echo "fichier=kidas-tmp/input.html" >> "$GITHUB_OUTPUT"
-          else
-            case "$FICHIER" in
-              tests/fixtures/*.html) ;;
-              *) echo "::error::Sans import privé, seuls les exemples synthétiques de tests/fixtures sont autorisés."; exit 1 ;;
-            esac
-            test -f "$FICHIER" || { echo "::error::Exemple de test introuvable."; exit 1; }
-            echo "fichier=$FICHIER" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Rendre la vidéo
-        if: ${{ inputs.sortie == 'mp4' }}
         env:
           FICHIER: ${{ steps.source.outputs.fichier }}
           FPS: "auto"
@@ -199,7 +139,6 @@ jobs:
           NOM: ${{ inputs.nom }}
           QUALITE: "auto"
           WATERMARK: ${{ inputs.watermark }}
-          RENDRAX_CHROME_NO_SANDBOX: "1"
         run: |
           args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE")
           if [[ "${WATERMARK,,}" != "true" ]]; then
@@ -210,81 +149,45 @@ jobs:
           fi
           python html2mp4.py "${args[@]}"
 
-      - name: Rendre l'image
-        if: ${{ inputs.sortie != 'mp4' }}
-        env:
-          FICHIER: ${{ steps.source.outputs.fichier }}
-          SORTIE: ${{ inputs.sortie }}
-          SCALE: ${{ inputs.scale }}
-          INSTANT: ${{ inputs.instant }}
-          FORMAT: ${{ inputs.format }}
-          NOM: ${{ inputs.nom }}
-          PLEINE_PAGE: ${{ inputs.pleine_page }}
-          TRANSPARENT: ${{ inputs.transparent }}
-          RENDRAX_CHROME_NO_SANDBOX: "1"
-        run: |
-          # Les images vont dans un dossier dédié : le dépôt contient déjà des PNG (logos, icônes) qui ne doivent pas être publiés.
-          args=(--file "$FICHIER" --to "$SORTIE" --scale "$SCALE" --at "$INSTANT" --format "$FORMAT" --name "$NOM" --outdir rendrax-out)
-          [[ "${PLEINE_PAGE,,}" == "true" ]] && args+=(--full-page)
-          [[ "${TRANSPARENT,,}" == "true" ]] && args+=(--transparent)
-          python html2mp4.py "${args[@]}"
-          ls -la rendrax-out
+      - name: Publier le MP4 (artefact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-mp4
+          path: "**/*.mp4"
+          if-no-files-found: error
 
-      - name: Envoyer le résultat au stockage privé
+      - name: Publier le MP4 (Release, pour la page web)
         if: ${{ inputs.tag != '' }}
         env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
-          SORTIE: ${{ inputs.sortie }}
-          PUBLISH_URL_B64: ${{ needs.prepare.outputs.publish_url_b64 }}
         run: |
-          set -euo pipefail
-          [[ "$TAG" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant de sortie invalide."; exit 1; }
-          [ -n "$PUBLISH_URL_B64" ] || { echo "::error::URL privée de publication absente."; exit 1; }
-          case "$SORTIE" in
-            mp4) CONTENT_TYPE="video/mp4"; OUTPUT_PATH="$(find . -type f -name '*.mp4' -not -path './.git/*' -print -quit)" ;;
-            png) CONTENT_TYPE="image/png"; OUTPUT_PATH="$(find rendrax-out -type f -print -quit)" ;;
-            jpeg) CONTENT_TYPE="image/jpeg"; OUTPUT_PATH="$(find rendrax-out -type f -print -quit)" ;;
-            webp) CONTENT_TYPE="image/webp"; OUTPUT_PATH="$(find rendrax-out -type f -print -quit)" ;;
-            *) echo "::error::Type de sortie invalide."; exit 1 ;;
-          esac
-          test -n "$OUTPUT_PATH" && test -s "$OUTPUT_PATH" || { echo "::error::Aucun fichier à publier."; exit 1; }
-          PUBLISH_URL="$(printf '%s' "$PUBLISH_URL_B64" | base64 --decode)"
-          echo "::add-mask::$PUBLISH_URL"
-          curl --fail --silent --show-error --location --retry 2 --upload-file "$OUTPUT_PATH" -H "Content-Type: $CONTENT_TYPE" "$PUBLISH_URL"
-          unset PUBLISH_URL PUBLISH_URL_B64
-          echo "Résultat envoyé au stockage privé."
-  cleanup:
-    if: always() && inputs.blob_id != ''
-    needs: [prepare, render]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      id-token: write
-    steps:
+          gh release create "$TAG" $(find . -name '*.mp4' -not -path './.git/*') \
+            --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
       - name: Supprimer les fichiers temporaires
+        if: always()
         env:
           BLOB_ID: ${{ inputs.blob_id }}
-          PREPARE_RESULT: ${{ needs.prepare.result }}
-          RENDER_RESULT: ${{ needs.render.result }}
         run: |
-          set -euo pipefail
-          [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
-          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible}"
-          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible}"
-
-          OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
-          OIDC_TOKEN="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "$OIDC_REQUEST_URL" | jq -er '.value')"
-          echo "::add-mask::${OIDC_TOKEN}"
-
-          CLEANUP_OWNER=false
-          if [ "$PREPARE_RESULT" != "success" ] || [ "$RENDER_RESULT" != "success" ]; then
-            CLEANUP_OWNER=true
+          rm -rf kidas-tmp
+          if [ -n "$BLOB_ID" ]; then
+            if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+              echo "::warning::OIDC indisponible; le HTML privé doit être supprimé depuis le stockage Vercel."
+              exit 0
+            fi
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
+            if ! OIDC_TOKEN="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "$OIDC_REQUEST_URL" | jq -er '.value')"; then
+              echo "::warning::Impossible d’obtenir le jeton OIDC pour le nettoyage."
+              exit 0
+            fi
+            echo "::add-mask::${OIDC_TOKEN}"
+            curl --fail --silent --show-error --location --retry 2 \
+              -X POST "https://rendrax.vercel.app/api/cleanup" \
+              -H "Authorization: Bearer ${OIDC_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" \
+              || echo "::warning::Le nettoyage du HTML privé a échoué; vérifie les journaux Vercel."
           fi
-          curl --fail --silent --show-error --location --retry 2 \
-            -X POST "https://rendrax.vercel.app/api/cleanup" \
-            -H "Authorization: Bearer ${OIDC_TOKEN}" \
-            -H "Content-Type: application/json" \
-            --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"cleanup_owner\":${CLEANUP_OWNER}}"

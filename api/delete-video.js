@@ -1,43 +1,34 @@
-import { del } from '@vercel/blob';
-import {
-  githubRequest, readBody, sameOrigin, send, validJobId, validOwnerToken,
-  verifyOwnerToken, publicError
-} from '../lib/kidas-server.js';
+import { githubRequest, readBody, sameOrigin, send, publicError } from '../lib/kidas-server.js';
 
 const REPOSITORY = 'kidasniger/RENDRAX';
 const RENDER_WORKFLOW = 'render.yml';
 const VIDEO_ARTIFACT_NAME = 'video-mp4';
-const OUTPUT_TYPES = ['mp4', 'png', 'jpeg', 'webp'];
-
-async function deleteIfExists(pathname) {
-  try {
-    await del(pathname);
-  } catch (error) {
-    const status = Number(error?.status || error?.statusCode);
-    if (status !== 404) throw error;
-  }
-}
-
-async function deleteOutputs(id) {
-  for (const ext of OUTPUT_TYPES) await deleteIfExists(`outputs/${id}.${ext}`);
-}
 const RUNS_PAGE_SIZE = 100;
 const MAX_RUN_PAGES = 20;
 
-async function findRenderRun(id) {
+async function findRenderRun(tag) {
+  const expectedName = `Rendu ${tag}`;
+
   for (let page = 1; page <= MAX_RUN_PAGES; page += 1) {
     const { data } = await githubRequest(
       `/repos/${REPOSITORY}/actions/workflows/${RENDER_WORKFLOW}/runs?event=workflow_dispatch&branch=main&per_page=${RUNS_PAGE_SIZE}&page=${page}`
     );
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
     const match = runs.find(run =>
-      run.display_title === `Rendu ${id}` &&
-      run.path === `.github/workflows/${RENDER_WORKFLOW}`
+      run.name === expectedName && run.path === `.github/workflows/${RENDER_WORKFLOW}`
     );
+
     if (match) return match;
-    if (runs.length < RUNS_PAGE_SIZE) return null;
+    if (runs.length < RUNS_PAGE_SIZE) {
+      const error = new Error('Impossible de retrouver le rendu associé à cette vidéo. Aucune suppression n’a été effectuée.');
+      error.status = 503;
+      throw error;
+    }
   }
-  return null;
+
+  const error = new Error('Le rendu associé à cette vidéo est trop ancien pour être localisé automatiquement. Aucune suppression n’a été effectuée.');
+  error.status = 503;
+  throw error;
 }
 
 async function deleteVideoArtifact(runId) {
@@ -46,6 +37,7 @@ async function deleteVideoArtifact(runId) {
   );
   const artifacts = Array.isArray(data?.artifacts) ? data.artifacts : [];
   let removed = 0;
+
   for (const artifact of artifacts) {
     if (artifact.name !== VIDEO_ARTIFACT_NAME) continue;
     try {
@@ -55,6 +47,8 @@ async function deleteVideoArtifact(runId) {
       );
       removed += 1;
     } catch (error) {
+      // Missing/expired artifacts are already unavailable; all other errors
+      // must stop the operation before the public Release is removed.
       if (error.status !== 404 && error.status !== 410) throw error;
     }
   }
@@ -65,27 +59,40 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
 
-  const { id, ownerToken } = readBody(req);
-  if (!validJobId(id) || !validOwnerToken(ownerToken)) {
-    return send(res, 400, { error: 'Identifiant ou clé privée invalide.' });
+  const { releaseId, tag } = readBody(req);
+  if (!/^\d+$/.test(String(releaseId || '')) || !/^[A-Za-z0-9._-]{1,100}$/.test(String(tag || ''))) {
+    return send(res, 400, { error: 'Vidéo ou identifiant invalide.' });
   }
 
   try {
-    const owner = await verifyOwnerToken(id, ownerToken);
-    if (!owner) return send(res, 404, { error: 'Vidéo introuvable ou accès refusé.' });
+    const { data: release } = await githubRequest(
+      `/repos/${REPOSITORY}/releases/${releaseId}`
+    );
+    if (release?.tag_name !== tag) {
+      return send(res, 400, { error: 'La vidéo et le tag ne correspondent pas.' });
+    }
 
-    const run = await findRenderRun(id);
+    // Delete the Actions artifact first. If the token lacks Actions write
+    // permission, keep the public Release and tag intact so the operation can
+    // be retried after the token permissions are fixed.
+    const run = await findRenderRun(tag);
     const artifactsRemoved = run ? await deleteVideoArtifact(run.id) : 0;
-    await deleteOutputs(id);
-    await deleteIfExists(`incoming/${id}.html`);
-    await deleteIfExists(`owners/${id}.json`);
 
-    return send(res, 200, {
-      success: true,
-      artifactsRemoved,
-      videoRemoved: true,
-      ownerRecordRemoved: true
-    });
+    await githubRequest(
+      `/repos/${REPOSITORY}/releases/${releaseId}`,
+      { method: 'DELETE' }
+    );
+
+    try {
+      await githubRequest(
+        `/repos/${REPOSITORY}/git/refs/tags/${encodeURIComponent(tag)}`,
+        { method: 'DELETE' }
+      );
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+
+    return send(res, 200, { success: true, artifactsRemoved, releaseRemoved: true, tagRemoved: true });
   } catch (error) {
     const result = publicError(error);
     return send(res, result.status, result.body);

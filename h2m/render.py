@@ -13,10 +13,10 @@ from h2m.browser import CDP, launch_chrome, page_ws_url, stop_chrome
 from h2m.deps import IS_TERMUX, find_chrome
 from h2m.encode import (QUALITY, check_audio_level, output_path, start_encoder, unique_path, verify_sync,
                         write_wav, write_wav_payload)
-from h2m.profiles import (PRECISE_PROFILES, choose_frame_size, detect_profile, extract_audio,
-                          inject_base_url, inject_generic_audio_capture, patch_html, profile_duration, ready_check)
+from h2m.profiles import (PRECISE_PROFILES, choose_frame_size, detect_profile, editpro_duration, extract_audio,
+                          inject_base_url, inject_generic_audio_capture, patch_html)
 from h2m.report import print_report
-from h2m.scripts_js import FIND_START_TARGET, JS_HELPERS
+from h2m.scripts_js import JS_HELPERS
 from h2m.ui import die, fmt_time, good, info, warn
 
 
@@ -99,7 +99,16 @@ def render(html_path, args):
 
         is_precise = False
         if precise_candidate:
-            check = ready_check(profile)
+            if profile == "kidas":
+                check = "(()=>!!document.querySelector('.stage')&&document.querySelectorAll('audio').length>=1&&typeof D==='number'&&typeof window.__setT==='function')()"
+            elif profile == "voicevideo":
+                check = "(()=>!!document.querySelector('#stage')&&!!window.__video&&typeof window.__video.seek==='function'&&document.querySelectorAll('audio').length>=1)()"
+            elif profile == "musicpro":
+                check = "(()=>!!document.querySelector('#st')&&typeof render==='function'&&typeof D==='number'&&typeof vP!=='undefined'&&typeof mP!=='undefined')()"
+            elif profile == "gsapvideo":
+                check = "(()=>!!document.querySelector('#st')&&!!document.querySelector('#a')&&typeof gsap!=='undefined'&&typeof tl!=='undefined'&&typeof SUB!=='undefined')()"
+            else:
+                check = "(()=>!!document.querySelector('#stage')&&typeof render==='function'&&typeof IM==='object')()"
             t1 = time.time()
             while time.time() - t1 < 30 and not is_precise:
                 try:
@@ -116,7 +125,15 @@ def render(html_path, args):
             cdp.ev(f"window.__profile = {json.dumps(profile)}; 0", await_promise=False)
             cdp.ev(JS_HELPERS, await_promise=False)
             cdp.ev("window.__prep()")
-            total = profile_duration(cdp.ev, profile, text)
+            if profile in ("kidas", "musicpro"):
+                total = float(cdp.ev("D"))
+            elif profile == "voicevideo":
+                total = float(cdp.ev("window.__video.duration"))
+            elif profile == "gsapvideo":
+                # The embedded narration is the master clock for the original GSAP timeline.
+                total = float(cdp.ev("document.querySelector('#a').duration"))
+            else:
+                total = editpro_duration(text)
             dur = min(total, args.duration) if args.duration > 0 else total
             if args.test > 0:
                 dur = min(dur, args.test)
@@ -200,7 +217,25 @@ def render(html_path, args):
             # Certaines animations (dont EditPro – Vidéo 60 s) restent immobiles
             # tant que leur bouton de démarrage n'a pas reçu une vraie action pointeur.
             try:
-                target = cdp.ev(FIND_START_TARGET, await_promise=False)
+                target = cdp.ev(r"""(() => {
+                    const action = /(d[eé]marrer|start|lancer|commencer|commencez|lire|play|lecture|begin|▶|▷)/i;
+                    const nodes = [...document.querySelectorAll('body *')];
+                    const visible = nodes.map(el => {
+                      const r = el.getBoundingClientRect();
+                      const st = getComputedStyle(el);
+                      const label = ((el.innerText || el.value || '') + ' ' +
+                        (el.getAttribute('aria-label') || '') + ' ' + (el.title || '')).trim();
+                      const buttonLike = el.matches('button,[role="button"],input[type=button],input[type=submit],a[role="button"]') ||
+                        typeof el.onclick === 'function' || el.hasAttribute('onclick') || st.cursor === 'pointer';
+                      const largeOverlay = r.width * r.height >= innerWidth * innerHeight * 0.2;
+                      return {el, r, label, clickable: buttonLike || largeOverlay,
+                        visible: r.width > 0 && r.height > 0 && st.display !== 'none' &&
+                          st.visibility !== 'hidden' && Number(st.opacity) > 0.01};
+                    }).filter(x => x.visible && x.clickable && action.test(x.label));
+                    const chosen = visible.find(x => /(d[eé]marrer|start|lancer|commencer|lire avec|play|▶|▷)/i.test(x.label)) || visible[0];
+                    return chosen ? {x: chosen.r.x + chosen.r.width/2,
+                      y: chosen.r.y + chosen.r.height/2, label: chosen.label.slice(0, 100)} : null;
+                })()""", await_promise=False)
                 if target:
                     # CDP pointer events produisent une activation navigateur réelle,
                     # contrairement à HTMLElement.click() pour l'audio protégé par autoplay.

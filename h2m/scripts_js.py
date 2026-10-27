@@ -23,6 +23,13 @@ window.__finish = async () => {
 };
 
 window.__seek = async (t) => {
+  if (window.__profile === 'rendraxai') {
+    window.__manual = true;
+    const time = Math.max(0, Number(t) || 0);
+    await window.__rendraxSeek(time);
+    await window.__finish();
+    return 1;
+  }
   if (window.__profile === 'gsapvideo') {
     window.__manual = true;
     const time = Math.max(0, Number(t) || 0);
@@ -272,26 +279,3 @@ GENERIC_AUDIO_CAPTURE = r"""<script>
   window.addEventListener('load', () => { try { window.__h2mStart(); } catch (_) {} }, { once: true });
 })();
 </script>"""
-
-
-# Repère le bouton / la zone « Démarrer » d'une page (partagé par le rendu vidéo et le rendu image).
-# Retourne {x, y, label} ou null.
-FIND_START_TARGET = r"""(() => {
-    const action = /(d[eé]marrer|start|lancer|commencer|commencez|lire|play|lecture|begin|▶|▷)/i;
-    const nodes = [...document.querySelectorAll('body *')];
-    const visible = nodes.map(el => {
-      const r = el.getBoundingClientRect();
-      const st = getComputedStyle(el);
-      const label = ((el.innerText || el.value || '') + ' ' +
-        (el.getAttribute('aria-label') || '') + ' ' + (el.title || '')).trim();
-      const buttonLike = el.matches('button,[role="button"],input[type=button],input[type=submit],a[role="button"]') ||
-        typeof el.onclick === 'function' || el.hasAttribute('onclick') || st.cursor === 'pointer';
-      const largeOverlay = r.width * r.height >= innerWidth * innerHeight * 0.2;
-      return {el, r, label, clickable: buttonLike || largeOverlay,
-        visible: r.width > 0 && r.height > 0 && st.display !== 'none' &&
-          st.visibility !== 'hidden' && Number(st.opacity) > 0.01};
-    }).filter(x => x.visible && x.clickable && action.test(x.label));
-    const chosen = visible.find(x => /(d[eé]marrer|start|lancer|commencer|lire avec|play|▶|▷)/i.test(x.label)) || visible[0];
-    return chosen ? {x: chosen.r.x + chosen.r.width/2,
-      y: chosen.r.y + chosen.r.height/2, label: chosen.label.slice(0, 100)} : null;
-  })()"""

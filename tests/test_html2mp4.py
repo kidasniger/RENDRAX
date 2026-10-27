@@ -72,18 +72,15 @@ class Html2Mp4Tests(unittest.TestCase):
     def test_plain_html_is_generic(self):
         self.assertEqual(renderer.detect_profile("<html><body><p>x</p></body></html>")[0], "generic")
 
-    def test_kidas_profile_is_recognised_from_synthetic_fixture(self):
-        text = (
-            "<!doctype html><html><head><style>.stage {width:1080px;height:1920px}</style></head>"
-            "<body><script>const [t,setT]=useState(0), AUD='data:audio/mp3;base64,QUJD', D=4;</script></body></html>"
-        )
+    def test_kidas_file_is_recognised(self):
+        text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
         self.assertEqual(renderer.detect_profile(text)[0], "kidas")
 
+    def test_editpro_pattern_is_recognised(self):
+        self.assertEqual(renderer.detect_profile(self.EDITPRO)[0], "editpro")
+
     def test_kidas_patch_freezes_time_state(self):
-        text = (
-            "<!doctype html><html><head><style>.stage {width:1080px;height:1920px}</style></head>"
-            "<body><script>const [t,setT]=useState(0), AUD='data:audio/mp3;base64,QUJD', D=4;</script></body></html>"
-        )
+        text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
         patched, profile = renderer.patch_html(text)
         self.assertEqual(profile, "kidas")
         self.assertIn("window.__manual||__s(v)", patched)
@@ -239,43 +236,13 @@ class Html2Mp4Tests(unittest.TestCase):
         job_api = (ROOT / "api" / "job.js").read_text(encoding="utf-8")
         videos_api = (ROOT / "api" / "videos.js").read_text(encoding="utf-8")
         delete_api = (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8")
-        cancel_api = (ROOT / "api" / "cancel.js").read_text(encoding="utf-8")
         self.assertIn("kidasniger/RENDRAX/.github/workflows/render.yml@refs/heads/main", server)
         self.assertIn("payload.repository === 'kidasniger/RENDRAX'", server)
         self.assertIn("/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches", render_api)
-        for source in (job_api, delete_api, cancel_api):
+        for source in (job_api, videos_api, delete_api):
             self.assertIn("kidasniger/RENDRAX", source)
             self.assertNotIn("kidasniger/Kidas", source)
-        self.assertNotIn("kidasniger/Kidas", server + render_api + videos_api)
-
-    def test_private_video_flow_requires_owner_keys_and_does_not_publish_releases(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-        render_api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
-        upload_api = (ROOT / "api" / "upload-url.js").read_text(encoding="utf-8")
-        delete_api = (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8")
-        video_api = (ROOT / "api" / "video.js").read_text(encoding="utf-8")
-        source_api = (ROOT / "api" / "source-url.js").read_text(encoding="utf-8")
-        cleanup_api = (ROOT / "api" / "cleanup.js").read_text(encoding="utf-8")
-        server = (ROOT / "lib" / "kidas-server.js").read_text(encoding="utf-8")
-        workflow = (ROOT / ".github" / "workflows" / "render.yml").read_text(encoding="utf-8")
-        self.assertIn("ownerTokenHash(ownerToken)", upload_api)
-        self.assertIn("verifyOwnerToken(id, ownerToken)", render_api)
-        self.assertIn("verifyRenderRun(id, runId)", source_api)
-        self.assertIn("verifyRenderRun(id, runId)", cleanup_api)
-        self.assertIn("payload.workflow_ref === GITHUB_RENDER_WORKFLOW", server)
-        self.assertIn("verifyOwnerToken(id, ownerToken)", delete_api)
-        self.assertIn("operations: ['get']", video_api)
-        self.assertIn("api/source-url", workflow)
-        self.assertIn("api/publish-url", workflow)
-        self.assertNotIn("api/runner-source", workflow)
-        self.assertFalse((ROOT / "api" / "runner-source.js").exists())
-        render_job = workflow.split("  render:", 1)[1].split("  cleanup:", 1)[0]
-        self.assertNotIn("id-token: write", render_job)
-        self.assertIn("source_url_b64", workflow)
-        self.assertIn("publish_url_b64", workflow)
-        self.assertNotIn("gh release create", workflow)
-        self.assertNotIn("actions/upload-artifact@v4", workflow)
-        self.assertIn("stockage privé", page.lower())
+        self.assertNotIn("kidasniger/Kidas", server + render_api)
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -385,84 +352,6 @@ class Html2Mp4Tests(unittest.TestCase):
 
 
 
-
-
-class ImageExportTests(unittest.TestCase):
-    def args(self, **kw):
-        base = dict(to="png", at=0, scale=1.0, image_quality=92, width=0, height=0, format="auto",
-                    full_page=False, transparent=False, name="", outdir="")
-        base.update(kw)
-        return argparse.Namespace(**base)
-
-    def test_options_are_validated(self):
-        from h2m.snapshot import check_image_options
-        self.assertEqual(check_image_options(self.args(to="jpg")), ("jpeg", 0.0, 1.0, 92))
-        for bad in (dict(to="gif"), dict(at=-1), dict(scale=0.1), dict(scale=9), dict(image_quality=0), dict(width=99999)):
-            with self.assertRaises(ValueError, msg=str(bad)):
-                check_image_options(self.args(**bad))
-
-    def test_viewport_planning(self):
-        from h2m.snapshot import plan_viewport
-        poster = "<html><body><div>x</div></body></html>"
-        self.assertEqual(plan_viewport(poster, "generic", self.args()), (1080, 800, True))      # page entière
-        self.assertEqual(plan_viewport(poster, "generic", self.args(format="square")), (1080, 1080, False))
-        self.assertEqual(plan_viewport(poster, "generic", self.args(width=500, height=300)), (500, 300, True))
-        stage = "<style>.stage{width:720px;height:1280px}</style>"
-        self.assertEqual(plan_viewport(stage, "generic", self.args()), (720, 1280, False))
-        self.assertEqual(plan_viewport(stage, "kidas", self.args(width=10)), (720, 1280, False))
-
-    def test_image_output_path(self):
-        from h2m.encode import image_output_path
-        with tempfile.TemporaryDirectory() as d:
-            html = Path(d) / "mon design.html"
-            self.assertEqual(image_output_path(html, self.args(), ".png"), Path(d) / "mon design.png")
-            self.assertEqual(image_output_path(html, self.args(at=2.5), ".jpg").name, "mon design_2.5s.jpg")
-            out = image_output_path(html, self.args(name="a/b", outdir=str(Path(d) / "sortie")), ".webp")
-            self.assertEqual(out.parent, Path(d) / "sortie")
-            self.assertNotIn("/", out.name)
-
-    def test_ready_checks_cover_every_profile(self):
-        from h2m.profiles import ready_check
-        for name in PRECISE_PROFILES:
-            self.assertIn("document.querySelector", ready_check(name))
-
-    @unittest.skipUnless(shutil.which("chromium") or shutil.which("google-chrome") or shutil.which("chromium-browser"),
-                         "Chromium requis")
-    def test_real_render_png_scale_and_transparency(self):
-        try:
-            import websocket  # noqa: F401
-        except ImportError:
-            self.skipTest("websocket-client requis")
-        from h2m.snapshot import render_image
-        with tempfile.TemporaryDirectory() as d:
-            html = Path(d) / "logo.html"
-            html.write_text("<html><body style='margin:0'><div style='width:100px;height:60px;background:#f00'></div></body></html>")
-            out = render_image(html, self.args(width=200, height=100, scale=2, transparent=True))
-            data = out.read_bytes()
-            self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
-            self.assertEqual(int.from_bytes(data[16:20], "big"), 400)
-            self.assertEqual(int.from_bytes(data[20:24], "big"), 200)
-
-    def test_web_pipeline_exposes_private_image_output(self):
-        api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
-        wf = (ROOT / ".github" / "workflows" / "render.yml").read_text(encoding="utf-8")
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-        publish = (ROOT / "api" / "publish-url.js").read_text(encoding="utf-8")
-        video = (ROOT / "api" / "video.js").read_text(encoding="utf-8")
-        self.assertIn("sortie: String(output)", api)
-        self.assertIn("--outdir rendrax-out", wf)
-        self.assertIn("api/publish-url", wf)
-        self.assertIn("find rendrax-out", wf)
-        self.assertIn("image/png", publish)
-        self.assertIn("image/jpeg", publish)
-        self.assertIn("image/webp", publish)
-        self.assertIn("access: 'private'", publish)
-        self.assertIn("outputs/${id}.${type.extension}", video)
-        self.assertIn('id="output"', page)
-        self.assertIn("output, instant:", page)
-        self.assertNotIn("name: image-export", wf)
-        self.assertNotIn("gh release create", wf)
-        self.assertNotIn("actions/upload-artifact@v4", wf)
 
 if __name__ == "__main__":
     unittest.main()
