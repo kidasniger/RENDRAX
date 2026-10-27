@@ -33,6 +33,30 @@ on:
         type: boolean
         required: false
         default: false
+      sortie:
+        description: "Type de sortie : vidéo MP4 ou image"
+        type: choice
+        options:
+          - mp4
+          - png
+          - jpeg
+          - webp
+        required: false
+        default: "mp4"
+      instant:
+        description: "Image : instant de la capture en secondes (0 = première image)"
+        required: false
+        default: "0"
+      pleine_page:
+        description: "Image : capturer toute la hauteur de la page"
+        type: boolean
+        required: false
+        default: false
+      transparent:
+        description: "Image PNG/WebP : fond transparent"
+        type: boolean
+        required: false
+        default: false
       nom:
         description: "Nom du MP4 (défaut : nom du fichier HTML)"
         required: false
@@ -65,6 +89,7 @@ jobs:
         env:
           BLOB_ID: ${{ inputs.blob_id }}
           TAG: ${{ inputs.tag }}
+          SORTIE: ${{ inputs.sortie }}
         run: |
           set -euo pipefail
           echo "source_url_b64=" >> "$GITHUB_OUTPUT"
@@ -95,7 +120,7 @@ jobs:
             -X POST "https://rendrax.vercel.app/api/publish-url" \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "{\"id\":\"${TAG}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" | jq -er '.url')"
+            --data "{\"id\":\"${TAG}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"output\":\"${SORTIE}\"}" | jq -er '.url')"
 
           echo "::add-mask::${SOURCE_URL}"
           echo "::add-mask::${PUBLISH_URL}"
@@ -161,6 +186,7 @@ jobs:
           fi
 
       - name: Rendre la vidéo
+        if: ${{ inputs.sortie == 'mp4' }}
         env:
           FICHIER: ${{ steps.source.outputs.fichier }}
           FPS: "auto"
@@ -173,7 +199,6 @@ jobs:
           WATERMARK: ${{ inputs.watermark }}
           RENDRAX_CHROME_NO_SANDBOX: "1"
         run: |
-          set -euo pipefail
           args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE")
           if [[ "${WATERMARK,,}" != "true" ]]; then
             args+=(--no-watermark)
@@ -181,32 +206,51 @@ jobs:
           else
             echo "Filigrane animé RENDRAX activé."
           fi
-          # Le job de rendu n'a aucun droit OIDC et ne reçoit que des URL limitées à ce fichier.
-          while IFS='=' read -r env_name _; do
-            case "$env_name" in
-              *TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*) unset "$env_name" ;;
-            esac
-          done < <(env)
           python html2mp4.py "${args[@]}"
 
-      - name: Envoyer le MP4 au stockage privé
+      - name: Rendre l'image
+        if: ${{ inputs.sortie != 'mp4' }}
+        env:
+          FICHIER: ${{ steps.source.outputs.fichier }}
+          SORTIE: ${{ inputs.sortie }}
+          SCALE: ${{ inputs.scale }}
+          INSTANT: ${{ inputs.instant }}
+          FORMAT: ${{ inputs.format }}
+          NOM: ${{ inputs.nom }}
+          PLEINE_PAGE: ${{ inputs.pleine_page }}
+          TRANSPARENT: ${{ inputs.transparent }}
+          RENDRAX_CHROME_NO_SANDBOX: "1"
+        run: |
+          # Les images vont dans un dossier dédié : le dépôt contient déjà des PNG (logos, icônes) qui ne doivent pas être publiés.
+          args=(--file "$FICHIER" --to "$SORTIE" --scale "$SCALE" --at "$INSTANT" --format "$FORMAT" --name "$NOM" --outdir rendrax-out)
+          [[ "${PLEINE_PAGE,,}" == "true" ]] && args+=(--full-page)
+          [[ "${TRANSPARENT,,}" == "true" ]] && args+=(--transparent)
+          python html2mp4.py "${args[@]}"
+          ls -la rendrax-out
+
+      - name: Envoyer le résultat au stockage privé
         if: ${{ inputs.tag != '' }}
         env:
           TAG: ${{ inputs.tag }}
+          SORTIE: ${{ inputs.sortie }}
           PUBLISH_URL_B64: ${{ needs.prepare.outputs.publish_url_b64 }}
         run: |
           set -euo pipefail
-          [[ "$TAG" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant vidéo invalide."; exit 1; }
+          [[ "$TAG" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant de sortie invalide."; exit 1; }
           [ -n "$PUBLISH_URL_B64" ] || { echo "::error::URL privée de publication absente."; exit 1; }
-          MP4_PATH="$(find . -type f -name '*.mp4' -not -path './.git/*' -print -quit)"
-          test -n "$MP4_PATH" || { echo "::error::Aucun MP4 à publier."; exit 1; }
+          case "$SORTIE" in
+            mp4) CONTENT_TYPE="video/mp4"; OUTPUT_PATH="$(find . -type f -name '*.mp4' -not -path './.git/*' -print -quit)" ;;
+            png) CONTENT_TYPE="image/png"; OUTPUT_PATH="$(find rendrax-out -type f -print -quit)" ;;
+            jpeg) CONTENT_TYPE="image/jpeg"; OUTPUT_PATH="$(find rendrax-out -type f -print -quit)" ;;
+            webp) CONTENT_TYPE="image/webp"; OUTPUT_PATH="$(find rendrax-out -type f -print -quit)" ;;
+            *) echo "::error::Type de sortie invalide."; exit 1 ;;
+          esac
+          test -n "$OUTPUT_PATH" && test -s "$OUTPUT_PATH" || { echo "::error::Aucun fichier à publier."; exit 1; }
           PUBLISH_URL="$(printf '%s' "$PUBLISH_URL_B64" | base64 --decode)"
           echo "::add-mask::$PUBLISH_URL"
-          curl --fail --silent --show-error --location --retry 2 \
-            --upload-file "$MP4_PATH" -H "Content-Type: video/mp4" "$PUBLISH_URL"
+          curl --fail --silent --show-error --location --retry 2 --upload-file "$OUTPUT_PATH" -H "Content-Type: $CONTENT_TYPE" "$PUBLISH_URL"
           unset PUBLISH_URL PUBLISH_URL_B64
-          echo "MP4 envoyé dans le stockage privé."
-
+          echo "Résultat envoyé au stockage privé."
   cleanup:
     if: always() && inputs.blob_id != ''
     needs: [prepare, render]
