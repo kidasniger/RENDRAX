@@ -33,7 +33,8 @@ export default async function handler(req, res) {
       await removeIfPresent(`owners/${id}.json`);
     } else if (cleanupOwner === true || String(cleanupOwner).toLowerCase() === 'true') {
       for (const output of OUTPUTS) await removeIfPresent(`outputs/${id}.${output}`);
-      await removeIfPresent(`owners/${id}.json`);
+      // Keep the owner record until the browser can read the failed run status.
+      // The authenticated browser cleanup then removes this record.
     }
     return send(res, 200, { success: true });
   } catch (error) {
