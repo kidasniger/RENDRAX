@@ -72,15 +72,21 @@ class Html2Mp4Tests(unittest.TestCase):
     def test_plain_html_is_generic(self):
         self.assertEqual(renderer.detect_profile("<html><body><p>x</p></body></html>")[0], "generic")
 
-    def test_kidas_file_is_recognised(self):
-        text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
+    def test_kidas_profile_is_recognised_from_synthetic_fixture(self):
+        text = (
+            "<!doctype html><html><head><style>.stage {width:1080px;height:1920px}</style></head>"
+            "<body><script>const [t,setT]=useState(0), AUD='data:audio/mp3;base64,QUJD', D=4;</script></body></html>"
+        )
         self.assertEqual(renderer.detect_profile(text)[0], "kidas")
 
     def test_editpro_pattern_is_recognised(self):
         self.assertEqual(renderer.detect_profile(self.EDITPRO)[0], "editpro")
 
     def test_kidas_patch_freezes_time_state(self):
-        text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
+        text = (
+            "<!doctype html><html><head><style>.stage {width:1080px;height:1920px}</style></head>"
+            "<body><script>const [t,setT]=useState(0), AUD='data:audio/mp3;base64,QUJD', D=4;</script></body></html>"
+        )
         patched, profile = renderer.patch_html(text)
         self.assertEqual(profile, "kidas")
         self.assertIn("window.__manual||__s(v)", patched)
@@ -240,10 +246,40 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("kidasniger/RENDRAX/.github/workflows/render.yml@refs/heads/main", server)
         self.assertIn("payload.repository === 'kidasniger/RENDRAX'", server)
         self.assertIn("/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches", render_api)
-        for source in (job_api, videos_api, delete_api, cancel_api):
+        for source in (job_api, videos_api, cancel_api):
             self.assertIn("kidasniger/RENDRAX", source)
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)
+
+    def test_private_video_flow_requires_owner_keys_and_does_not_publish_releases(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        render_api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
+        upload_api = (ROOT / "api" / "upload-url.js").read_text(encoding="utf-8")
+        delete_api = (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8")
+        video_api = (ROOT / "api" / "video.js").read_text(encoding="utf-8")
+        source_api = (ROOT / "api" / "source-url.js").read_text(encoding="utf-8")
+        cleanup_api = (ROOT / "api" / "cleanup.js").read_text(encoding="utf-8")
+        server = (ROOT / "lib" / "kidas-server.js").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github" / "workflows" / "render.yml").read_text(encoding="utf-8")
+        self.assertIn("ownerTokenHash(ownerToken)", upload_api)
+        self.assertIn("verifyOwnerToken(id, ownerToken)", render_api)
+        self.assertIn("verifyRenderRun(id, runId)", source_api)
+        self.assertIn("verifyRenderRun(id, runId)", cleanup_api)
+        self.assertIn("payload.workflow_ref === GITHUB_RENDER_WORKFLOW", server)
+        self.assertIn("verifyOwnerToken(id, ownerToken)", delete_api)
+        self.assertIn("operations: ['get']", video_api)
+        self.assertIn("api/source-url", workflow)
+        self.assertIn("api/publish-url", workflow)
+        self.assertNotIn("api/runner-source", workflow)
+        self.assertFalse((ROOT / "api" / "runner-source.js").exists())
+        render_job = workflow.split("  render:", 1)[1].split("  cleanup:", 1)[0]
+        self.assertNotIn("id-token: write", render_job)
+        self.assertIn("source_url_b64", workflow)
+        self.assertIn("publish_url_b64", workflow)
+        self.assertNotIn("gh release create", workflow)
+        self.assertNotIn("actions/upload-artifact@v4", workflow)
+        self.assertIn("mp4 sont privés", page.lower())
+
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -411,19 +447,22 @@ class ImageExportTests(unittest.TestCase):
             self.assertEqual(int.from_bytes(data[16:20], "big"), 400)
             self.assertEqual(int.from_bytes(data[20:24], "big"), 200)
 
-    def test_web_pipeline_exposes_image_output(self):
+    def test_web_pipeline_exposes_private_image_and_video_output(self):
         api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
         wf = (ROOT / ".github" / "workflows" / "render.yml").read_text(encoding="utf-8")
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         server = (ROOT / "lib" / "kidas-server.js").read_text(encoding="utf-8")
+        job_api = (ROOT / "api" / "job.js").read_text(encoding="utf-8")
         self.assertIn("sortie: String(output)", api)
         self.assertIn("--outdir rendrax-out", wf)
-        self.assertIn("name: image-export", wf)
-        self.assertIn("rendrax-out/*", wf)
-        self.assertIn("image-export", (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8"))
+        self.assertIn("outputs/${id}.${output}", job_api)
+        self.assertNotIn("gh release create", wf)
+        self.assertNotIn("actions/upload-artifact@v4", wf)
         self.assertIn("isMediaAsset", server)
         self.assertIn('id="output"', page)
         self.assertIn("output: $('#output').value", page)
+        for output in ("mp4", "png", "jpeg", "webp"):
+            self.assertIn("'" + output + "'", api)
 
 if __name__ == "__main__":
     unittest.main()

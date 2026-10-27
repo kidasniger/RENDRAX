@@ -1,5 +1,5 @@
 import { head } from '@vercel/blob';
-import { githubRequest, readBody, safeName, sameOrigin, send, validJobId, verifyTurnstile, publicError } from '../lib/kidas-server.js';
+import { githubRequest, readBody, safeName, sameOrigin, send, validJobId, validOwnerToken, verifyOwnerToken, verifyTurnstile, publicError } from '../lib/kidas-server.js';
 
 const MAX_BYTES = 50 * 1000 * 1000;
 const FORMATS = new Set(['auto', 'portrait', 'landscape', 'square']);
@@ -15,9 +15,10 @@ const isBoolLike = value => typeof value === 'boolean' || ['true', 'false'].incl
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
-  const { id, captchaToken, scale, test, duration, format, name, watermark = true,
+  const { id, ownerToken, captchaToken, scale, test, duration, format, name, watermark = true,
           output = 'mp4', instant = 0, fullPage = false, transparent = false } = readBody(req);
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
+  if (!validOwnerToken(ownerToken)) return send(res, 400, { error: 'Clé privée invalide.' });
   if (!OUTPUTS.has(String(output))) return send(res, 400, { error: 'Type de sortie invalide.' });
   const isImage = String(output) !== 'mp4';
   const instantValue = Number(instant);
@@ -34,6 +35,10 @@ export default async function handler(req, res) {
   let stage = 'vérification de sécurité';
   try {
     await verifyTurnstile(req, captchaToken);
+    stage = 'vérification de la propriété du rendu';
+    const owner = await verifyOwnerToken(id, ownerToken);
+    if (!owner) return send(res, 403, { error: 'Cette tâche ne vous appartient pas.' });
+    if (String(owner.output || 'mp4') !== String(output)) return send(res, 400, { error: 'Le format de sortie ne correspond pas à la demande initiale.' });
     stage = 'lecture du HTML dans le stockage privé';
     if (!process.env.BLOB_STORE_ID) {
       const error = new Error('Le stockage Blob privé doit être connecté au projet Vercel.');
@@ -49,7 +54,7 @@ export default async function handler(req, res) {
     }
     stage = 'préparation du déclenchement du rendu';
     const inputs = {
-      fichier: 'kidas.html',
+      fichier: 'tests/fixtures/gsap-audio-timeline.html',
       blob_id: id,
       scale: String(scale),
       test: String(test),
