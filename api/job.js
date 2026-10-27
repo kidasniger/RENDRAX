@@ -1,4 +1,8 @@
-import { githubRequest, isMediaAsset, send, validJobId, publicError } from '../lib/kidas-server.js';
+import { head } from '@vercel/blob';
+import {
+  githubRequest, isMediaAsset, readOwnerRecord, send, validJobId,
+  validOwnerToken, verifyOwnerToken, publicError
+} from '../lib/kidas-server.js';
 
 function releaseSummary(release) {
   return {
@@ -17,13 +21,47 @@ function releaseSummary(release) {
   };
 }
 
+function privateOutputSummary(id, owner, metadata, ownerToken, runUrl) {
+  const output = String(owner.output || 'mp4');
+  const ext = output;
+  const filename = `${owner.name || 'RENDRAX'}.${ext}`;
+  return {
+    id,
+    tag_name: id,
+    name: owner.name || 'RENDRAX',
+    created_at: owner.createdAt || new Date().toISOString(),
+    html_url: runUrl || '',
+    private: true,
+    ownerToken,
+    assets: [{
+      name: filename,
+      size: Number(metadata.size) || 0,
+      browser_download_url: `/api/video?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(ownerToken)}`
+    }]
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
   const id = String(req.query?.id || '');
+  const ownerToken = String(req.query?.ownerToken || '');
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de rendu invalide.' });
+
   try {
+    let owner = null;
+    if (ownerToken) {
+      if (!validOwnerToken(ownerToken)) return send(res, 403, { error: 'Clé privée invalide.' });
+      owner = await verifyOwnerToken(id, ownerToken);
+      if (!owner) return send(res, 403, { error: 'Cette tâche ne vous appartient pas.' });
+    } else {
+      owner = await readOwnerRecord(id);
+      if (owner) return send(res, 403, { error: 'Une clé privée est requise pour suivre ce rendu.' });
+    }
+
     const runs = await githubRequest('/repos/kidasniger/RENDRAX/actions/runs?event=workflow_dispatch&per_page=100');
-    const run = (runs.data.workflow_runs || []).find(item => item.display_title === `Rendu ${id}`);
+    const run = (runs.data.workflow_runs || []).find(item =>
+      item.display_title === `Rendu ${id}` && item.path === '.github/workflows/render.yml'
+    );
     if (!run) return send(res, 200, { found: false });
     const result = {
       found: true,
@@ -33,6 +71,7 @@ export default async function handler(req, res) {
       html_url: run.html_url,
       release: null
     };
+
     if (req.query?.details === '1' || (run.status === 'completed' && run.conclusion !== 'success')) {
       try {
         const response = await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${run.id}/jobs?per_page=20`);
@@ -53,12 +92,19 @@ export default async function handler(req, res) {
         console.warn('[RENDRAX job details]', detailsError?.status || detailsError?.name || 'error');
       }
     }
+
     if (run.status === 'completed' && run.conclusion === 'success') {
-      try {
-        const release = await githubRequest(`/repos/kidasniger/RENDRAX/releases/tags/${encodeURIComponent(id)}`);
-        result.release = releaseSummary(release.data);
-      } catch (error) {
-        if (error.status !== 404) throw error;
+      if (owner) {
+        const output = String(owner.output || 'mp4');
+        const metadata = await head(`outputs/${id}.${output}`);
+        result.release = privateOutputSummary(id, owner, metadata, ownerToken, run.html_url);
+      } else {
+        try {
+          const release = await githubRequest(`/repos/kidasniger/RENDRAX/releases/tags/${encodeURIComponent(id)}`);
+          result.release = releaseSummary(release.data);
+        } catch (error) {
+          if (error.status !== 404) throw error;
+        }
       }
     }
     return send(res, 200, result);
