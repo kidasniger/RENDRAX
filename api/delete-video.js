@@ -3,6 +3,14 @@ import { readBody, sameOrigin, send, validJobId, validOwnerToken, verifyOwnerTok
 
 const OUTPUTS = ['mp4', 'png', 'jpeg', 'webp'];
 
+async function removeIfPresent(path) {
+  try { await del(path); }
+  catch (error) {
+    const status = Number(error?.status || error?.statusCode);
+    if (status !== 404 && status !== 410) throw error;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
@@ -13,15 +21,9 @@ export default async function handler(req, res) {
   try {
     const owner = await verifyOwnerToken(id, ownerToken);
     if (!owner) return send(res, 404, { error: 'Fichier introuvable ou accès refusé.' });
-    await del(`incoming/${id}.html`);
-    for (const output of OUTPUTS) {
-      try { await del(`outputs/${id}.${output}`); }
-      catch (error) {
-        const status = Number(error?.status || error?.statusCode);
-        if (status !== 404 && status !== 410) throw error;
-      }
-    }
-    await del(`owners/${id}.json`);
+    await removeIfPresent(`incoming/${id}.html`);
+    for (const output of OUTPUTS) await removeIfPresent(`outputs/${id}.${output}`);
+    await removeIfPresent(`owners/${id}.json`);
     return send(res, 200, { success: true, fileRemoved: true, ownerRecordRemoved: true });
   } catch (error) {
     const result = publicError(error);
