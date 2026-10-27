@@ -122,8 +122,10 @@ jobs:
             -H "Content-Type: application/json" \
             --data "{\"id\":\"${TAG}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"output\":\"${SORTIE}\"}" | jq -er '.url')"
 
-          echo "::add-mask::${SOURCE_URL}"
-          echo "::add-mask::${PUBLISH_URL}"
+          # Do not register the signed URLs with add-mask: GitHub then treats the
+          # derived job outputs as secrets and suppresses them, leaving the render
+          # job without either URL. Never print these values; pass them only as
+          # encoded job outputs. Each URL is scoped to one private object and expires.
           echo "source_url_b64=$(printf '%s' "$SOURCE_URL" | base64 -w0)" >> "$GITHUB_OUTPUT"
           echo "publish_url_b64=$(printf '%s' "$PUBLISH_URL" | base64 -w0)" >> "$GITHUB_OUTPUT"
 
