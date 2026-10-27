@@ -5,7 +5,8 @@ import { publicError, send } from '../lib/kidas-server.js';
 const MAX_AGE_MS = 48 * 60 * 60 * 1000;
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 5;
-const PATH_PATTERN = /^incoming\/v[a-z0-9]{12,40}\.html$/;\nconst OUTPUT_TYPES = ['mp4', 'png', 'jpeg', 'webp'];
+const PATH_PATTERN = /^incoming\/v[a-z0-9]{12,40}\.html$/;
+const OUTPUT_TYPES = ['mp4', 'png', 'jpeg', 'webp'];
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
