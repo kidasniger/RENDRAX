@@ -42,6 +42,8 @@ jobs:
           python -c "import websocket; print('websocket-client installé:', websocket.__version__)"
           python -c "import PIL; print('Pillow installé:', PIL.__version__)"
       - name: Tests unitaires
+        env:
+          RENDRAX_CHROME_NO_SANDBOX: "1"
         run: python -m unittest discover -s tests -v
       - name: Vérifier la syntaxe JavaScript de l’interface
         run: python tests/check_frontend.py
