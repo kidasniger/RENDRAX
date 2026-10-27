@@ -81,7 +81,6 @@ jobs:
           echo "Images distinctes dans le test GSAP D sans T : $duration_unique_frames"
           test "$duration_unique_frames" -ge 10
           echo "Tests terminés : profils audio, CSS, Canvas et Web Audio vérifiés."
-          echo "Tests terminés : profils audio, CSS, Canvas, Web Audio et rendu RENDRAX IA silencieux vérifiés."
       - name: Rendus d'images (PNG, JPEG, WebP)
         run: |
           set -euo pipefail

@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const { runId } = readBody(req);
   if (!/^\d+$/.test(String(runId || ''))) return send(res, 400, { error: 'Identifiant de tâche invalide.' });
   try {
-    await githubRequest(`/repos/kidasniger/Kidas/actions/runs/${runId}/cancel`, { method: 'POST' });
+    await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${runId}/cancel`, { method: 'POST' });
     return send(res, 200, { success: true });
   } catch (error) {
     const result = publicError(error);

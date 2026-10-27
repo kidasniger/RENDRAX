@@ -236,10 +236,11 @@ class Html2Mp4Tests(unittest.TestCase):
         job_api = (ROOT / "api" / "job.js").read_text(encoding="utf-8")
         videos_api = (ROOT / "api" / "videos.js").read_text(encoding="utf-8")
         delete_api = (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8")
+        cancel_api = (ROOT / "api" / "cancel.js").read_text(encoding="utf-8")
         self.assertIn("kidasniger/RENDRAX/.github/workflows/render.yml@refs/heads/main", server)
         self.assertIn("payload.repository === 'kidasniger/RENDRAX'", server)
         self.assertIn("/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches", render_api)
-        for source in (job_api, videos_api, delete_api):
+        for source in (job_api, videos_api, delete_api, cancel_api):
             self.assertIn("kidasniger/RENDRAX", source)
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)

@@ -21,12 +21,12 @@ technologies:
   - "GitHub Actions"
   - "Cloudflare Turnstile"
 featured: false
-github: "https://github.com/kidasniger/Kidas"
+github: "https://github.com/kidasniger/RENDRAX"
 demo: "https://rendrax.vercel.app"
 website: "À renseigner"
 documentation: "À renseigner"
 download: "À renseigner"
-icon: "https://raw.githubusercontent.com/kidasniger/Kidas/main/logo/rendrax_icon_cutout.png"
+icon: "https://raw.githubusercontent.com/kidasniger/RENDRAX/main/logo/rendrax_icon_cutout.png"
 cover: "À renseigner"
 ---
 
@@ -108,7 +108,7 @@ RENDRAX convertit des animations HTML en vidéos MP4 à l’aide d’un rendu c�
 
 # Liens
 
-- GitHub: "https://github.com/kidasniger/Kidas"
+- GitHub: "https://github.com/kidasniger/RENDRAX"
 - Démo: "https://rendrax.vercel.app"
 - Site web: "À renseigner"
 - Documentation: "À renseigner"
