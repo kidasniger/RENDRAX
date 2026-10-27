@@ -229,9 +229,9 @@ jobs:
         run: |
           set -euo pipefail
           args=(--file "$FICHIER" --to "$SORTIE" --scale "$SCALE" --at "$INSTANT" --format "$FORMAT" --name "$NOM" --outdir rendrax-out)
-          [[ "\${PLEINE_PAGE,,}" == "true" ]] && args+=(--full-page)
-          [[ "\${TRANSPARENT,,}" == "true" ]] && args+=(--transparent)
-          python html2mp4.py "\${args[@]}"
+          [[ "${PLEINE_PAGE,,}" == "true" ]] && args+=(--full-page)
+          [[ "${TRANSPARENT,,}" == "true" ]] && args+=(--transparent)
+          python html2mp4.py "${args[@]}"
           ls -la rendrax-out
 
       - name: Envoyer le MP4 au stockage privé
