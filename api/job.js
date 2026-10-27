@@ -1,6 +1,6 @@
 import { head } from '@vercel/blob';
 import {
-  githubRequest, isMediaAsset, readOwnerRecord, send, validJobId,
+  githubRequest, isMediaAsset, readBody, readOwnerRecord, sameOrigin, send, validJobId,
   validOwnerToken, verifyOwnerToken, publicError
 } from '../lib/kidas-server.js';
 
@@ -21,7 +21,7 @@ function releaseSummary(release) {
   };
 }
 
-function privateOutputSummary(id, owner, metadata, ownerToken, runUrl) {
+function privateOutputSummary(id, owner, metadata, runUrl) {
   const output = String(owner.output || 'mp4');
   const ext = output;
   const filename = `${owner.name || 'RENDRAX'}.${ext}`;
@@ -36,15 +36,18 @@ function privateOutputSummary(id, owner, metadata, ownerToken, runUrl) {
     assets: [{
       name: filename,
       size: Number(metadata.size) || 0,
-      browser_download_url: `/api/video?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(ownerToken)}`
+      browser_download_url: `/api/video?id=${encodeURIComponent(id)}`
     }]
   };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
-  const id = String(req.query?.id || '');
-  const ownerToken = String(req.query?.ownerToken || '');
+  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+  const body = readBody(req);
+  const id = String(body.id || '');
+  const ownerToken = String(body.ownerToken || '');
+  const details = body.details === true || String(body.details || '') === '1';
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de rendu invalide.' });
 
   try {
@@ -72,7 +75,7 @@ export default async function handler(req, res) {
       release: null
     };
 
-    if (req.query?.details === '1' || (run.status === 'completed' && run.conclusion !== 'success')) {
+    if (details || (run.status === 'completed' && run.conclusion !== 'success')) {
       try {
         const response = await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${run.id}/jobs?per_page=20`);
         const jobs = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
@@ -97,7 +100,7 @@ export default async function handler(req, res) {
       if (owner) {
         const output = String(owner.output || 'mp4');
         const metadata = await head(`outputs/${id}.${output}`);
-        result.release = privateOutputSummary(id, owner, metadata, ownerToken, run.html_url);
+        result.release = privateOutputSummary(id, owner, metadata, run.html_url);
       } else {
         try {
           const release = await githubRequest(`/repos/kidasniger/RENDRAX/releases/tags/${encodeURIComponent(id)}`);
