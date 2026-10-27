@@ -215,16 +215,16 @@ jobs:
           python html2mp4.py "${args[@]}"
 
       - name: Rendre l'image
-        if: \${{ inputs.sortie != 'mp4' }}
+        if: ${{ inputs.sortie != 'mp4' }}
         env:
-          FICHIER: \${{ steps.source.outputs.fichier }}
-          SORTIE: \${{ inputs.sortie }}
-          SCALE: \${{ inputs.scale }}
-          INSTANT: \${{ inputs.instant }}
-          FORMAT: \${{ inputs.format }}
-          NOM: \${{ inputs.nom }}
-          PLEINE_PAGE: \${{ inputs.pleine_page }}
-          TRANSPARENT: \${{ inputs.transparent }}
+          FICHIER: ${{ steps.source.outputs.fichier }}
+          SORTIE: ${{ inputs.sortie }}
+          SCALE: ${{ inputs.scale }}
+          INSTANT: ${{ inputs.instant }}
+          FORMAT: ${{ inputs.format }}
+          NOM: ${{ inputs.nom }}
+          PLEINE_PAGE: ${{ inputs.pleine_page }}
+          TRANSPARENT: ${{ inputs.transparent }}
           RENDRAX_CHROME_NO_SANDBOX: "1"
         run: |
           set -euo pipefail
@@ -235,10 +235,10 @@ jobs:
           ls -la rendrax-out
 
       - name: Envoyer le MP4 au stockage privé
-        if: \${{ inputs.tag != '' && inputs.sortie == 'mp4' }}
+        if: ${{ inputs.tag != '' && inputs.sortie == 'mp4' }}
         env:
-          TAG: \${{ inputs.tag }}
-          PUBLISH_URL_B64: \${{ needs.prepare.outputs.publish_url_b64 }}
+          TAG: ${{ inputs.tag }}
+          PUBLISH_URL_B64: ${{ needs.prepare.outputs.publish_url_b64 }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant vidéo invalide."; exit 1; }
@@ -253,11 +253,11 @@ jobs:
           echo "MP4 envoyé dans le stockage privé."
 
       - name: Envoyer l'image au stockage privé
-        if: \${{ inputs.tag != '' && inputs.sortie != 'mp4' }}
+        if: ${{ inputs.tag != '' && inputs.sortie != 'mp4' }}
         env:
-          TAG: \${{ inputs.tag }}
-          SORTIE: \${{ inputs.sortie }}
-          PUBLISH_URL_B64: \${{ needs.prepare.outputs.publish_url_b64 }}
+          TAG: ${{ inputs.tag }}
+          SORTIE: ${{ inputs.sortie }}
+          PUBLISH_URL_B64: ${{ needs.prepare.outputs.publish_url_b64 }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant du fichier invalide."; exit 1; }
