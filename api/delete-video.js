@@ -7,6 +7,20 @@ import {
 const REPOSITORY = 'kidasniger/RENDRAX';
 const RENDER_WORKFLOW = 'render.yml';
 const VIDEO_ARTIFACT_NAME = 'video-mp4';
+const OUTPUT_TYPES = ['mp4', 'png', 'jpeg', 'webp'];
+
+async function deleteIfExists(pathname) {
+  try {
+    await del(pathname);
+  } catch (error) {
+    const status = Number(error?.status || error?.statusCode);
+    if (status !== 404) throw error;
+  }
+}
+
+async function deleteOutputs(id) {
+  for (const ext of OUTPUT_TYPES) await deleteIfExists(`outputs/${id}.${ext}`);
+}
 const RUNS_PAGE_SIZE = 100;
 const MAX_RUN_PAGES = 20;
 
@@ -62,8 +76,9 @@ export default async function handler(req, res) {
 
     const run = await findRenderRun(id);
     const artifactsRemoved = run ? await deleteVideoArtifact(run.id) : 0;
-    await del(['mp4', 'png', 'jpeg', 'webp'].map(ext => `outputs/${id}.${ext}`));
-    await del(`owners/${id}.json`);
+    await deleteOutputs(id);
+    await deleteIfExists(`incoming/${id}.html`);
+    await deleteIfExists(`owners/${id}.json`);
 
     return send(res, 200, {
       success: true,
