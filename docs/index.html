@@ -876,11 +876,11 @@ async function go() {
   const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const ownerToken = createOwnerToken();
   const output = $('#output').value;
-  const name = f.name.replace(/\\.html?$/i, '');
+  const name = f.name.replace(/\.html?$/i, '');
   const t0 = Date.now();
   currentJobId = id; currentOwnerToken = ownerToken;
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
-  let step = 0, uploadComplete = false, uploadUrlIssued = false, dispatchAccepted = false;
+  let step = 0, uploadUrlIssued = false, dispatchAccepted = false;
   try {
     setSteps(0); status('Vérification de sécurité…');
     const uploadCaptcha = await captchaToken();
@@ -888,7 +888,6 @@ async function go() {
     const signed = await api('/upload-url', { method: 'POST', body: { id, ownerToken, output, name, captchaToken: uploadCaptcha } });
     uploadUrlIssued = true;
     await uploadPrivateBlob(signed.url, f);
-    uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     step = 1; setSteps(1); status('Préparation du rendu…');
     const renderCaptcha = await captchaToken();
