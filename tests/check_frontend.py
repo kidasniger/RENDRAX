@@ -7,6 +7,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "docs" / "index.html"
+MOTION = ROOT / "docs" / "assets" / "rendrax-motion.js"
 SCRIPT_RE = re.compile(r"<script\b([^>]*)>([\s\S]*?)</script\s*>", re.IGNORECASE)
 NON_EXECUTABLE = re.compile(
     r"""\btype\s*=\s*["'](?:application/json|application/ld\+json|importmap)["']""",
@@ -16,8 +17,9 @@ NON_EXECUTABLE = re.compile(
 
 def main() -> None:
     html = PAGE.read_text(encoding="utf-8")
+    motion = MOTION.read_text(encoding="utf-8")
     for forbidden in ("esm.sh/react", "uploads/vmv7j3erf.html"):
-        if forbidden in html:
+        if forbidden in html or forbidden in motion:
             raise SystemExit(f"Privacy/dependency regression: {forbidden}")
 
     scripts = [
@@ -34,6 +36,8 @@ def main() -> None:
             path = Path(temp_dir) / f"inline-{index}.mjs"
             path.write_text(source, encoding="utf-8")
             checked.append((f"inline JavaScript block {index}", path))
+
+        checked.append(("docs/assets/rendrax-motion.js", MOTION))
 
         for directory in (ROOT / "api", ROOT / "lib"):
             for path in sorted(directory.glob("*.js")):
