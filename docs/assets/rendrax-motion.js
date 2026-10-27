@@ -1,81 +1,80 @@
+// Progressive enhancement for the RENDRAX hero illustration; no third-party runtime.
+(function () {
+  const mount = document.getElementById("rdx-react-visual");
+  if (!mount) return;
 
-import React, { useEffect, useState } from "react";
-import { createRoot } from "react-dom/client";
+  const make = (tag, className, text, parent) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    if (parent) parent.appendChild(node);
+    return node;
+  };
 
-const h = React.createElement;
+  const scene = make("div", "rdx-motion-scene");
+  scene.setAttribute("aria-hidden", "true");
+  scene.dataset.phase = "0";
 
-function MotionVisual() {
-  const [phase, setPhase] = useState(0);
+  const code = make("div", "rdx-code-card", null, scene);
+  const bar = make("div", "rdx-windowbar", null, code);
+  make("i", "", null, bar);
+  make("i", "", null, bar);
+  make("i", "", null, bar);
+  make("b", "", "animation.html", bar);
 
-  useEffect(() => {
-    document.documentElement.classList.add("rdx-motion-ready");
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return undefined;
-    const timer = window.setInterval(() => setPhase(value => (value + 1) % 4), 2200);
-    return () => window.clearInterval(timer);
-  }, []);
+  const lines = make("div", "rdx-code-lines", null, code);
+  const row1 = make("div", "rdx-code-row", null, lines);
+  make("span", "rdx-line-num", "01", row1);
+  make("span", "rdx-code-token", "const", row1);
+  make("span", "", "scene", row1);
+  make("span", "rdx-code-punct", "=", row1);
 
-  return h("div", { className: "rdx-motion-scene", "data-phase": phase, role: "presentation" },
-    h("div", { className: "rdx-code-card" },
-      h("div", { className: "rdx-windowbar" },
-        h("i"), h("i"), h("i"),
-        h("b", null, "animation.html")
-      ),
-      h("div", { className: "rdx-code-lines" },
-        h("div", { className: "rdx-code-row" },
-          h("span", { className: "rdx-line-num" }, "01"),
-          h("span", { className: "rdx-code-token" }, "const"),
-          h("span", null, "scene"),
-          h("span", { className: "rdx-code-punct" }, "=")
-        ),
-        h("div", { className: "rdx-code-row" },
-          h("span", { className: "rdx-line-num" }, "02"),
-          h("span", { className: "rdx-code-token" }, "animate"),
-          h("span", { className: "rdx-code-punct" }, "("),
-          h("span", { className: "rdx-code-string" }, "\"motion\""),
-          h("span", { className: "rdx-code-punct" }, ")")
-        ),
-        h("div", { className: "rdx-code-row" },
-          h("span", { className: "rdx-line-num" }, "03"),
-          h("span", { className: "rdx-code-string" }, "render(frame)")
-        ),
-        h("div", { className: "rdx-code-row" },
-          h("span", { className: "rdx-line-num" }, "04"),
-          h("span", { className: "rdx-code-punct" }, "→"),
-          h("span", { className: "rdx-code-token" }, "MP4")
-        )
-      ),
-      h("div", { className: "rdx-code-progress" }, h("span"))
-    ),
-    h("div", { className: "rdx-convert-badge", "aria-hidden": "true" }, "→"),
-    h("div", { className: "rdx-video-card" },
-      h("div", { className: "rdx-film-frame" },
-        h("div", { className: "rdx-film-sun" }),
-        h("div", { className: "rdx-film-hill" }),
-        h("div", { className: "rdx-film-hill alt" }),
-        h("div", { className: "rdx-play" }, "▶")
-      ),
-      h("div", { className: "rdx-video-caption" },
-        h("span", null, "RENDRAX.mp4"),
-        h("span", null, "00:12")
-      )
-    ),
-    h("div", { className: "rdx-float-pill rdx-pill-secure" },
-      h("span", { className: "rdx-live-dot" }),
-      "Rendu sécurisé"
-    ),
-    h("div", { className: "rdx-float-pill rdx-pill-quality" },
-      h("span", null, "✳"),
-      h("span", null, "Image par image")
-    )
-  );
-}
+  const row2 = make("div", "rdx-code-row", null, lines);
+  make("span", "rdx-line-num", "02", row2);
+  make("span", "rdx-code-token", "animate", row2);
+  make("span", "rdx-code-punct", "(", row2);
+  make("span", "rdx-code-string", '"motion"', row2);
+  make("span", "rdx-code-punct", ")", row2);
 
-const mount = document.getElementById("rdx-react-visual");
-if (mount) {
-  try {
-    createRoot(mount).render(h(MotionVisual));
-  } catch (error) {
-    console.error("RENDRAX motion UI failed to mount", error);
-  }
-}
+  const row3 = make("div", "rdx-code-row", null, lines);
+  make("span", "rdx-line-num", "03", row3);
+  make("span", "rdx-code-string", "render(frame)", row3);
+
+  const row4 = make("div", "rdx-code-row", null, lines);
+  make("span", "rdx-line-num", "04", row4);
+  make("span", "rdx-code-punct", "→", row4);
+  make("span", "rdx-code-token", "MP4", row4);
+
+  const progress = make("div", "rdx-code-progress", null, code);
+  make("span", "", null, progress);
+
+  make("div", "rdx-convert-badge", "→", scene);
+
+  const video = make("div", "rdx-video-card", null, scene);
+  const frame = make("div", "rdx-film-frame", null, video);
+  make("div", "rdx-film-sun", null, frame);
+  make("div", "rdx-film-hill", null, frame);
+  make("div", "rdx-film-hill alt", null, frame);
+  make("div", "rdx-play", "▶", frame);
+  const caption = make("div", "rdx-video-caption", null, video);
+  make("span", "", "RENDRAX.mp4", caption);
+  make("span", "", "00:12", caption);
+
+  const secure = make("div", "rdx-float-pill rdx-pill-secure", null, scene);
+  make("span", "rdx-live-dot", null, secure);
+  secure.appendChild(document.createTextNode("Rendu sécurisé"));
+
+  const quality = make("div", "rdx-float-pill rdx-pill-quality", null, scene);
+  make("span", "", "✳", quality);
+  make("span", "", "Image par image", quality);
+
+  mount.appendChild(scene);
+  document.documentElement.classList.add("rdx-motion-ready");
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let phase = 0;
+  window.setInterval(() => {
+    phase = (phase + 1) % 4;
+    scene.dataset.phase = String(phase);
+  }, 2200);
+})();
