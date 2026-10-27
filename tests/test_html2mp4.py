@@ -443,19 +443,26 @@ class ImageExportTests(unittest.TestCase):
             self.assertEqual(int.from_bytes(data[16:20], "big"), 400)
             self.assertEqual(int.from_bytes(data[20:24], "big"), 200)
 
-    def test_web_pipeline_exposes_image_output(self):
+    def test_web_pipeline_exposes_private_image_output(self):
         api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
         wf = (ROOT / ".github" / "workflows" / "render.yml").read_text(encoding="utf-8")
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-        server = (ROOT / "lib" / "kidas-server.js").read_text(encoding="utf-8")
+        publish = (ROOT / "api" / "publish-url.js").read_text(encoding="utf-8")
+        video = (ROOT / "api" / "video.js").read_text(encoding="utf-8")
         self.assertIn("sortie: String(output)", api)
         self.assertIn("--outdir rendrax-out", wf)
-        self.assertIn("name: image-export", wf)
-        self.assertIn("rendrax-out/*", wf)
-        self.assertIn("image-export", (ROOT / "api" / "delete-video.js").read_text(encoding="utf-8"))
-        self.assertIn("isMediaAsset", server)
+        self.assertIn("api/publish-url", wf)
+        self.assertIn("find rendrax-out", wf)
+        self.assertIn("image/png", publish)
+        self.assertIn("image/jpeg", publish)
+        self.assertIn("image/webp", publish)
+        self.assertIn("access: 'private'", publish)
+        self.assertIn("outputs/${id}.${type.extension}", video)
         self.assertIn('id="output"', page)
-        self.assertIn("output: $('#output').value", page)
+        self.assertIn("output, instant:", page)
+        self.assertNotIn("name: image-export", wf)
+        self.assertNotIn("gh release create", wf)
+        self.assertNotIn("actions/upload-artifact@v4", wf)
 
 if __name__ == "__main__":
     unittest.main()
