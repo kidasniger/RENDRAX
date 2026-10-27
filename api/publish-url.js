@@ -1,4 +1,4 @@
-import { head, issueSignedToken, presignUrl } from '@vercel/blob';
+import { issueSignedToken, presignUrl } from '@vercel/blob';
 import {
   readOwnerRecord, send, validJobId, verifyGitHubActionsRequest,
   verifyRenderRun, publicError
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const id = String(body.id || '');
   const runId = String(body.run_id || '');
-  if (!validJobId(id) || !/^\\d{1,20}$/.test(runId)) {
+  if (!validJobId(id) || !/^\d{1,20}$/.test(runId)) {
     return send(res, 400, { error: 'Identifiant ou format de rendu invalide.' });
   }
 
