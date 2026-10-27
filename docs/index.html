@@ -705,34 +705,55 @@ function kindOf(name) {
   const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1] || '';
   return /^mp4$/i.test(ext) ? 'Vidéo MP4' : 'Image ' + (/^jpe?g$/i.test(ext) ? 'JPEG' : ext.toUpperCase());
 }
+async function privateDownloadUrl(rel) {
+  if (!rel || !rel.private || !rel.id || !rel.ownerToken) throw new Error('Clé privée manquante.');
+  const data = await api('/video', { method: 'POST', body: { id: rel.id, ownerToken: rel.ownerToken } });
+  if (!data.url) throw new Error('Lien temporaire indisponible.');
+  return data.url;
+}
 function showResult(rel) {
   const a = mediaOf(rel);
   const box = $('#res'); box.textContent = '';
   if (!a) { box.textContent = 'Rendu terminé, mais aucun fichier trouvé dans la publication.'; return; }
+  const isPrivate = rel.private === true;
   const video = isVideoName(a.name);
   let preview;
   if (video) {
     preview = document.createElement('video');
-    preview.controls = true; preview.playsInline = true; preview.preload = 'metadata'; preview.src = a.browser_download_url;
+    preview.controls = true; preview.playsInline = true; preview.preload = 'metadata';
+    if (!isPrivate) preview.src = a.browser_download_url;
   } else {
     preview = document.createElement('img');
-    preview.className = 'rdx-result-image'; preview.alt = 'Image générée : ' + a.name; preview.src = a.browser_download_url;
+    preview.className = 'rdx-result-image'; preview.alt = 'Image générée : ' + a.name;
+    if (!isPrivate) preview.src = a.browser_download_url;
   }
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
-  dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
+  dl.className = 'btn'; dl.href = isPrivate ? '#' : a.browser_download_url; dl.download = a.name;
   dl.textContent = 'Télécharger (' + size(a.size) + ')';
-  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
-  cp.onclick = async () => {
-    try { await navigator.clipboard.writeText(a.browser_download_url); cp.textContent = 'Lien copié ✓'; }
-    catch (e) { window.prompt('Copie ce lien :', a.browser_download_url); }
-    setTimeout(() => { cp.textContent = 'Copier le lien'; }, 2000);
-  };
-  bar.append(dl, cp);
-  if (navigator.share) {
-    const sh = document.createElement('button'); sh.type = 'button'; sh.className = 'sec'; sh.textContent = 'Partager';
-    sh.onclick = () => navigator.share({ title: a.name, url: a.browser_download_url }).catch(() => {});
-    bar.append(sh);
+  if (isPrivate) {
+    dl.addEventListener('click', async event => {
+      event.preventDefault();
+      dl.setAttribute('aria-busy', 'true');
+      try { window.location.assign(await privateDownloadUrl(rel)); }
+      catch (e) { alert(explain(e)); }
+      finally { dl.removeAttribute('aria-busy'); }
+    });
+  }
+  bar.append(dl);
+  if (!isPrivate) {
+    const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
+    cp.onclick = async () => {
+      try { await navigator.clipboard.writeText(a.browser_download_url); cp.textContent = 'Lien copié ✓'; }
+      catch (e) { window.prompt('Copie ce lien :', a.browser_download_url); }
+      setTimeout(() => { cp.textContent = 'Copier le lien'; }, 2000);
+    };
+    bar.append(cp);
+    if (navigator.share) {
+      const sh = document.createElement('button'); sh.type = 'button'; sh.className = 'sec'; sh.textContent = 'Partager';
+      sh.onclick = () => navigator.share({ title: a.name, url: a.browser_download_url }).catch(() => {});
+      bar.append(sh);
+    }
   }
   const info = document.createElement('small');
   if (video) {
@@ -745,6 +766,10 @@ function showResult(rel) {
     });
   }
   box.append(preview, info, bar);
+  if (isPrivate) {
+    privateDownloadUrl(rel).then(url => { preview.src = url; })
+      .catch(() => { info.textContent = 'Aperçu privé indisponible. Utilise le bouton Télécharger pour réessayer.'; });
+  }
 }
 async function loadList() {
   const ul = $('#list');
@@ -771,7 +796,16 @@ async function loadList() {
     if (!a) continue;
     const li = document.createElement('li');
     const meta = document.createElement('div'); meta.className = 'meta';
-    const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
+    const l = document.createElement('a');
+    l.href = r.private ? '#' : a.browser_download_url;
+    l.textContent = a.name;
+    if (r.private && r.ownerToken) {
+      l.addEventListener('click', async event => {
+        event.preventDefault();
+        try { window.location.assign(await privateDownloadUrl(r)); }
+        catch (e) { alert(explain(e)); }
+      });
+    }
     const d = document.createElement('small');
     d.textContent = kindOf(a.name) + (r.private ? ' · privé' : ' · release publique') +
       ' · ' + new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
@@ -807,7 +841,7 @@ async function waitJob(id, t0, ownerToken) {
     await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
-    const job = await api('/job?id=' + encodeURIComponent(id) + '&ownerToken=' + encodeURIComponent(ownerToken) + (showDetails ? '&details=1' : ''));
+    const job = await api('/job', { method: 'POST', body: { id, ownerToken, details: showDetails } });
     const elapsed = mmss(Date.now() - t0);
     if (!job.found) {
       setSteps(1); status('Démarrage du rendu… (' + elapsed + ')');
