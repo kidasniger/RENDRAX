@@ -905,7 +905,7 @@ async function go() {
     step = 2;
     await finish(await waitJob(id, t0, ownerToken));
   } catch (e) {
-    if (uploadUrlIssued && !dispatchAccepted) await cleanupUpload(id, ownerToken);
+    if (uploadUrlIssued && (!dispatchAccepted || e.url || e.cancelled)) await cleanupUpload(id, ownerToken);
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
