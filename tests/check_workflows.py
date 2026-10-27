@@ -34,7 +34,16 @@ def main() -> None:
     if vercel.get("outputDirectory") != "docs":
         raise SystemExit("Le dossier de sortie Vercel ne correspond plus à l'interface.")
 
-    print("Syntaxe YAML et contrôles de permissions du workflow OK.")
+    cleanup = (ROOT / "api" / "cleanup.js").read_text(encoding="utf-8")
+    if "else if (cleanupOwner === true)" not in cleanup:
+        raise SystemExit("Le nettoyage des rendus échoués doit être explicite.")
+    failure_cleanup = cleanup.split("else if (cleanupOwner === true)", 1)[1].split("return send", 1)[0]
+    if "`owners/${id}.json`" in failure_cleanup:
+        raise SystemExit("Le nettoyage d'un rendu échoué ne doit pas supprimer sa clé de suivi : /api/job doit rapporter la vraie étape en échec.")
+    if "cleanup-stale.js removes orphaned owner records after 48 hours" not in cleanup:
+        raise SystemExit("Le nettoyage différé des enregistrements propriétaires doit être documenté.")
+
+    print("Syntaxe YAML, permissions OIDC et suivi privé des rendus échoués OK.")
 
 
 if __name__ == "__main__":
