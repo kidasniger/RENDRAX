@@ -1,4 +1,19 @@
 import { del } from '@vercel/blob';
+
+const OUTPUT_TYPES = ['mp4', 'png', 'jpeg', 'webp'];
+
+async function deleteIfExists(pathname) {
+  try {
+    await del(pathname);
+  } catch (error) {
+    const status = Number(error?.status || error?.statusCode);
+    if (status !== 404) throw error;
+  }
+}
+
+async function deleteOutputs(id) {
+  for (const ext of OUTPUT_TYPES) await deleteIfExists(`outputs/${id}.${ext}`);
+}
 import {
   readBody, sameOrigin, send, validJobId, validOwnerToken,
   verifyOwnerToken, verifyGitHubActionsRequest, verifyRenderRun, publicError
@@ -20,15 +35,10 @@ export default async function handler(req, res) {
       await verifyRenderRun(id, runId);
     }
 
-    await del(`incoming/${id}.html`);
-    if (fromBrowser) {
-      await del(`owners/${id}.json`);
-    } else if (cleanupOwner === true) {
-      try { await del(['mp4', 'png', 'jpeg', 'webp'].map(ext => `outputs/${id}.${ext}`)); } catch (error) {
-        const status = Number(error?.status || error?.statusCode);
-        if (status !== 404) throw error;
-      }
-      await del(`owners/${id}.json`);
+    await deleteIfExists(`incoming/${id}.html`);
+    if (fromBrowser || cleanupOwner === true) {
+      await deleteOutputs(id);
+      await deleteIfExists(`owners/${id}.json`);
     }
     return send(res, 200, { success: true });
   } catch (error) {
