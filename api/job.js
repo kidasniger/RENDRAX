@@ -8,6 +8,8 @@ function privateVideoSummary(id, owner, metadata, ownerToken, runUrl) {
   const filename = `${owner.name || 'RENDRAX'}.${outputType}`;
   return {
     id,
+    private: true,
+    ownerToken,
     tag_name: id,
     name: owner.name || 'RENDRAX',
     created_at: owner.createdAt || new Date().toISOString(),
@@ -15,15 +17,18 @@ function privateVideoSummary(id, owner, metadata, ownerToken, runUrl) {
     assets: [{
       name: filename,
       size: Number(metadata.size) || 0,
-      browser_download_url: `/api/video?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(ownerToken)}&output=${encodeURIComponent(outputType)}`
+      browser_download_url: `/api/video?id=${encodeURIComponent(id)}`
     }]
   };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
-  const id = String(req.query?.id || '');
-  const ownerToken = String(req.query?.ownerToken || '');
+  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+  const body = readBody(req);
+  const id = String(body.id || '');
+  const ownerToken = String(body.ownerToken || '');
+  const details = body.details === true || String(body.details || '') === '1';
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de rendu invalide.' });
 
   try {
@@ -43,7 +48,7 @@ export default async function handler(req, res) {
       release: null
     };
 
-    if (req.query?.details === '1' || (run.status === 'completed' && run.conclusion !== 'success')) {
+    if (details || (run.status === 'completed' && run.conclusion !== 'success')) {
       try {
         const response = await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${run.id}/jobs?per_page=20`);
         const jobs = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
