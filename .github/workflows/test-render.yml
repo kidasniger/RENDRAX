@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: html-render-regression
+  group: html-render-regression-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
