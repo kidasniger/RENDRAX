@@ -152,7 +152,7 @@ main.rdx-main .head{margin-bottom:17px;gap:11px}
 main.rdx-main .num{width:32px;height:32px;flex:0 0 32px;border-radius:11px}
 main.rdx-main h2{font-size:1.05rem;font-weight:780}
 main.rdx-main label:not(.drop):not(.checkline){font-size:.78rem;letter-spacing:.015em}
-main.rdx-main select,main.rdx-main input[type="text"],main.rdx-main input[type="password"],main.rdx-main input[type="number"]{
+main.rdx-main select,main.rdx-main input[type="text"],main.rdx-main input[type="password"]{
   min-height:49px;border-radius:13px;background-color:var(--surf2)
 }
 main.rdx-main .drop{border-radius:19px;padding:clamp(30px,4.5vw,44px) 16px;background:linear-gradient(150deg,color-mix(in srgb,var(--ac) 5%,var(--surf2)),var(--surf2));border-color:color-mix(in srgb,var(--ac) 34%,var(--bd))}
@@ -277,8 +277,3 @@ html.rdx-ready .rdx-splash{opacity:0;visibility:hidden;pointer-events:none}
   100%{opacity:0;visibility:hidden;pointer-events:none}
 }
 html.rdx-ready .rdx-splash{animation:none;opacity:0;visibility:hidden;pointer-events:none}
-
-/* Export image : champ numérique et aperçu du résultat */
-input[type=number]{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--rs);background-color:var(--surf2);color:var(--tx);font:inherit;font-size:.95rem}
-#res .rdx-result-image{display:block;max-width:100%;max-height:70vh;margin:0 auto;border-radius:17px;box-shadow:0 12px 30px rgba(0,0,0,.12);
-  background:repeating-conic-gradient(color-mix(in srgb,var(--bd) 55%,transparent) 0 25%,transparent 0 50%) 0 0/16px 16px}

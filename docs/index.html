@@ -2,12 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="RENDRAX transforme tes animations HTML en vidéos MP4 avec le son, ou en images PNG, JPEG et WebP, grâce à un rendu image par image.">
+<meta name="description" content="RENDRAX transforme tes animations HTML en vidéos MP4 avec le son, grâce à un rendu image par image.">
 <meta name="application-name" content="RENDRAX">
 <meta property="og:title" content="RENDRAX — HTML vers MP4">
-<meta property="og:description" content="Transforme tes animations et designs HTML en vidéos MP4 ou en images.">
+<meta property="og:description" content="Transforme tes animations HTML en vidéos MP4 avec le son.">
 <meta property="og:type" content="website">
   <link rel="shortcut icon" href="/favicon.ico?v=20261025-rendrax4">
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20261025-rendrax4" sizes="any">
@@ -250,6 +249,9 @@ ul#list button{box-shadow:none}
 }
 </style>
 <link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261025-fix3">
+<script type="importmap">
+{"imports":{"react":"https://esm.sh/react@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client?external=react"}}
+</script>
 <script>
 (function(){
   var done = function(){ document.documentElement.classList.add('rdx-ready'); };
@@ -278,13 +280,13 @@ ul#list button{box-shadow:none}
       </div>
       <p class="rdx-eyebrow"><span class="rdx-live-dot" aria-hidden="true"></span> ATELIER DE RENDU · EN LIGNE</p>
       <h1 aria-label="HTML vers MP4">Le mouvement devient <span>vidéo.</span></h1>
-      <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé, ou en images PNG, JPEG et WebP pour tes designs graphiques.</p>
+      <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé.</p>
       <div class="rdx-hero-actions">
         <a class="rdx-primary-link" href="#fileCard">Commencer une conversion <span aria-hidden="true">→</span></a>
         <p>Fichiers HTML ou HTM · 50 Mo maximum</p>
       </div>
       <div class="rdx-hero-meta" aria-label="Points clés">
-        <span>HTML vers MP4 ou image</span>
+        <span>HTML vers MP4</span>
         <span>Rendu sécurisé</span>
         <span>Prêt à partager</span>
       </div>
@@ -336,12 +338,11 @@ ul#list button{box-shadow:none}
     <div class="head"><span class="num" aria-hidden="true">02</span><h2 id="h-set">Réglages</h2></div>
     <div class="grid">
       <div class="field">
-        <label for="output">Sortie</label>
-        <select id="output">
-          <option value="mp4">Vidéo MP4</option>
-          <option value="png">Image PNG</option>
-          <option value="jpeg">Image JPEG</option>
-          <option value="webp">Image WebP</option>
+        <label for="mode">Qualité</label>
+        <select id="mode">
+          <option value="full">Complète · 1080×1920</option>
+          <option value="half">Allégée · 540×960</option>
+          <option value="test">Aperçu · 10 s · 540×960</option>
         </select>
       </div>
       <div class="field">
@@ -353,15 +354,7 @@ ul#list button{box-shadow:none}
           <option value="square">Carré · 1:1</option>
         </select>
       </div>
-      <div class="field" data-only="video">
-        <label for="mode">Qualité</label>
-        <select id="mode">
-          <option value="full">Complète · 1080×1920</option>
-          <option value="half">Allégée · 540×960</option>
-          <option value="test">Aperçu · 10 s · 540×960</option>
-        </select>
-      </div>
-      <div class="field" data-only="video">
+      <div class="field">
         <label for="duration">Durée maximale</label>
         <select id="duration">
           <option value="0">Automatique</option>
@@ -372,34 +365,7 @@ ul#list button{box-shadow:none}
           <option value="300">5 minutes</option>
         </select>
       </div>
-      <div class="field" data-only="image" hidden>
-        <label for="imgscale">Définition</label>
-        <select id="imgscale">
-          <option value="1">Standard · ×1</option>
-          <option value="2">Haute · ×2 (Retina)</option>
-          <option value="3">Très haute · ×3</option>
-        </select>
-      </div>
-      <div class="field" data-only="image" hidden>
-        <label for="instant">Instant de la capture (s)</label>
-        <input id="instant" type="number" min="0" max="900" step="0.1" value="0" inputmode="decimal">
-      </div>
-      <div class="field field-wide" data-only="image" hidden>
-        <p class="mut">0 = première image. Pour une animation reconnue, l’image est prise à cet instant précis de la vidéo. Pour une autre page, l’animation tourne pendant ce temps avant la capture (5 minutes maximum).</p>
-      </div>
-      <div class="field field-wide" data-only="image" hidden>
-        <label class="checkline" for="fullpage">
-          <input id="fullpage" type="checkbox">
-          <span>Capturer toute la hauteur de la page</span>
-        </label>
-      </div>
-      <div class="field field-wide" data-only="image" hidden>
-        <label class="checkline" for="transparent">
-          <input id="transparent" type="checkbox">
-          <span>Fond transparent (PNG et WebP)</span>
-        </label>
-      </div>
-      <div class="field field-wide" data-only="video">
+      <div class="field field-wide">
         <label class="checkline" for="watermark">
           <input id="watermark" type="checkbox">
           <span>Ajouter le filigrane animé RENDRAX</span>
@@ -409,8 +375,8 @@ ul#list button{box-shadow:none}
     </div>
     <p class="mut" role="note">RENDRAX détecte automatiquement le type d’animation, la fréquence d’images et la qualité d’encodage. Il active aussi l’écran de démarrage lorsqu’il est présent. Le HTML source reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
-    <div id="captchaMount" aria-hidden="false"></div>
-    <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span><span id="goLabel">Générer MP4</span></button>
+    <div id="captchaMount" aria-hidden="true"></div>
+    <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
     <button id="cancel" class="danger" type="button" hidden>Annuler le rendu</button>
   </section>
 
@@ -429,7 +395,7 @@ ul#list button{box-shadow:none}
   </section>
 
   <section class="card" aria-labelledby="h-hist">
-    <div class="row"><h2 id="h-hist">Fichiers générés</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
+    <div class="row"><h2 id="h-hist">Vidéos générées</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
     <ul id="list"><li class="empty">Chargement…</li></ul>
   </section>
 
@@ -451,37 +417,9 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 };
-const JOBS_KEY = 'rendrax_jobs';
-const ownerKey = id => 'rendrax_owner_' + id;
-function storedJobs() {
-  try {
-    const value = JSON.parse(store.get(JOBS_KEY) || '[]');
-    return Array.isArray(value) ? value.filter(item => item && /^v[a-z0-9]{12,40}$/.test(item.id)) : [];
-  } catch (e) { return []; }
-}
-function rememberJob(id, name, createdAt, output) {
-  const jobs = storedJobs().filter(item => item.id !== id);
-  jobs.unshift({ id, name: String(name || 'RENDRAX'), createdAt: createdAt || new Date().toISOString(), output: output || 'mp4' });
-  store.set(JOBS_KEY, JSON.stringify(jobs.slice(0, 50)));
-}
-function forgetJob(id) {
-  store.set(JOBS_KEY, JSON.stringify(storedJobs().filter(item => item.id !== id)));
-}
 
-const isImageOutput = () => $('#output').value !== 'mp4';
-function syncOutput() {
-  const img = isImageOutput();
-  document.querySelectorAll('[data-only]').forEach(el => { el.hidden = el.dataset.only !== (img ? 'image' : 'video'); });
-  $('#goLabel').textContent = img ? 'Générer l’image' : 'Générer MP4';
-  const noAlpha = $('#output').value === 'jpeg';
-  $('#transparent').disabled = noAlpha;
-  if (noAlpha) $('#transparent').checked = false;
-  store.set('rdx_output', $('#output').value);
-  renderVerdict();
-}
-
-let busy = false, cancelled = false, currentRunId = null, currentJobId = null, activeDispatchAccepted = false, currentUploadXhr = null, fileText = '', verdict = null;
-let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null, captchaTokenValue = null;
+let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
+let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
   let response;
@@ -540,23 +478,16 @@ async function initSecurity() {
     await loadTurnstileScript();
     captchaWidgetId = window.turnstile.render('#captchaMount', {
       sitekey: config.turnstileSiteKey,
-      size: 'normal',
-      appearance: 'always',
+      size: 'invisible',
+      appearance: 'interaction-only',
       callback: token => {
-        const status = $('#securityStatus');
-        status.hidden = true;
-        status.textContent = '';
         if (captchaResolve) { const resolve = captchaResolve; captchaResolve = null; captchaReject = null; resolve(token); }
-        else captchaTokenValue = token;
       },
-      'error-callback': errorCode => {
-        const message = 'Échec du contrôle Cloudflare (code ' + String(errorCode || 'inconnu') + '). Réessaie.';
-        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error(message)); }
-        else { securityMessage = message; statusEl.textContent = message; statusEl.className = 'mut'; statusEl.hidden = false; }
+      'error-callback': () => {
+        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error('Vérification anti-robot impossible. Réessaie.')); }
       },
       'expired-callback': () => {
-        captchaTokenValue = null;
-        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error('La validation a expiré. Coche à nouveau la vérification.')); }
+        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error('La validation a expiré. Réessaie.')); }
       }
     });
     securityReady = true;
@@ -575,24 +506,13 @@ async function initSecurity() {
 function captchaToken() {
   return new Promise((resolve, reject) => {
     if (!securityReady || captchaWidgetId === null) return reject(new Error(securityMessage || 'Protection de sécurité non configurée.'));
-    const status = $('#securityStatus');
-    if (captchaTokenValue) {
-      const token = captchaTokenValue;
-      captchaTokenValue = null;
-      try { window.turnstile.reset(captchaWidgetId); } catch (e) {}
-      status.hidden = true;
-      status.textContent = '';
-      return resolve(token);
-    }
     captchaResolve = resolve; captchaReject = reject;
-    status.textContent = 'Valide la vérification Cloudflare ci-dessous pour continuer.';
-    status.className = 'mut';
-    status.hidden = false;
     try {
       window.turnstile.reset(captchaWidgetId);
+      window.turnstile.execute(captchaWidgetId);
     } catch (e) {
       captchaResolve = null; captchaReject = null;
-      reject(new Error('Impossible de réinitialiser la vérification Cloudflare. Recharge la page puis réessaie.'));
+      reject(new Error('Impossible de lancer la vérification anti-robot.'));
     }
   });
 }
@@ -608,8 +528,8 @@ function status(msg, cls, url) {
 }
 function hint(msg) { const h = $('#hint'); h.hidden = !msg; h.textContent = msg || ''; }
 function workflowStepIndex(name) {
-  if (/Publier (le MP4|l['’]image)|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
-  if (/Rendre (la vidéo|l['’]image)/i.test(name || '')) return 2;
+  if (/Publier le MP4|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
+  if (/Rendre la vidéo/i.test(name || '')) return 2;
   if (/Préparer le HTML source|Installer FFmpeg|Vérifier les outils média|Installer websocket-client|Set up job|actions\/checkout|setup-python/i.test(name || '')) return 1;
   return 2;
 }
@@ -619,9 +539,6 @@ function workflowStepLabel(name) {
   if (/Vérifier les outils média/i.test(name || '')) return 'Vérification des outils de rendu…';
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
   if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
-  if (/Rendre l['’]image/i.test(name || '')) return 'Capture de l’image…';
-  if (/Publier l['’]image \(artefact\)/i.test(name || '')) return 'Finalisation et vérification de l’image…';
-  if (/Publier l['’]image \(Release/i.test(name || '')) return 'Publication de l’image…';
   if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification du MP4…';
   if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage sécurisé des fichiers temporaires…';
@@ -683,20 +600,8 @@ async function checkFile() {
   try { fileText = await f.text(); v = analyze(fileText); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.' }; }
   if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
   $('#prevBtn').hidden = false;
-  renderVerdict(v);
-}
-function renderVerdict(v = verdict) {
-  if (!v || v.kind === 'invalid') return;
-  const img = isImageOutput();
-  if (v.kind === 'generic') {
-    showVerdict(v, 'warn', img
-      ? '⚠ Page non reconnue comme animation synchronisée : elle sera capturée telle qu’elle s’affiche. Avec un instant supérieur à 0, l’animation tourne ce temps avant la capture.'
-      : '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
-  } else {
-    showVerdict(v, 'ok', img
-      ? '✓ Fichier reconnu : ' + v.label + '. L’image sera prise à l’instant choisi, au pixel près.'
-      : '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
-  }
+  if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
+  else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
 }
 function setFile(files) {
   if (!files || !files.length) return;
@@ -722,34 +627,22 @@ function uploadPrivateBlob(url, file) {
     xhr.send(file);
   });
 }
-function mediaOf(rel) { return (rel.assets || []).find(x => /\.(mp4|png|jpe?g|webp)$/i.test(x.name)); }
-const isVideoName = name => /\.mp4$/i.test(name);
-function kindOf(name) {
-  const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1] || '';
-  return /^mp4$/i.test(ext) ? 'Vidéo MP4' : 'Image ' + (/^jpe?g$/i.test(ext) ? 'JPEG' : ext.toUpperCase());
-}
+function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().endsWith('.mp4')); }
 function showResult(rel) {
-  const a = mediaOf(rel);
+  const a = mp4Of(rel);
   const box = $('#res'); box.textContent = '';
-  if (!a) { box.textContent = 'Rendu terminé, mais aucun fichier n’a été trouvé dans le stockage privé.'; return; }
-  const video = isVideoName(a.name);
-  let preview;
-  if (video) {
-    preview = document.createElement('video');
-    preview.controls = true; preview.playsInline = true; preview.preload = 'metadata'; preview.src = a.browser_download_url;
-  } else {
-    preview = document.createElement('img');
-    preview.className = 'rdx-result-image'; preview.alt = 'Image générée : ' + a.name; preview.src = a.browser_download_url;
-  }
+  if (!a) { box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.'; return; }
+  const v = document.createElement('video');
+  v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = a.browser_download_url;
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
-  dl.className = 'btn'; dl.href = a.browser_download_url + '&download=1'; dl.download = a.name;
+  dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
   dl.textContent = 'Télécharger (' + size(a.size) + ')';
-  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien privé';
+  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
   cp.onclick = async () => {
     try { await navigator.clipboard.writeText(a.browser_download_url); cp.textContent = 'Lien copié ✓'; }
     catch (e) { window.prompt('Copie ce lien :', a.browser_download_url); }
-    setTimeout(() => { cp.textContent = 'Copier le lien privé'; }, 2000);
+    setTimeout(() => { cp.textContent = 'Copier le lien'; }, 2000);
   };
   bar.append(dl, cp);
   if (navigator.share) {
@@ -758,104 +651,42 @@ function showResult(rel) {
     bar.append(sh);
   }
   const info = document.createElement('small');
-  if (video) {
-    preview.addEventListener('loadedmetadata', () => {
-      info.textContent = 'Durée ' + mmss(preview.duration * 1000) + ' · ' + preview.videoWidth + '×' + preview.videoHeight + ' · ' + size(a.size);
-    });
-  } else {
-    preview.addEventListener('load', () => {
-      info.textContent = kindOf(a.name) + ' · ' + preview.naturalWidth + '×' + preview.naturalHeight + ' · ' + size(a.size);
-    });
-  }
-  box.append(preview, info, bar);
+  v.addEventListener('loadedmetadata', () => {
+    info.textContent = 'Durée ' + mmss(v.duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
+  });
+  box.append(v, info, bar);
 }
 async function loadList() {
   const ul = $('#list');
-  const jobs = storedJobs();
-  const requests = jobs.map(item => ({
-    id: item.id,
-    ownerToken: store.get(ownerKey(item.id))
-  })).filter(item => item.ownerToken);
-
-  let legacyItems = [], privateItems = [], errors = [];
   try {
-    const legacy = await api('/videos');
-    legacyItems = Array.isArray(legacy.items) ? legacy.items : [];
-  } catch (e) { errors.push(e); }
-
-  if (requests.length) {
-    try {
-      const data = await api('/videos', { method: 'POST', body: { items: requests } });
-      privateItems = Array.isArray(data.items) ? data.items : [];
-    } catch (e) { errors.push(e); }
-  }
-
-  const items = [...privateItems, ...legacyItems]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  ul.textContent = '';
-  if (!items.length) {
-    const li = document.createElement('li');
-    li.className = 'empty';
-    li.textContent = errors.length
-      ? 'Historique indisponible : ' + explain(errors[0])
-      : 'Aucun fichier généré trouvé dans les anciennes publications GitHub ou dans l’historique privé de ce navigateur.';
-    ul.append(li);
-    return;
-  }
-
-  for (const r of items) {
-    const legacyArtifact = r.source === 'github-artifact';
-    const legacyRelease = r.source === 'github-release';
-    const a = mediaOf(r);
-    if (!legacyArtifact && !a) continue;
-
-    const li = document.createElement('li');
-    const meta = document.createElement('div'); meta.className = 'meta';
-    const l = document.createElement('a');
-    l.href = legacyArtifact ? r.html_url : a.browser_download_url;
-    l.textContent = legacyArtifact ? r.name : a.name;
-    l.referrerPolicy = 'no-referrer';
-    if (legacyArtifact || legacyRelease) {
-      l.target = '_blank';
-      l.rel = 'noopener noreferrer';
-    }
-    const d = document.createElement('small');
-    const when = new Date(r.created_at).toLocaleString('fr-FR');
-    if (legacyArtifact) {
-      d.textContent = 'Archive ZIP GitHub Actions · ' + when + ' · ' + size(r.size);
-    } else {
-      d.textContent = (legacyRelease ? 'Ancienne publication GitHub · ' : kindOf(a.name) + ' · ') + when + ' · ' + size(a.size);
-    }
-    meta.append(l, d);
-    li.append(meta);
-
-    if (!legacyArtifact && !legacyRelease) {
-      const del = document.createElement('button');
-      del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
-      del.setAttribute('aria-label', 'Supprimer le fichier ' + a.name);
+    const data = await api('/videos');
+    ul.textContent = '';
+    const items = data.items || [];
+    if (!items.length) { ul.innerHTML = '<li class="empty">Aucune vidéo générée.</li>'; return; }
+    for (const r of items) {
+      const a = mp4Of(r);
+      if (!a) continue;
+      const li = document.createElement('li');
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
+      const d = document.createElement('small');
+      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
+      meta.append(l, d);
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
+      del.setAttribute('aria-label', 'Supprimer la vidéo ' + a.name);
       del.onclick = async () => {
-        if (!confirm('Supprimer définitivement ce rendu privé ?')) return;
+        if (!confirm('Supprimer définitivement cette vidéo ?')) return;
         del.disabled = true;
         try {
-          const ownerToken = store.get(ownerKey(r.id));
-          await api('/delete-video', { method: 'POST', body: { id: r.id, ownerToken } });
-          store.set(ownerKey(r.id), null);
-          forgetJob(r.id);
-          await loadList();
-        } catch (e) {
-          del.disabled = false;
-          alert(explain(e));
-        }
+          await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
+          loadList();
+        } catch (e) { del.disabled = false; alert(explain(e)); }
       };
-      li.append(del);
+      li.append(meta, del); ul.append(li);
     }
-    ul.append(li);
-  }
-
-  if (errors.length) {
-    const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = 'Historique partiel : certains fichiers privés n’ont pas pu être chargés.';
-    ul.append(li);
+  } catch (e) {
+    ul.textContent = '';
+    const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
   }
 }
 async function waitJob(id, t0) {
@@ -865,8 +696,7 @@ async function waitJob(id, t0) {
     await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
-    const ownerToken = store.get(ownerKey(id)) || '';
-    const job = await api('/job?id=' + encodeURIComponent(id) + '&ownerToken=' + encodeURIComponent(ownerToken) + (showDetails ? '&details=1' : ''));
+    const job = await api('/job?id=' + encodeURIComponent(id) + (showDetails ? '&details=1' : ''));
     const elapsed = mmss(Date.now() - t0);
     if (!job.found) {
       setSteps(1); status('Démarrage du rendu… (' + elapsed + ')');
@@ -885,7 +715,6 @@ async function waitJob(id, t0) {
       hint('Le suivi identifie automatiquement l’étape en cours. Tu peux quitter cette page : il reprendra à ton retour.');
       continue;
     }
-    if (job.conclusion === 'cancelled') { const e = new Error('annulé'); e.cancelled = true; throw e; }
     if (job.conclusion !== 'success') {
       const failedStep = job.currentStep || lastWorkflowStep;
       const where = failedStep ? workflowStepLabel(failedStep).replace(/…$/, '') : '';
@@ -893,7 +722,7 @@ async function waitJob(id, t0) {
       e.url = job.html_url; throw e;
     }
     if (job.release) return job.release;
-    setSteps(3); status('Finalisation du rendu privé… (' + elapsed + ')');
+    setSteps(3); status('Publication du MP4… (' + elapsed + ')');
   }
   throw new Error('Délai dépassé (plus de 95 minutes).');
 }
@@ -909,9 +738,7 @@ function fail(e, step) {
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
 async function cleanupUpload(id) {
-  const ownerToken = store.get(ownerKey(id));
-  if (!ownerToken) return;
-  try { await api('/cleanup', { method: 'POST', body: { id, ownerToken } }); } catch (e) {}
+  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
@@ -921,26 +748,16 @@ async function go() {
   if (!f) { setSteps(-1); return status('Choisis ou dépose un fichier HTML.', 'err'); }
   if (!verdict) await checkFile();
   if (!verdict || verdict.kind === 'invalid') { setSteps(-1); return status('Fichier refusé : il n’a pas été importé.', 'err'); }
-  const img = isImageOutput();
-  const instant = Number($('#instant').value || 0);
-  if (img && (!Number.isFinite(instant) || instant < 0 || instant > 900)) {
-    setSteps(-1); return status('L’instant de capture doit être compris entre 0 et 900 secondes.', 'err');
-  }
-  const m = img ? { scale: $('#imgscale').value, test: '0' } : MODES[$('#mode').value];
+  const m = MODES[$('#mode').value];
   const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
-  const output = $('#output').value;
-  const ownerToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
-  store.set(ownerKey(id), ownerToken);
-  rememberJob(id, f.name.replace(/\.html?$/i, ''), new Date(t0).toISOString(), output);
-  currentJobId = id; activeDispatchAccepted = false;
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
     setSteps(0); status('Vérification de sécurité…');
     const uploadCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    const signed = await api('/upload-url', { method: 'POST', body: { id, ownerToken, captchaToken: uploadCaptcha, output, name: f.name.replace(/\.html?$/i, '') } });
+    const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
     await uploadPrivateBlob(signed.url, f);
     uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -948,64 +765,39 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, ownerToken, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
-      duration: img ? '0' : $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked,
-      output, instant: img ? String(Math.round(instant * 100) / 100) : '0',
-      fullPage: img && $('#fullpage').checked, transparent: img && $('#transparent').checked && $('#output').value !== 'jpeg',
-      name: f.name.replace(/\.html?$/i, '')
+      id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
+      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: f.name.replace(/\.html?$/i, '')
     }});
-    dispatchAccepted = true; activeDispatchAccepted = true;
-    store.set('kidas_job', JSON.stringify({ id, t0, output }));
+    dispatchAccepted = true;
+    store.set('kidas_job', JSON.stringify({ id, t0 }));
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (!dispatchAccepted) {
-      await cleanupUpload(id);
-      store.set(ownerKey(id), null);
-      forgetJob(id);
-    }
+    if (uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
   setBusy(false);
 }
 async function cancel() {
-  if (!busy || !currentJobId) return;
+  cancelled = true;
   $('#cancel').disabled = true;
-  if (!activeDispatchAccepted) {
-    cancelled = true;
-    if (currentUploadXhr) currentUploadXhr.abort();
-    status('Annulation de l’envoi en cours…');
-    return;
-  }
-  status('Demande d’annulation au serveur…');
-  try {
-    const ownerToken = store.get(ownerKey(currentJobId));
-    await api('/cancel', { method: 'POST', body: { id: currentJobId, ownerToken } });
-    status('Demande acceptée ; attente de confirmation de l’annulation…');
-  } catch (e) {
-    cancelled = false;
-    $('#cancel').disabled = false;
-    status('Annulation non confirmée : ' + explain(e) + ' Le rendu peut continuer.', 'err');
+  status('Annulation en cours…');
+  if (currentUploadXhr) currentUploadXhr.abort();
+  if (currentRunId) {
+    try { await api('/cancel', { method: 'POST', body: { runId: currentRunId } }); } catch (e) {}
   }
 }
 async function resume() {
   const raw = store.get('kidas_job'); if (!raw) return;
   let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
   if (!job.id || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
-  if (!store.get(ownerKey(job.id))) { store.set('kidas_job', null); return; }
-  currentJobId = job.id; activeDispatchAccepted = true;
-  if (job.output && [...$('#output').options].some(o => o.value === job.output)) { $('#output').value = job.output; syncOutput(); }
   cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(2); status('Reprise du suivi du rendu…');
   try { await finish(await waitJob(job.id, job.t0)); }
   catch (e) { fail(e, Math.max(currentStepIndex(), 2)); }
   setBusy(false);
 }
 $('#file').onchange = checkFile;
-$('#output').onchange = syncOutput;
-const savedOutput = store.get('rdx_output');
-if (savedOutput && [...$('#output').options].some(o => o.value === savedOutput)) $('#output').value = savedOutput;
-syncOutput();
 $('#go').onclick = go;
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;

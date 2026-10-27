@@ -173,17 +173,12 @@ def extract_audio(text, tmp, profile="kidas"):
     return out
 
 
-def find_stage_size(text):
-    """Taille de scène déclarée par la page, ou None si elle n'en déclare pas."""
+def detect_stage_size(text):
     m = re.search(r"[.#](?:stage|st)\s*\{[^}]*?width:\s*(\d+)px;\s*height:\s*(\d+)px", text)
     if m:
         return int(m.group(1)), int(m.group(2))
     m = re.search(r"\bW\s*=\s*(\d{3,4})\s*,\s*H\s*=\s*(\d{3,4})\b", text)  # const W = 1080, H = 1920
-    return (int(m.group(1)), int(m.group(2))) if m else None
-
-
-def detect_stage_size(text):
-    return find_stage_size(text) or (1080, 1920)
+    return (int(m.group(1)), int(m.group(2))) if m else (1080, 1920)
 
 
 def inject_base_url(text, base_url):
@@ -210,29 +205,3 @@ def inject_generic_audio_capture(text):
 def choose_frame_size(text, fmt):
     sizes = {"portrait": (1080, 1920), "landscape": (1920, 1080), "square": (1080, 1080)}
     return sizes[fmt] if fmt in sizes else detect_stage_size(text)
-
-
-# Expression JS qui devient vraie quand la page d'un profil synchronisé est prête à être pilotée.
-READY_CHECKS = {
-    "kidas": "(()=>!!document.querySelector('.stage')&&document.querySelectorAll('audio').length>=1&&typeof D==='number'&&typeof window.__setT==='function')()",
-    "voicevideo": "(()=>!!document.querySelector('#stage')&&!!window.__video&&typeof window.__video.seek==='function'&&document.querySelectorAll('audio').length>=1)()",
-    "musicpro": "(()=>!!document.querySelector('#st')&&typeof render==='function'&&typeof D==='number'&&typeof vP!=='undefined'&&typeof mP!=='undefined')()",
-    "gsapvideo": "(()=>!!document.querySelector('#st')&&!!document.querySelector('#a')&&typeof gsap!=='undefined'&&typeof tl!=='undefined'&&typeof SUB!=='undefined')()",
-    "editpro": "(()=>!!document.querySelector('#stage')&&typeof render==='function'&&typeof IM==='object')()",
-}
-
-
-def ready_check(profile):
-    return READY_CHECKS.get(profile, READY_CHECKS["editpro"])
-
-
-def profile_duration(ev, profile, text):
-    """Durée totale (s) d'une page à profil synchronisé. `ev` évalue une expression JS dans la page."""
-    if profile in ("kidas", "musicpro"):
-        return float(ev("D"))
-    if profile == "voicevideo":
-        return float(ev("window.__video.duration"))
-    if profile == "gsapvideo":
-        # La narration intégrée est l'horloge maîtresse de la timeline GSAP d'origine.
-        return float(ev("document.querySelector('#a').duration"))
-    return editpro_duration(text)

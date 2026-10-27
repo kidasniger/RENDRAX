@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import unicodedata
 import wave
-from pathlib import Path
 
 from h2m.deps import has_encoder
 from h2m.ui import good, warn
@@ -51,19 +50,6 @@ def output_path(html_path, args):
     elif getattr(args, "preview", False):
         base += "_apercu"
     return html_path.with_name(base + ".mp4")
-
-
-def image_output_path(html_path, args, ext):
-    """L'image porte le nom du HTML (ou --name) ; l'instant choisi s'ajoute au nom par défaut."""
-    custom = safe_name(getattr(args, "name", ""))
-    base = custom or html_path.stem
-    at = float(getattr(args, "at", 0) or 0)
-    if not custom and at > 0:
-        base += f"_{at:g}s"
-    outdir = getattr(args, "outdir", "") or ""
-    folder = Path(outdir).expanduser().resolve() if outdir else html_path.parent
-    folder.mkdir(parents=True, exist_ok=True)
-    return folder / (base + ext)
 
 
 def start_encoder(out_path, fps, dur, audio_inputs, err_path, quality="standard", loudnorm=False):
