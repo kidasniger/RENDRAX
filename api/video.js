@@ -1,10 +1,10 @@
 import { get, issueSignedToken, presignUrl } from '@vercel/blob';
 import { Readable } from 'node:stream';
 import {
-  send, validJobId, validOwnerToken, verifyOwnerToken, publicError
+  readBody, sameOrigin, send, validJobId, validOwnerToken, verifyOwnerToken, publicError
 } from '../lib/kidas-server.js';
 
-const URL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const URL_TTL_MS = 15 * 60 * 1000;
 const TYPES = {
   mp4: { contentType: 'video/mp4', extension: 'mp4' },
   png: { contentType: 'image/png', extension: 'png' },
@@ -12,15 +12,53 @@ const TYPES = {
   webp: { contentType: 'image/webp', extension: 'webp' }
 };
 
+function cookieName(id) {
+  return 'rendrax_video_' + id;
+}
+
+function cookieValue(req, name) {
+  const header = String(req.headers.cookie || '');
+  for (const part of header.split(';')) {
+    const index = part.indexOf('=');
+    if (index < 0) continue;
+    if (part.slice(0, index).trim() === name) return part.slice(index + 1).trim();
+  }
+  return '';
+}
+
 export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+    const body = readBody(req);
+    const id = String(body.id || '');
+    const ownerToken = String(body.ownerToken || '');
+    if (!validJobId(id) || !validOwnerToken(ownerToken)) {
+      return send(res, 400, { error: 'Identifiant ou clé privée invalide.' });
+    }
+    try {
+      if (!await verifyOwnerToken(id, ownerToken)) {
+        return send(res, 404, { error: 'Fichier introuvable ou accès refusé.' });
+      }
+      const secure = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https' ? '; Secure' : '';
+      res.setHeader('Set-Cookie', cookieName(id) + '=' + ownerToken +
+        '; Path=/api/video; Max-Age=900; HttpOnly; SameSite=Strict' + secure);
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      const base = '/api/video?id=' + encodeURIComponent(id);
+      return send(res, 200, { url: base, downloadUrl: base + '&download=1', expiresAt: Date.now() + URL_TTL_MS });
+    } catch (error) {
+      const result = publicError(error);
+      return send(res, result.status, result.body);
+    }
+  }
+
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return send(res, 405, { error: 'Méthode non autorisée.' });
   }
   const id = String(req.query?.id || '');
-  const ownerToken = String(req.query?.ownerToken || '');
-  if (!validJobId(id) || !validOwnerToken(ownerToken)) {
-    return send(res, 400, { error: 'Lien de fichier invalide.' });
-  }
+  if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de fichier invalide.' });
+  const ownerToken = cookieValue(req, cookieName(id));
+  if (!validOwnerToken(ownerToken)) return send(res, 403, { error: 'Session privée expirée. Ouvre le fichier depuis RENDRAX.' });
 
   try {
     const owner = await verifyOwnerToken(id, ownerToken);
@@ -30,8 +68,8 @@ export default async function handler(req, res) {
     if (!type || (req.query?.output && String(req.query.output) !== output)) {
       return send(res, 403, { error: 'Ce lien ne correspond pas au fichier autorisé.' });
     }
-    const pathname = `outputs/${id}.${type.extension}`;
-    const filename = `${String(owner.name || 'RENDRAX').replace(/[^A-Za-z0-9._-]/g, '_')}.${type.extension}`;
+    const pathname = 'outputs/' + id + '.' + type.extension;
+    const filename = String(owner.name || 'RENDRAX').replace(/[^A-Za-z0-9._-]/g, '_') + '.' + type.extension;
 
     if (req.query?.download === '1') {
       const result = await get(pathname, { access: 'private' });
@@ -42,7 +80,7 @@ export default async function handler(req, res) {
       res.setHeader('Content-Type', type.contentType);
       const contentLength = Number(result.blob?.size);
       if (Number.isFinite(contentLength) && contentLength > 0) res.setHeader('Content-Length', String(contentLength));
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
       res.setHeader('Cache-Control', 'private, no-store');
       res.setHeader('Referrer-Policy', 'no-referrer');
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -68,7 +106,6 @@ export default async function handler(req, res) {
       access: 'private',
       validUntil
     });
-
     res.statusCode = 302;
     res.setHeader('Location', signed.presignedUrl);
     res.setHeader('Cache-Control', 'private, no-store');
