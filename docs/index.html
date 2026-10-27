@@ -776,35 +776,60 @@ async function loadList() {
     id: item.id,
     ownerToken: store.get(ownerKey(item.id))
   })).filter(item => item.ownerToken);
-  if (!requests.length) {
-    ul.textContent = '';
+
+  let legacyItems = [], privateItems = [], errors = [];
+  try {
+    const legacy = await api('/videos');
+    legacyItems = Array.isArray(legacy.items) ? legacy.items : [];
+  } catch (e) { errors.push(e); }
+
+  if (requests.length) {
+    try {
+      const data = await api('/videos', { method: 'POST', body: { items: requests } });
+      privateItems = Array.isArray(data.items) ? data.items : [];
+    } catch (e) { errors.push(e); }
+  }
+
+  const items = [...privateItems, ...legacyItems]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  ul.textContent = '';
+  if (!items.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = 'Aucun rendu privé enregistré dans ce navigateur.';
+    li.textContent = errors.length
+      ? 'Historique indisponible : ' + explain(errors[0])
+      : 'Aucun fichier généré trouvé dans les anciennes publications GitHub ou dans l’historique privé de ce navigateur.';
     ul.append(li);
     return;
   }
-  try {
-    const data = await api('/videos', { method: 'POST', body: { items: requests } });
-    ul.textContent = '';
-    const items = (data.items || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    if (!items.length) {
-      const li = document.createElement('li');
-      li.className = 'empty';
-      li.textContent = 'Aucun fichier terminé. Les rendus en échec ne figurent pas dans cet historique.';
-      ul.append(li);
-      return;
+
+  for (const r of items) {
+    const legacyArtifact = r.source === 'github-artifact';
+    const legacyRelease = r.source === 'github-release';
+    const a = mediaOf(r);
+    if (!legacyArtifact && !a) continue;
+
+    const li = document.createElement('li');
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const l = document.createElement('a');
+    l.href = legacyArtifact ? r.html_url : a.browser_download_url;
+    l.textContent = legacyArtifact ? r.name : a.name;
+    l.referrerPolicy = 'no-referrer';
+    if (legacyArtifact || legacyRelease) {
+      l.target = '_blank';
+      l.rel = 'noopener noreferrer';
     }
-    for (const r of items) {
-      const a = mediaOf(r);
-      if (!a) continue;
-      const li = document.createElement('li');
-      const meta = document.createElement('div'); meta.className = 'meta';
-      const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
-      l.referrerPolicy = 'no-referrer';
-      const d = document.createElement('small');
-      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
-      meta.append(l, d);
+    const d = document.createElement('small');
+    const when = new Date(r.created_at).toLocaleString('fr-FR');
+    if (legacyArtifact) {
+      d.textContent = 'Archive ZIP GitHub Actions · ' + when + ' · ' + size(r.size);
+    } else {
+      d.textContent = (legacyRelease ? 'Ancienne publication GitHub · ' : kindOf(a.name) + ' · ') + when + ' · ' + size(a.size);
+    }
+    meta.append(l, d);
+    li.append(meta);
+
+    if (!legacyArtifact && !legacyRelease) {
       const del = document.createElement('button');
       del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
       del.setAttribute('aria-label', 'Supprimer le fichier ' + a.name);
@@ -822,12 +847,15 @@ async function loadList() {
           alert(explain(e));
         }
       };
-      li.append(meta, del); ul.append(li);
+      li.append(del);
     }
-  } catch (e) {
-    ul.textContent = '';
+    ul.append(li);
+  }
+
+  if (errors.length) {
     const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
+    li.textContent = 'Historique partiel : certains fichiers privés n’ont pas pu être chargés.';
+    ul.append(li);
   }
 }
 async function waitJob(id, t0) {

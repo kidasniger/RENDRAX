@@ -16,6 +16,13 @@ NON_EXECUTABLE = re.compile(
 
 def main() -> None:
     html = PAGE.read_text(encoding="utf-8")
+    videos_api = (ROOT / "api" / "videos.js").read_text(encoding="utf-8")
+    for required in ("github-release", "github-artifact", "req.method === 'GET'", "actions/artifacts?per_page=100"):
+        if required not in videos_api:
+            raise SystemExit(f"Legacy history regression: missing {required}")
+    for required in ("const legacy = await api('/videos')", "r.source === 'github-artifact'", "r.source === 'github-release'"):
+        if required not in html:
+            raise SystemExit(f"Legacy history UI regression: missing {required}")
     for forbidden in ("esm.sh/react", "uploads/vmv7j3erf.html"):
         if forbidden in html:
             raise SystemExit(f"Privacy/dependency regression: {forbidden}")
