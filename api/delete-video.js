@@ -1,45 +1,39 @@
-import { githubRequest, readBody, sameOrigin, send, publicError } from '../lib/kidas-server.js';
+import { del } from '@vercel/blob';
+import {
+  githubRequest, readBody, sameOrigin, send, validJobId, validOwnerToken,
+  verifyOwnerToken, publicError
+} from '../lib/kidas-server.js';
 
 const REPOSITORY = 'kidasniger/RENDRAX';
 const RENDER_WORKFLOW = 'render.yml';
-const RENDER_ARTIFACT_NAMES = new Set(['video-mp4', 'image-export']);
+const VIDEO_ARTIFACT_NAME = 'video-mp4';
 const RUNS_PAGE_SIZE = 100;
 const MAX_RUN_PAGES = 20;
 
-async function findRenderRun(tag) {
-  const expectedName = `Rendu ${tag}`;
-
+async function findRenderRun(id) {
   for (let page = 1; page <= MAX_RUN_PAGES; page += 1) {
     const { data } = await githubRequest(
       `/repos/${REPOSITORY}/actions/workflows/${RENDER_WORKFLOW}/runs?event=workflow_dispatch&branch=main&per_page=${RUNS_PAGE_SIZE}&page=${page}`
     );
     const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
     const match = runs.find(run =>
-      run.name === expectedName && run.path === `.github/workflows/${RENDER_WORKFLOW}`
+      run.display_title === `Rendu ${id}` &&
+      run.path === `.github/workflows/${RENDER_WORKFLOW}`
     );
-
     if (match) return match;
-    if (runs.length < RUNS_PAGE_SIZE) {
-      const error = new Error('Impossible de retrouver le rendu associé à cette vidéo. Aucune suppression n’a été effectuée.');
-      error.status = 503;
-      throw error;
-    }
+    if (runs.length < RUNS_PAGE_SIZE) return null;
   }
-
-  const error = new Error('Le rendu associé à cette vidéo est trop ancien pour être localisé automatiquement. Aucune suppression n’a été effectuée.');
-  error.status = 503;
-  throw error;
+  return null;
 }
 
-async function deleteRenderArtifacts(runId) {
+async function deleteVideoArtifact(runId) {
   const { data } = await githubRequest(
     `/repos/${REPOSITORY}/actions/runs/${runId}/artifacts?per_page=100`
   );
   const artifacts = Array.isArray(data?.artifacts) ? data.artifacts : [];
   let removed = 0;
-
   for (const artifact of artifacts) {
-    if (!RENDER_ARTIFACT_NAMES.has(artifact.name)) continue;
+    if (artifact.name !== VIDEO_ARTIFACT_NAME) continue;
     try {
       await githubRequest(
         `/repos/${REPOSITORY}/actions/artifacts/${artifact.id}`,
@@ -47,8 +41,6 @@ async function deleteRenderArtifacts(runId) {
       );
       removed += 1;
     } catch (error) {
-      // Missing/expired artifacts are already unavailable; all other errors
-      // must stop the operation before the public Release is removed.
       if (error.status !== 404 && error.status !== 410) throw error;
     }
   }
@@ -59,40 +51,26 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
 
-  const { releaseId, tag } = readBody(req);
-  if (!/^\d+$/.test(String(releaseId || '')) || !/^[A-Za-z0-9._-]{1,100}$/.test(String(tag || ''))) {
-    return send(res, 400, { error: 'Fichier ou identifiant invalide.' });
+  const { id, ownerToken } = readBody(req);
+  if (!validJobId(id) || !validOwnerToken(ownerToken)) {
+    return send(res, 400, { error: 'Identifiant ou clé privée invalide.' });
   }
 
   try {
-    const { data: release } = await githubRequest(
-      `/repos/${REPOSITORY}/releases/${releaseId}`
-    );
-    if (release?.tag_name !== tag) {
-      return send(res, 400, { error: 'Le fichier et le tag ne correspondent pas.' });
-    }
+    const owner = await verifyOwnerToken(id, ownerToken);
+    if (!owner) return send(res, 404, { error: 'Vidéo introuvable ou accès refusé.' });
 
-    // Delete the Actions artifact first. If the token lacks Actions write
-    // permission, keep the public Release and tag intact so the operation can
-    // be retried after the token permissions are fixed.
-    const run = await findRenderRun(tag);
-    const artifactsRemoved = run ? await deleteRenderArtifacts(run.id) : 0;
+    const run = await findRenderRun(id);
+    const artifactsRemoved = run ? await deleteVideoArtifact(run.id) : 0;
+    await del(`outputs/${id}.mp4`);
+    await del(`owners/${id}.json`);
 
-    await githubRequest(
-      `/repos/${REPOSITORY}/releases/${releaseId}`,
-      { method: 'DELETE' }
-    );
-
-    try {
-      await githubRequest(
-        `/repos/${REPOSITORY}/git/refs/tags/${encodeURIComponent(tag)}`,
-        { method: 'DELETE' }
-      );
-    } catch (error) {
-      if (error.status !== 404) throw error;
-    }
-
-    return send(res, 200, { success: true, artifactsRemoved, releaseRemoved: true, tagRemoved: true });
+    return send(res, 200, {
+      success: true,
+      artifactsRemoved,
+      videoRemoved: true,
+      ownerRecordRemoved: true
+    });
   } catch (error) {
     const result = publicError(error);
     return send(res, result.status, result.body);
