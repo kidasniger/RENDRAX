@@ -409,7 +409,7 @@ ul#list button{box-shadow:none}
     </div>
     <p class="mut" role="note">RENDRAX détecte automatiquement le type d’animation, la fréquence d’images et la qualité d’encodage. Il active aussi l’écran de démarrage lorsqu’il est présent. Le HTML source reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
-    <div id="captchaMount" aria-hidden="true"></div>
+    <div id="captchaMount" aria-hidden="false"></div>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span><span id="goLabel">Générer MP4</span></button>
     <button id="cancel" class="danger" type="button" hidden>Annuler le rendu</button>
   </section>
@@ -481,7 +481,7 @@ function syncOutput() {
 }
 
 let busy = false, cancelled = false, currentRunId = null, currentJobId = null, activeDispatchAccepted = false, currentUploadXhr = null, fileText = '', verdict = null;
-let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
+let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null, captchaTokenValue = null;
 
 async function api(path, opts = {}) {
   let response;
@@ -540,16 +540,23 @@ async function initSecurity() {
     await loadTurnstileScript();
     captchaWidgetId = window.turnstile.render('#captchaMount', {
       sitekey: config.turnstileSiteKey,
-      size: 'invisible',
-      appearance: 'interaction-only',
+      size: 'normal',
+      appearance: 'always',
       callback: token => {
+        const status = $('#securityStatus');
+        status.hidden = true;
+        status.textContent = '';
         if (captchaResolve) { const resolve = captchaResolve; captchaResolve = null; captchaReject = null; resolve(token); }
+        else captchaTokenValue = token;
       },
-      'error-callback': () => {
-        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error('Vérification anti-robot impossible. Réessaie.')); }
+      'error-callback': errorCode => {
+        const message = 'Échec du contrôle Cloudflare (code ' + String(errorCode || 'inconnu') + '). Réessaie.';
+        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error(message)); }
+        else { securityMessage = message; statusEl.textContent = message; statusEl.className = 'mut'; statusEl.hidden = false; }
       },
       'expired-callback': () => {
-        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error('La validation a expiré. Réessaie.')); }
+        captchaTokenValue = null;
+        if (captchaReject) { const reject = captchaReject; captchaResolve = null; captchaReject = null; reject(new Error('La validation a expiré. Coche à nouveau la vérification.')); }
       }
     });
     securityReady = true;
@@ -568,13 +575,24 @@ async function initSecurity() {
 function captchaToken() {
   return new Promise((resolve, reject) => {
     if (!securityReady || captchaWidgetId === null) return reject(new Error(securityMessage || 'Protection de sécurité non configurée.'));
+    const status = $('#securityStatus');
+    if (captchaTokenValue) {
+      const token = captchaTokenValue;
+      captchaTokenValue = null;
+      try { window.turnstile.reset(captchaWidgetId); } catch (e) {}
+      status.hidden = true;
+      status.textContent = '';
+      return resolve(token);
+    }
     captchaResolve = resolve; captchaReject = reject;
+    status.textContent = 'Valide la vérification Cloudflare ci-dessous pour continuer.';
+    status.className = 'mut';
+    status.hidden = false;
     try {
       window.turnstile.reset(captchaWidgetId);
-      window.turnstile.execute(captchaWidgetId);
     } catch (e) {
       captchaResolve = null; captchaReject = null;
-      reject(new Error('Impossible de lancer la vérification anti-robot.'));
+      reject(new Error('Impossible de réinitialiser la vérification Cloudflare. Recharge la page puis réessaie.'));
     }
   });
 }
