@@ -39,6 +39,117 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
     return "standard"
 
 
+
+def detect_scene_size(cdp, default_viewport=(1080, 1920)):
+    """Detect the rendered scene dimensions from the loaded page.
+
+    Detection order:
+    1. .stage / #stage / .st / #st, including a canvas inside the stage.
+    2. The main canvas (or the largest available canvas).
+    3. The meta viewport declaration.
+    4. The body or document-element dimensions.
+    5. The supplied default viewport.
+
+    This helper measures the loaded DOM, so it can resolve external CSS and
+    dimensions created by JavaScript rather than relying only on HTML text.
+    """
+    try:
+        fallback_width, fallback_height = (int(default_viewport[0]), int(default_viewport[1]))
+    except (TypeError, ValueError, IndexError):
+        fallback_width, fallback_height = 1080, 1920
+    if fallback_width <= 1 or fallback_height <= 1:
+        fallback_width, fallback_height = 1080, 1920
+
+    expression = r"""(() => {
+      const pair = (w, h) => {
+        w = Number(w); h = Number(h);
+        return Number.isFinite(w) && Number.isFinite(h) && w > 1 && h > 1
+          ? [Math.round(w), Math.round(h)] : null;
+      };
+      const cssPair = (el) => {
+        if (!el) return null;
+        const style = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return pair(parseFloat(style.width), parseFloat(style.height)) ||
+          pair(rect.width, rect.height) ||
+          pair(el.offsetWidth, el.offsetHeight) ||
+          pair(el.scrollWidth, el.scrollHeight);
+      };
+      const canvasPair = (el) => {
+        if (!el) return null;
+        return pair(el.width, el.height) || cssPair(el);
+      };
+
+      const stage = document.querySelector('.stage, #stage, .st, #st');
+      if (stage) {
+        const stageSize = cssPair(stage);
+        if (stageSize) return stageSize;
+        const innerCanvas = stage.querySelector('canvas');
+        const innerCanvasSize = canvasPair(innerCanvas);
+        if (innerCanvasSize) return innerCanvasSize;
+      }
+
+      const canvases = [...document.querySelectorAll('main canvas, canvas')]
+        .filter((el) => {
+          const r = el.getBoundingClientRect();
+          const s = getComputedStyle(el);
+          return r.width > 1 && r.height > 1 && s.display !== 'none' &&
+            s.visibility !== 'hidden';
+        })
+        .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+      const mainCanvas = canvases.find((el) => el.closest('main')) || canvases[0];
+      const mainCanvasSize = canvasPair(mainCanvas);
+      if (mainCanvasSize) return mainCanvasSize;
+
+      const viewportMeta = document.querySelector('meta[name="viewport" i]');
+      if (viewportMeta) {
+        const content = viewportMeta.getAttribute('content') || '';
+        const readMeta = (key, deviceValue) => {
+          const match = content.match(new RegExp('(?:^|[,;\\\\s])' + key +
+            '\\\\s*=\\\\s*([0-9]+(?:\\\\.[0-9]+)?|device-' + deviceValue + ')', 'i'));
+          if (!match) return null;
+          if (/^device-/i.test(match[1])) {
+            return deviceValue === 'width' ? window.innerWidth : window.innerHeight;
+          }
+          return Number(match[1]);
+        };
+        const metaWidth = readMeta('width', 'width');
+        const metaHeight = readMeta('height', 'height');
+        if (metaWidth || metaHeight) {
+          const roots = [document.body, document.documentElement];
+          const rootSizes = roots.map((el) => {
+            if (!el) return null;
+            return pair(
+              Math.max(el.scrollWidth || 0, el.offsetWidth || 0, el.clientWidth || 0),
+              Math.max(el.scrollHeight || 0, el.offsetHeight || 0, el.clientHeight || 0)
+            );
+          }).filter(Boolean);
+          const rootSize = rootSizes.find((size) => size[0] > 1 && size[1] > 1);
+          return pair(metaWidth || (rootSize && rootSize[0]),
+            metaHeight || (rootSize && rootSize[1]));
+        }
+      }
+
+      for (const el of [document.body, document.documentElement]) {
+        if (!el) continue;
+        const size = pair(
+          Math.max(el.scrollWidth || 0, el.offsetWidth || 0, el.clientWidth || 0),
+          Math.max(el.scrollHeight || 0, el.offsetHeight || 0, el.clientHeight || 0)
+        ) || cssPair(el);
+        if (size) return size;
+      }
+      return null;
+    })()"""
+    try:
+        measured = cdp.ev(expression, await_promise=False)
+        if isinstance(measured, (list, tuple)) and len(measured) >= 2:
+            width, height = int(round(float(measured[0]))), int(round(float(measured[1])))
+            if width > 1 and height > 1:
+                return width, height
+    except (RuntimeError, TypeError, ValueError, OverflowError):
+        pass
+    return fallback_width, fallback_height
+
 def render(html_path, args):
     tmp = Path(tempfile.mkdtemp(prefix="html2mp4_"))
     chrome = proc = cdp = enc = None
