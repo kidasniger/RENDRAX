@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from h2m.profiles import PRECISE_PROFILES, detect_lottie_stage_size
+from h2m.profiles import LOTTIE_CAPTURE_SCRIPT, PRECISE_PROFILES, detect_lottie_stage_size
 from h2m.render import (
     centered_crop_clip, detect_scene_rect, detect_scene_size, format_description,
     output_dimensions, resolve_scene_format, select_fps, select_quality,
@@ -125,6 +125,9 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("lottie", PRECISE_PROFILES)
         self.assertIn("player.goToAndStop(playerTime * 1000, false)", JS_HELPERS)
         self.assertIn("animation.currentTime = time * 1000", JS_HELPERS)
+        self.assertIn("typeof player.duration === 'function'", LOTTIE_CAPTURE_SCRIPT)
+        self.assertIn("typeof value === 'function'", LOTTIE_CAPTURE_SCRIPT)
+        self.assertIn("typeof framesValue === 'function'", JS_HELPERS)
         self.assertIn("window.__h2mLottieDuration()", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
         self.assertIn("rendu Lottie sera exporté sans son", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
 
