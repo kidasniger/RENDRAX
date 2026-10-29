@@ -117,26 +117,25 @@ def detect_scene_rect(cdp, default_viewport=(1080, 1920)):
       const stageRect = rectOf(stage, 'stage');
       if (stageRect) return stageRect;
 
-      const canvases = [...document.querySelectorAll('main canvas, canvas')]
+      const canvases = [...document.querySelectorAll('canvas')]
         .map((el) => {
           const r = el.getBoundingClientRect();
           const style = getComputedStyle(el);
           if (!(r.width > 1 && r.height > 1) || style.display === 'none' ||
               style.visibility === 'hidden') return null;
           const explicit = el.hasAttribute('width') && el.hasAttribute('height');
-          return rectOf(el, 'canvas', explicit ? el.width : r.width,
-            explicit ? el.height : r.height);
+          return {
+            element: el,
+            rect: rectOf(el, 'canvas', explicit ? el.width : r.width,
+              explicit ? el.height : r.height)
+          };
         })
-        .filter(Boolean)
-        .sort((a, b) => (b.sceneWidth * b.sceneHeight) - (a.sceneWidth * a.sceneHeight));
-      const mainCanvas = canvases.find((item) => {
-        const el = [...document.querySelectorAll('main canvas, canvas')].find((node) => {
-          const r = node.getBoundingClientRect();
-          return Math.abs(r.width - item.width) < 1 && Math.abs(r.height - item.height) < 1;
-        });
-        return el && el.closest('main');
-      }) || canvases[0];
-      if (mainCanvas) return mainCanvas;
+        .filter((item) => item && item.rect);
+      const mainCanvas = canvases.find((item) => item.element.closest('main')) ||
+        canvases.sort((a, b) =>
+          (b.rect.sceneWidth * b.rect.sceneHeight) -
+          (a.rect.sceneWidth * a.rect.sceneHeight))[0];
+      if (mainCanvas) return mainCanvas.rect;
 
       const lottieElement = document.querySelector(
         '.lottie, [class*="lottie" i], [id*="lottie" i], [data-animation-path], svg'
@@ -520,7 +519,19 @@ def render(html_path, args):
                 warn(f"Activation automatique ou capture audio indisponible : {e}")
 
             latest_rect = detect_scene_rect(cdp, (viewport_width, viewport_height))
-            if requested_format == "auto" and scene_rect["source"] == "viewport par défaut" and latest_rect["source"] != "viewport par défaut":
+            scene_became_visible = latest_rect["source"] in ("stage", "canvas", "lottie") and (
+                latest_rect["source"] != scene_rect["source"] or
+                abs(latest_rect["scene_width"] - scene_rect["scene_width"]) > 2 or
+                abs(latest_rect["scene_height"] - scene_rect["scene_height"]) > 2
+            )
+            if requested_format == "auto" and scene_became_visible:
+                if latest_rect["source"] == "canvas":
+                    late_width = max(2, int(round(latest_rect["scene_width"])))
+                    late_height = max(2, int(round(latest_rect["scene_height"])))
+                    cdp.call("Emulation.setDeviceMetricsOverride", width=late_width, height=late_height,
+                             deviceScaleFactor=1, mobile=False)
+                    time.sleep(0.1)
+                    latest_rect = detect_scene_rect(cdp, (late_width, late_height))
                 scene_rect = latest_rect
                 scene_width = max(2, int(round(scene_rect["scene_width"])))
                 scene_height = max(2, int(round(scene_rect["scene_height"])))
