@@ -570,9 +570,9 @@ function analyze(t) {
     && /\bvP\s*=/.test(t) && /\bmP\s*=/.test(t);
   if (musicpro) return { kind: 'musicpro', label: 'MusicPro (canvas + voix et musique synchronisées)' };
   const gsapvideo = /<audio\b[^>]*\bsrc=["']data:audio\/[a-z0-9.+-]+;base64,/i.test(t)
-    && /\bconst\s+T\s*=\s*\[\s*\d/.test(t) && /\bSUB\s*=/.test(t)
+    && /\b(?:const\s+T\s*=\s*\[\s*\d|const\s+D\s*=\s*\d)/.test(t) && /\bSUB\s*=/.test(t)
     && /\btl\s*=\s*gsap\.timeline\(\s*\{\s*paused\s*:\s*true\s*\}\s*\)/.test(t)
-    && /\btl\.time\(\s*t\s*,\s*false\s*\)/.test(t)
+    && /\btl\.time\([^;]*?,\s*false\s*\)/.test(t)
     && /\bstarted\s*\?\s*a\.currentTime/.test(t)
     && /requestAnimationFrame\s*\(\s*lp\s*\)/.test(t)
     && /[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px/.test(t);
