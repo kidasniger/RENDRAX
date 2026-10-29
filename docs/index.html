@@ -678,11 +678,15 @@ async function importFromUrl() {
       body: { id, url: rawUrl, captchaToken: token }
     });
 
+    let analysis = data.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.' };
+    if (data.stored !== true && analysis.kind !== 'invalid') {
+      analysis = { kind: 'invalid', label: 'Le HTML n’a pas été enregistré dans le stockage privé.' };
+    }
     importedSource = {
       id: data.id,
       size: Number(data.size) || 0,
       name: typeof data.name === 'string' ? data.name : 'import.html',
-      analysis: data.analysis,
+      analysis,
       url: rawUrl,
       stored: data.stored === true
     };
