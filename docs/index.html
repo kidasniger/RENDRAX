@@ -1175,7 +1175,7 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, type_fichier, scale: m.scale, test: m.test,
+      id, captchaToken: renderCaptcha, type_fichier, html_principal: isZip ? zipSelection.mainPath : '', scale: m.scale, test: m.test,
       duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: fileName.replace(/\.(?:html?|zip)$/i, '')
     }});
     dispatchAccepted = true;
