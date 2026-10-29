@@ -174,10 +174,18 @@ LOTTIE_CAPTURE_SCRIPT = r"""<script>
 
   window.__h2mLottieReady = () => {
     const list = window.__h2mLottieList();
-    return list.some(player =>
-      window.__h2mLottiePlayerDuration(player) > 0 &&
-      (typeof player.goToAndStop === 'function' || typeof player.setFrame === 'function')
-    );
+    return list.some(player => {
+      if (!(window.__h2mLottiePlayerDuration(player) > 0)) return false;
+      if (typeof player.goToAndStop !== 'function' && typeof player.setFrame !== 'function') return false;
+      if (typeof player.isLoaded === 'boolean' && !player.isLoaded) return false;
+      if (typeof player.isReady === 'boolean' && !player.isReady) return false;
+      const element = player.wrapper || player.container || player.canvas ||
+        (player.renderer && player.renderer.svgElement && player.renderer.svgElement.parentElement) ||
+        (player.renderer && player.renderer.canvasContext && player.renderer.canvasContext.canvas);
+      if (!element || typeof element.getBoundingClientRect !== 'function') return false;
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
   };
 
   window.__h2mLottieStage = () => {
@@ -242,11 +250,26 @@ def patch_html(text):
         return text, "gsapvideo"
     if profile == "lottie":
         # Enregistre les instances Lottie pour les arrêter et les piloter par temps virtuel.
-        text = re.sub(
-            r"\b((?:window\s*\.\s*)?(?:lottie|bodymovin|Lottie|Bodymovin))\s*\.\s*loadAnimation\s*\(",
-            lambda m: "window.__h2mCallLottieLoad(" + m.group(1) + ", ",
-            text
-        )
+        api_names = {"lottie", "bodymovin", "Lottie", "Bodymovin"}
+        for match in re.finditer(
+            r"\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+            text, re.I
+        ):
+            api_names.add(match.group(1))
+        for match in re.finditer(
+            r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+            text, re.I
+        ):
+            for entry in match.group(1).split(","):
+                parts = re.split(r"\s+as\s+", entry.strip(), flags=re.I)
+                if parts and parts[0].strip().lower() in ("lottie", "bodymovin"):
+                    api_names.add(parts[-1].strip())
+        for api_name in sorted(api_names, key=len, reverse=True):
+            text = re.sub(
+                r"\b" + re.escape(api_name) + r"\s*\.\s*loadAnimation\s*\(",
+                lambda m, name=api_name: "window.__h2mCallLottieLoad(" + name + ", ",
+                text
+            )
         constructors = {"DotLottie", "dotLottie"}
         for match in re.finditer(
             r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*dotlottie[^'\"]*\2",
