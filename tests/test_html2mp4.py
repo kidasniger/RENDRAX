@@ -105,6 +105,20 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("window.__h2mTrackLottieClass(Player)", patched_dotlottie)
         self.assertIn("window.__manual = true", patched_dotlottie)
 
+        aliased_html = (
+            '<!doctype html><html><head><style>.lottie-view{width:1920px;height:1080px}</style>'
+            '<script type="module">import Player from "lottie-web";'
+            'const animation = Player.loadAnimation({container: document.querySelector(".lottie-view")});'
+            '</script></head><body><div class="lottie-view"></div></body></html>'
+        )
+        self.assertEqual(renderer.detect_profile(aliased_html)[0], "lottie")
+        patched_alias, profile_alias = renderer.patch_html(aliased_html)
+        self.assertEqual(profile_alias, "lottie")
+        self.assertIn("window.__h2mCallLottieLoad(Player,", patched_alias)
+
+        self.assertEqual(detect_lottie_stage_size(web_html), (1920, 1080))
+        self.assertEqual(detect_lottie_stage_size(dotlottie_html), (1080, 1920))
+
     def test_lottie_profile_is_seekable_and_accepts_silent_animation(self):
         self.assertIn("lottie", PRECISE_PROFILES)
         self.assertIn("player.goToAndStop(playerTime, false)", JS_HELPERS)
