@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     }
 
     res.statusCode = 200;
-    res.setHeader('Content-Type', result.blob.contentType || 'text/html; charset=utf-8');
+    res.setHeader('Content-Type', result.blob.contentType || (extension === 'zip' ? 'application/zip' : 'text/html; charset=utf-8'));
     res.setHeader('Content-Disposition', `attachment; filename="input.${extension}"`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
