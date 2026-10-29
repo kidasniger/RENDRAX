@@ -3,8 +3,9 @@ import { readBody, sameOrigin, send, validJobId, verifyGitHubActionsRequest, pub
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
-  const { id, run_id: runId } = readBody(req);
+  const { id, run_id: runId, type_fichier = 'html' } = readBody(req);
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
+  if (!['html', 'zip'].includes(type_fichier)) return send(res, 400, { error: 'Type de fichier invalide.' });
 
   try {
     // The website can clean up a failed upload from the same origin.
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
     if (!sameOrigin(req)) {
       await verifyGitHubActionsRequest(req, runId);
     }
-    await del(`incoming/${id}.html`);
+    await del(`incoming/${id}.${type_fichier}`);
     return send(res, 200, { success: true });
   } catch (error) {
     const result = publicError(error);
