@@ -9,9 +9,11 @@ const DURATIONS = new Set(['0', '10', '30', '60', '120', '300']);
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
-  const { id, captchaToken, scale, test, duration, format, name, watermark = true, type_fichier = 'html' } = readBody(req);
+  const { id, captchaToken, scale, test, duration, format, name, watermark = true, type_fichier = 'html', html_principal = '' } = readBody(req);
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
   if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Type de fichier invalide.' });
+  if (type_fichier === 'zip' && (typeof html_principal !== 'string' || !html_principal || html_principal.length > 1024)) return send(res, 400, { error: 'HTML principal du ZIP invalide.' });
+  if (type_fichier === 'html' && html_principal !== '') return send(res, 400, { error: 'Paramètre HTML principal inattendu.' });
   if (!['0.5', '1'].includes(String(scale)) ||
       !['0', '10'].includes(String(test)) || !DURATIONS.has(String(duration)) || !FORMATS.has(String(format)) ||
       (typeof watermark !== 'boolean' && !['true', 'false'].includes(String(watermark).toLowerCase()))) {
@@ -41,6 +43,7 @@ export default async function handler(req, res) {
       fichier: type_fichier === 'zip' ? 'kidas.zip' : 'kidas.html',
       blob_id: id,
       type_fichier,
+      html_principal: type_fichier === 'zip' ? html_principal : '',
       scale: String(scale),
       test: String(test),
       duration: String(duration),
