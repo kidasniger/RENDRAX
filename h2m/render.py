@@ -481,7 +481,6 @@ def _is_browser_failure(exc):
         r"impossible de se connecter à chromium",
         r"impossible de récupérer.*(?:devtools|websocket)",
         # Erreurs réseau Chromium lors du chargement d'une ressource.
-        r"net::err_(?:",
         r"net::err_(?:name_not_resolved|connection|timed_out|internet_disconnected|address_unreachable|network_changed|ssl_protocol_error|http2_protocol_error)",
         r"(?:network|réseau).*(?:timeout|timed out|temporarily unavailable|connection reset|connection refused)",
         r"(?:download|téléchargement|resource|ressource).*(?:failed|failure|timeout|timed out|network|réseau)",
