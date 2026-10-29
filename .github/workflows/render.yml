@@ -180,6 +180,9 @@ jobs:
           WATERMARK: ${{ inputs.watermark }}
         run: |
           args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE")
+          if [[ "${{ inputs.type_fichier }}" == "zip" ]]; then
+            args+=(--asset-root "kidas-tmp/extracted")
+          fi
           if [[ "${WATERMARK,,}" != "true" ]]; then
             args+=(--no-watermark)
             echo "Filigrane animé désactivé pour ce rendu."
