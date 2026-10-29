@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0}#animation{width:1080px;height:1920px}</style>
+<script type="module">
+import { DotLottie as Player } from '@lottiefiles/dotlottie-web';
+const player = new Player({
+  canvas: document.getElementById('animation'),
+  src: 'animation.lottie',
+  autoplay: true,
+  loop: true
+});
+</script>
+</head><body><canvas id="animation" width="1080" height="1920"></canvas></body></html>
