@@ -25,7 +25,8 @@ jobs:
       - name: Installer Chromium et FFmpeg
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y chromium-browser ffmpeg
+          sudo apt-get install -y ffmpeg
+      - uses: browser-actions/setup-chrome@v1
       - name: Installer les dépendances Python
         run: python -m pip install --disable-pip-version-check websocket-client Pillow
       - name: Tester extraction et sécurité ZIP
@@ -33,12 +34,7 @@ jobs:
       - name: Rendu vidéo court avec le ZIP de fixture
         run: |
           mkdir -p "$RUNNER_TEMP/rendrax-zip"
-          python - <<'PY'
-          import base64
-          from pathlib import Path
-          from tests.test_zip_import import FIXTURE_B64
-          Path("$RUNNER_TEMP/rendrax-zip/fixture.zip").write_bytes(base64.b64decode(FIXTURE_B64))
-          PY
+          base64 -d tests/fixtures/zip-project.zip.b64 > "$RUNNER_TEMP/rendrax-zip/fixture.zip"
           python scripts/safe_extract_zip.py --archive "$RUNNER_TEMP/rendrax-zip/fixture.zip" --dest "$RUNNER_TEMP/rendrax-zip/extracted" --main index.html
           python html2mp4.py --file "$RUNNER_TEMP/rendrax-zip/extracted/index.html" --asset-root "$RUNNER_TEMP/rendrax-zip/extracted" --test 2 --scale 0.25 --no-watermark --name zip-import-smoke
           test -s zip-import-smoke.mp4 || find "$RUNNER_TEMP/rendrax-zip" -name "*.mp4" -size +0c | grep -q .
