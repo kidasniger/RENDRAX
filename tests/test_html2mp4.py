@@ -123,7 +123,7 @@ class Html2Mp4Tests(unittest.TestCase):
 
     def test_lottie_profile_is_seekable_and_accepts_silent_animation(self):
         self.assertIn("lottie", PRECISE_PROFILES)
-        self.assertIn("player.goToAndStop(playerTime, false)", JS_HELPERS)
+        self.assertIn("player.goToAndStop(playerTime * 1000, false)", JS_HELPERS)
         self.assertIn("animation.currentTime = time * 1000", JS_HELPERS)
         self.assertIn("window.__h2mLottieDuration()", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
         self.assertIn("rendu Lottie sera exporté sans son", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
