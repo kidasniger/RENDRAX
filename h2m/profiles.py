@@ -59,7 +59,10 @@ def _is_gsapvideo(text):
         and bool(re.search(r"\bSUB\s*=", text))
         and bool(re.search(r"\btl\s*=\s*gsap\.timeline\(\s*\{\s*paused\s*:\s*true\s*\}\s*\)", text))
         and bool(re.search(r"\btl\.time\([^;]*?,\s*false\s*\)", text))
-        and bool(re.search(r"\bstarted\s*\?\s*a\.currentTime", text))
+        and bool(re.search(
+            r"\bstarted\s*\?\s*a\.currentTime|\bif\s*\(\s*started\s*\)\s*\{[\s\S]{0,1200}?\ba\.currentTime\b",
+            text,
+        ))
         and bool(re.search(r"requestAnimationFrame\s*\(\s*lp\s*\)", text))
         and bool(re.search(r"[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px", text))
     )
