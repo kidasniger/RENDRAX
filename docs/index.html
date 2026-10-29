@@ -614,7 +614,7 @@ function uploadPrivateBlob(url, file) {
     currentUploadXhr = xhr;
     xhr.open('PUT', url, true);
     xhr.setRequestHeader('Content-Type', 'text/html');
-    xhr.timeout = 180000;
+    xhr.timeout = 480000;
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) status('Envoi sécurisé du HTML… ' + Math.round(e.loaded / e.total * 100) + '%');
     };
@@ -624,7 +624,7 @@ function uploadPrivateBlob(url, file) {
       else reject(new Error('Le stockage privé a refusé le fichier (' + xhr.status + ').'));
     };
     xhr.onerror = () => { currentUploadXhr = null; reject(new Error('Le transfert a été interrompu par le réseau ou le serveur Blob.')); };
-    xhr.ontimeout = () => { currentUploadXhr = null; reject(new Error('Le transfert a dépassé 3 minutes sans réponse.')); };
+    xhr.ontimeout = () => { currentUploadXhr = null; reject(new Error('Le transfert a dépassé 8 minutes sans réponse.')); };
     xhr.onabort = () => { currentUploadXhr = null; const e = new Error('annulé'); e.cancelled = true; reject(e); };
     xhr.send(file);
   });
