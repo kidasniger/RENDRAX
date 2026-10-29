@@ -18,11 +18,11 @@ class LocalHTTPServer:
 
     def __init__(self, directory):
         self.directory = os.path.realpath(os.fspath(directory))
-        handler = lambda *args, **kwargs: SimpleHTTPRequestHandler(  # noqa: E731
-            *args, directory=self.directory, **kwargs
-        )
 
-        class QuietHandler(handler):
+        class QuietHandler(SimpleHTTPRequestHandler):
+            def __init__(handler_self, *args, **kwargs):
+                super().__init__(*args, directory=self.directory, **kwargs)
+
             def log_message(self, _format, *_args):
                 pass
 
