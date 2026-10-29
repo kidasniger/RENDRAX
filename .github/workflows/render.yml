@@ -69,6 +69,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Préparer le HTML source
         id: source
         env:
@@ -133,10 +137,6 @@ jobs:
             test -f "$SOURCE_FILE" || { echo "::error::Fichier HTML source introuvable."; exit 1; }
           fi
           echo "fichier=$SOURCE_FILE" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Installer FFmpeg et ffprobe (binaires statiques en cache)
         id: static_ffmpeg
