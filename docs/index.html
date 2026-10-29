@@ -955,15 +955,16 @@ function setFile(files) {
   const dt = new DataTransfer(); dt.items.add(files[0]); $('#file').files = dt.files;
   checkFile();
 }
-function uploadPrivateBlob(url, file) {
+function uploadPrivateBlob(url, file, type_fichier = 'html') {
+  const contentType = type_fichier === 'zip' ? 'application/zip' : 'text/html';
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     currentUploadXhr = xhr;
     xhr.open('PUT', url, true);
-    xhr.setRequestHeader('Content-Type', 'text/html');
+    xhr.setRequestHeader('Content-Type', contentType);
     xhr.timeout = 480000;
     xhr.upload.onprogress = e => {
-      if (e.lengthComputable) status('Envoi sécurisé du HTML… ' + Math.round(e.loaded / e.total * 100) + '%');
+      if (e.lengthComputable) status('Envoi sécurisé du ' + (type_fichier === 'zip' ? 'ZIP' : 'HTML') + '… ' + Math.round(e.loaded / e.total * 100) + '%');
     };
     xhr.onload = () => {
       currentUploadXhr = null;
@@ -976,13 +977,13 @@ function uploadPrivateBlob(url, file) {
     xhr.send(file);
   });
 }
-async function uploadPrivateBlobWithRecovery(url, id, file) {
+async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html') {
   let activeUrl = url;
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     try {
-      await uploadPrivateBlob(activeUrl, file);
+      await uploadPrivateBlob(activeUrl, file, type_fichier);
       return;
     } catch (error) {
       if (error.cancelled || cancelled) {
@@ -996,7 +997,7 @@ async function uploadPrivateBlobWithRecovery(url, id, file) {
         if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
         const check = await api('/upload-check', {
           method: 'POST',
-          body: { id, captchaToken: checkCaptcha, size: file.size }
+          body: { id, captchaToken: checkCaptcha, size: file.size, type_fichier }
         });
         confirmed = check.uploaded === true;
       } catch (checkError) {
@@ -1013,7 +1014,7 @@ async function uploadPrivateBlobWithRecovery(url, id, file) {
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
       const signed = await api('/upload-url', {
         method: 'POST',
-        body: { id, captchaToken: retryCaptcha }
+        body: { id, captchaToken: retryCaptcha, type_fichier }
       });
       activeUrl = signed.url;
     }
@@ -1130,19 +1131,20 @@ function fail(e, step) {
   hint(''); store.set('kidas_job', null);
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
-async function cleanupUpload(id) {
-  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
+async function cleanupUpload(id, type_fichier = 'html') {
+  try { await api('/cleanup', { method: 'POST', body: { id, type_fichier } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
   const f = $('#file').files[0];
   const source = importedSource;
   if (zipLoading) return status('Inspection du ZIP en cours…', 'warn');
-  if (f && /\.zip$/i.test(f.name)) {
+  const isZip = !!(f && /\.zip$/i.test(f.name));
+  const type_fichier = isZip ? 'zip' : 'html';
+  if (isZip) {
     if (!zipSelection || zipSelection.file !== f) return status('Le ZIP doit être inspecté avant de continuer.', 'err');
     if (!zipSelection.mainPath) return status('Choisis le HTML principal dans la liste des fichiers ZIP.', 'err');
     if (!zipSelection.analysis || zipSelection.analysis.kind === 'invalid') return status('Le HTML principal du ZIP n’a pas passé le diagnostic.', 'err');
-    return status('Inspection ZIP terminée. L’envoi du ZIP et le rendu seront activés à l’étape suivante.', 'warn');
   }
   $('#progCard').hidden = false;
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
@@ -1150,7 +1152,7 @@ async function go() {
   if (!verdict) await checkFile();
   if (!verdict || verdict.kind === 'invalid') { setSteps(-1); return status('Fichier refusé : il n’a pas été importé.', 'err'); }
   const m = MODES[$('#mode').value];
-  const fileName = source ? source.name : f.name;
+  const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
   const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
@@ -1164,8 +1166,8 @@ async function go() {
       status('Vérification de sécurité…');
       const uploadCaptcha = await captchaToken();
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-      const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
-      await uploadPrivateBlobWithRecovery(signed.url, id, f);
+      const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha, type_fichier } });
+      await uploadPrivateBlobWithRecovery(signed.url, id, f, type_fichier);
       uploadComplete = true;
     }
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -1173,8 +1175,8 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
-      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: fileName.replace(/\.html?$/i, '')
+      id, captchaToken: renderCaptcha, type_fichier, scale: m.scale, test: m.test,
+      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: fileName.replace(/\.(?:html?|zip)$/i, '')
     }});
     dispatchAccepted = true;
     if (source) importedSource = null;
@@ -1182,7 +1184,7 @@ async function go() {
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (!source && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
+    if (!source && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id, type_fichier);
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
