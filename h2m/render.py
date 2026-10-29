@@ -1,6 +1,7 @@
 """Rendu image par image d'un fichier HTML."""
 import base64
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -37,6 +38,210 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
     if preview or float(test or 0) > 0 or float(scale or 1.0) < 1.0:
         return "fast"
     return "standard"
+
+
+
+FORMAT_SIZES = {
+    "portrait": (1080, 1920),
+    "landscape": (1920, 1080),
+    "square": (1080, 1080),
+}
+FORMAT_LABELS = {
+    "portrait": "portrait 9:16",
+    "landscape": "paysage 16:9",
+    "square": "carré 1:1",
+}
+
+
+def resolve_scene_format(width, height):
+    """Classe une scène en portrait, carré ou paysage à partir de son ratio."""
+    try:
+        width, height = float(width), float(height)
+    except (TypeError, ValueError):
+        return "portrait"
+    if not math.isfinite(width) or not math.isfinite(height) or width <= 1 or height <= 1:
+        return "portrait"
+    ratio = width / height
+    if ratio < 0.9:
+        return "portrait"
+    if ratio <= 1.1:
+        return "square"
+    return "landscape"
+
+
+def output_dimensions(scene_width, scene_height, requested_format="auto", scale=1.0):
+    """Calcule la taille du MP4 ; les dimensions sont paires pour FFmpeg/yuv420p."""
+    if requested_format in FORMAT_SIZES:
+        width, height = FORMAT_SIZES[requested_format]
+    else:
+        try:
+            width, height = int(round(float(scene_width))), int(round(float(scene_height)))
+        except (TypeError, ValueError):
+            width, height = 1080, 1920
+    try:
+        scale = float(scale)
+    except (TypeError, ValueError):
+        scale = 1.0
+    if not math.isfinite(scale) or scale <= 0:
+        scale = 1.0
+
+    def even(value):
+        return max(2, int(math.floor(float(value) * scale / 2.0)) * 2)
+
+    return even(width), even(height)
+
+
+def detect_scene_rect(cdp, default_viewport=(1080, 1920)):
+    """Renvoie le rectangle de la scène visible et sa source, après chargement DOM."""
+    try:
+        fallback_width, fallback_height = int(default_viewport[0]), int(default_viewport[1])
+    except (TypeError, ValueError, IndexError):
+        fallback_width, fallback_height = 1080, 1920
+    if fallback_width <= 1 or fallback_height <= 1:
+        fallback_width, fallback_height = 1080, 1920
+
+    expression = r"""(() => {
+      const rectOf = (el, source, sceneWidth, sceneHeight) => {
+        if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+        const r = el.getBoundingClientRect();
+        if (!(r.width > 1 && r.height > 1)) return null;
+        return {
+          x: Number(r.x), y: Number(r.y),
+          width: Number(r.width), height: Number(r.height),
+          sceneWidth: Number(sceneWidth || r.width),
+          sceneHeight: Number(sceneHeight || r.height),
+          source
+        };
+      };
+      const stage = document.querySelector('.stage, #stage, .st, #st');
+      const stageRect = rectOf(stage, 'stage');
+      if (stageRect) return stageRect;
+
+      const canvases = [...document.querySelectorAll('main canvas, canvas')]
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          if (!(r.width > 1 && r.height > 1) || style.display === 'none' ||
+              style.visibility === 'hidden') return null;
+          const explicit = el.hasAttribute('width') && el.hasAttribute('height');
+          return rectOf(el, 'canvas', explicit ? el.width : r.width,
+            explicit ? el.height : r.height);
+        })
+        .filter(Boolean)
+        .sort((a, b) => (b.sceneWidth * b.sceneHeight) - (a.sceneWidth * a.sceneHeight));
+      const mainCanvas = canvases.find((item) => {
+        const el = [...document.querySelectorAll('main canvas, canvas')].find((node) => {
+          const r = node.getBoundingClientRect();
+          return Math.abs(r.width - item.width) < 1 && Math.abs(r.height - item.height) < 1;
+        });
+        return el && el.closest('main');
+      }) || canvases[0];
+      if (mainCanvas) return mainCanvas;
+
+      const lottieElement = document.querySelector(
+        '.lottie, [class*="lottie" i], [id*="lottie" i], [data-animation-path], svg'
+      );
+      const lottieRect = rectOf(lottieElement, 'lottie');
+      if (lottieRect) return lottieRect;
+
+      const meta = document.querySelector('meta[name="viewport" i]');
+      if (meta) {
+        const value = meta.getAttribute('content') || '';
+        const read = (key) => {
+          const match = value.match(new RegExp('(?:^|[,;\\\\s])' + key +
+            '\\\\s*=\\\\s*(device-[a-z]+|[0-9]+(?:\\\\.[0-9]+)?)', 'i'));
+          if (!match) return null;
+          return /^device-/i.test(match[1])
+            ? (key === 'width' ? window.innerWidth : window.innerHeight)
+            : Number(match[1]);
+        };
+        const width = read('width');
+        const height = read('height');
+        if (width && height && width > 1 && height > 1) {
+          return {x: 0, y: 0, width, height, sceneWidth: width,
+            sceneHeight: height, source: 'meta viewport'};
+        }
+        if (width && width > 1) {
+          return {x: 0, y: 0, width, height: window.innerHeight,
+            sceneWidth: width, sceneHeight: window.innerHeight, source: 'meta viewport'};
+        }
+      }
+
+      for (const [el, name] of [[document.body, 'body'], [document.documentElement, 'html']]) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const width = r.width || el.clientWidth || el.offsetWidth;
+        const height = r.height || el.clientHeight || el.offsetHeight;
+        if (width > 1 && height > 1) {
+          return {x: Math.max(0, r.x), y: Math.max(0, r.y), width, height,
+            sceneWidth: width, sceneHeight: height, source: name};
+        }
+      }
+      return {x: 0, y: 0, width: window.innerWidth || 1080,
+        height: window.innerHeight || 1920, sceneWidth: window.innerWidth || 1080,
+        sceneHeight: window.innerHeight || 1920, source: 'viewport par défaut'};
+    })()"""
+    try:
+        measured = cdp.ev(expression, await_promise=False)
+        if isinstance(measured, dict):
+            values = {
+                "x": float(measured.get("x", 0)),
+                "y": float(measured.get("y", 0)),
+                "width": float(measured.get("width", 0)),
+                "height": float(measured.get("height", 0)),
+                "scene_width": float(measured.get("sceneWidth", measured.get("width", 0))),
+                "scene_height": float(measured.get("sceneHeight", measured.get("height", 0))),
+                "source": str(measured.get("source", "viewport par défaut")),
+            }
+            if values["width"] > 1 and values["height"] > 1:
+                return values
+        elif isinstance(measured, (list, tuple)) and len(measured) >= 4:
+            x, y, width, height = (float(measured[i]) for i in range(4))
+            if width > 1 and height > 1:
+                return {"x": x, "y": y, "width": width, "height": height,
+                        "scene_width": width, "scene_height": height, "source": "DOM"}
+    except (RuntimeError, TypeError, ValueError, OverflowError):
+        pass
+    return {"x": 0.0, "y": 0.0, "width": float(fallback_width), "height": float(fallback_height),
+            "scene_width": float(fallback_width), "scene_height": float(fallback_height),
+            "source": "viewport par défaut"}
+
+
+def detect_scene_size(cdp, default_viewport=(1080, 1920)):
+    """Retourne (largeur, hauteur) en lisant la scène réelle dans Chromium."""
+    rect = detect_scene_rect(cdp, default_viewport)
+    return int(round(rect["scene_width"])), int(round(rect["scene_height"]))
+
+
+def format_description(scene_format):
+    return FORMAT_LABELS.get(scene_format, "format inconnu")
+
+
+def centered_crop_clip(scene_rect, output_width, output_height):
+    """Centre un recadrage de même ratio que la sortie, sans étirement ni bandes."""
+    x = float(scene_rect.get("x", 0))
+    y = float(scene_rect.get("y", 0))
+    width = max(2.0, float(scene_rect.get("width", output_width)))
+    height = max(2.0, float(scene_rect.get("height", output_height)))
+    target_ratio = max(2, int(output_width)) / max(2, int(output_height))
+    source_ratio = width / height
+
+    if source_ratio > target_ratio:
+        crop_width, crop_height = height * target_ratio, height
+    else:
+        crop_width, crop_height = width, width / target_ratio
+    x += (width - crop_width) / 2.0
+    y += (height - crop_height) / 2.0
+    # Page.captureScreenshot multiplie le rectangle par « scale » : le JPEG arrive
+    # donc directement à la résolution de sortie calculée, sans redimensionnement anisotrope.
+    factor = int(output_width) / crop_width
+    return {
+        "x": round(max(0.0, x), 3),
+        "y": round(max(0.0, y), 3),
+        "width": round(crop_width, 3),
+        "height": round(crop_height, 3),
+        "scale": factor,
+    }
 
 
 def render(html_path, args):
