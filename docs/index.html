@@ -118,6 +118,12 @@ button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
 .drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .drop:focus-within{outline:2px solid var(--ac);outline-offset:3px}
 #fileinfo{margin:12px 0 0;font:600 .85rem/1.4 var(--mono);word-break:break-all;padding:10px 12px;border-radius:var(--rs);background:var(--surf2);border:1px solid var(--bd)}
+.url-import{margin-top:16px;padding-top:16px;border-top:1px solid var(--bd)}
+.url-import-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.url-import-row input[type=url]{flex:1 1 280px;min-width:0;width:100%;min-height:48px;padding:11px 13px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2);color:var(--tx);font:inherit;font-size:.92rem}
+.url-import-row input[type=url]:focus-visible{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 15%,transparent)}
+.url-import-row button{flex:0 0 auto;min-height:48px;margin:0;padding:10px 16px}
+.url-import-help{display:block;margin-top:8px;font-size:.8rem}
 #verdict{margin:10px 0 0;font-size:.88rem;padding:10px 12px;border-radius:var(--rs);border:1px solid var(--bd);text-wrap:pretty}
 #verdict.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:color-mix(in srgb,var(--ok) 8%,transparent)}
 #verdict.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
@@ -243,6 +249,8 @@ ul#list button{box-shadow:none}
   ol.steps li{font-size:.67rem;gap:8px}
   ul#list li{gap:8px}
   ul#list button{padding:6px 11px}
+  .url-import-row{flex-direction:column}
+  .url-import-row button{width:100%}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
@@ -328,6 +336,15 @@ ul#list button{box-shadow:none}
       <span class="mut">ou touche pour le choisir · 50 Mo max</span>
       <input id="file" type="file" accept=".html,.htm,text/html" aria-label="Choisir un fichier HTML">
     </label>
+    <div class="url-import">
+      <label for="importUrl">Ou coller un lien HTTPS</label>
+      <div class="url-import-row">
+        <input id="importUrl" type="url" inputmode="url" autocomplete="url" spellcheck="false"
+          maxlength="2048" placeholder="https://raw.githubusercontent.com/…" aria-describedby="importUrlHelp">
+        <button class="sec" id="importUrlBtn" type="button" disabled>Importer le lien</button>
+      </div>
+      <small id="importUrlHelp" class="url-import-help">GitHub Raw, Gist ou lien direct vers un fichier HTML · HTTPS uniquement · 50 Mo maximum.</small>
+    </div>
     <p id="fileinfo" hidden></p>
     <p id="verdict" role="status" hidden></p>
     <button class="sec" id="prevBtn" type="button" hidden>Voir un aperçu</button>
@@ -419,6 +436,7 @@ const store = {
 };
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
+let importedSource = null, importingUrl = false;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
@@ -502,6 +520,7 @@ async function initSecurity() {
     statusEl.hidden = false;
   }
   $('#go').disabled = !securityReady || busy;
+  $('#importUrlBtn').disabled = !securityReady || importingUrl || busy;
 }
 function captchaToken() {
   return new Promise((resolve, reject) => {
@@ -548,6 +567,9 @@ function setBusy(b) {
   busy = b;
   $('#go').disabled = b || !securityReady;
   $('#go').hidden = b;
+  $('#file').disabled = b || importingUrl;
+  $('#importUrl').disabled = b || importingUrl;
+  $('#importUrlBtn').disabled = b || importingUrl || !securityReady;
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
 }
@@ -594,7 +616,20 @@ async function checkFile() {
   resetPreview(); fileText = '';
   const f = $('#file').files[0];
   $('#prevBtn').hidden = true;
+
+  if (!f && importedSource) {
+    $('#fileinfo').hidden = false;
+    $('#fileinfo').textContent = importedSource.name + ' · ' + size(importedSource.size) + ' · URL';
+    const v = importedSource.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.' };
+    if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
+    if (v.kind === 'generic') {
+      return showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
+    }
+    return showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
+  }
+
   if (!f) { $('#fileinfo').hidden = true; return showVerdict(null); }
+  importedSource = null;
   $('#fileinfo').hidden = false; $('#fileinfo').textContent = f.name + ' · ' + size(f.size);
   if (!/\.html?$/i.test(f.name)) return showVerdict({ kind: 'invalid' }, 'err', '✗ Seuls les fichiers .html ou .htm sont acceptés. Import bloqué.');
   if (f.size > MAX_BYTES) return showVerdict({ kind: 'invalid' }, 'err', '✗ Fichier trop gros (50 Mo maximum). Import bloqué.');
@@ -605,6 +640,76 @@ async function checkFile() {
   $('#prevBtn').hidden = false;
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
   else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
+}
+async function importFromUrl() {
+  if (busy || importingUrl) return;
+
+  const rawUrl = $('#importUrl').value.trim();
+  if (!rawUrl) return showVerdict(null, 'err', 'Colle une URL HTTPS vers un fichier HTML.');
+  if (rawUrl.length > 2048) return showVerdict(null, 'err', 'L’URL dépasse la limite de 2 048 caractères.');
+
+  let parsed;
+  try { parsed = new URL(rawUrl); }
+  catch { return showVerdict(null, 'err', 'L’adresse URL est invalide.'); }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) {
+    return showVerdict(null, 'err', 'Utilise une URL HTTPS publique, sans identifiant ni port personnalisé.');
+  }
+  if (!securityReady) return showVerdict(null, 'err', securityMessage || 'La protection de sécurité n’est pas prête.');
+
+  importingUrl = true;
+  importedSource = null;
+  $('#file').value = '';
+  $('#fileinfo').hidden = true;
+  $('#go').disabled = true;
+  $('#file').disabled = true;
+  $('#importUrl').disabled = true;
+  $('#importUrlBtn').disabled = true;
+  showVerdict(null);
+  $('#progCard').hidden = false;
+  setSteps(-1);
+  status('Vérification anti-robot…');
+
+  const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  try {
+    const token = await captchaToken();
+    status('Téléchargement du HTML depuis le lien…');
+    const data = await api('/import-url', {
+      method: 'POST',
+      body: { id, url: rawUrl, captchaToken: token }
+    });
+
+    let analysis = data.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.' };
+    if (data.stored !== true && analysis.kind !== 'invalid') {
+      analysis = { kind: 'invalid', label: 'Le HTML n’a pas été enregistré dans le stockage privé.' };
+    }
+    importedSource = {
+      id: data.id,
+      size: Number(data.size) || 0,
+      name: typeof data.name === 'string' ? data.name : 'import.html',
+      analysis,
+      url: rawUrl,
+      stored: data.stored === true
+    };
+
+    await checkFile();
+    setSteps(-1);
+    if (importedSource.analysis && importedSource.analysis.kind === 'invalid') {
+      status('Le lien a été téléchargé, mais le contenu a été refusé.', 'err');
+    } else {
+      status('Lien importé. Vérifie le diagnostic puis appuie sur « Générer MP4 ».', 'ok');
+    }
+  } catch (e) {
+    importedSource = null;
+    showVerdict(null, 'err', '✗ ' + explain(e));
+    setSteps(-1);
+    status('Import par lien impossible.', 'err');
+  } finally {
+    importingUrl = false;
+    $('#file').disabled = busy;
+    $('#importUrl').disabled = busy;
+    $('#importUrlBtn').disabled = !securityReady || busy;
+    $('#go').disabled = !securityReady || busy;
+  }
 }
 function setFile(files) {
   if (!files || !files.length) return;
@@ -792,37 +897,46 @@ async function cleanupUpload(id) {
 async function go() {
   if (busy) return;
   const f = $('#file').files[0];
+  const source = importedSource;
   $('#progCard').hidden = false;
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
-  if (!f) { setSteps(-1); return status('Choisis ou dépose un fichier HTML.', 'err'); }
+  if (!f && !source) { setSteps(-1); return status('Choisis un fichier HTML ou colle un lien.', 'err'); }
   if (!verdict) await checkFile();
   if (!verdict || verdict.kind === 'invalid') { setSteps(-1); return status('Fichier refusé : il n’a pas été importé.', 'err'); }
   const m = MODES[$('#mode').value];
-  const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  const fileName = source ? source.name : f.name;
+  const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
-    setSteps(0); status('Vérification de sécurité…');
-    const uploadCaptcha = await captchaToken();
-    if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
-    await uploadPrivateBlobWithRecovery(signed.url, id, f);
-    uploadComplete = true;
+    setSteps(0);
+    if (source) {
+      uploadComplete = true;
+      status('HTML importé déjà enregistré dans le stockage privé…');
+    } else {
+      status('Vérification de sécurité…');
+      const uploadCaptcha = await captchaToken();
+      if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
+      const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
+      await uploadPrivateBlobWithRecovery(signed.url, id, f);
+      uploadComplete = true;
+    }
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     step = 1; setSteps(1); status('Préparation du rendu…');
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
       id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
-      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: f.name.replace(/\.html?$/i, '')
+      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: fileName.replace(/\.html?$/i, '')
     }});
     dispatchAccepted = true;
+    if (source) importedSource = null;
     store.set('kidas_job', JSON.stringify({ id, t0 }));
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
+    if (!source && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
@@ -847,6 +961,17 @@ async function resume() {
   setBusy(false);
 }
 $('#file').onchange = checkFile;
+$('#importUrlBtn').onclick = importFromUrl;
+$('#importUrl').oninput = () => {
+  if (importedSource && $('#importUrl').value.trim() !== importedSource.url) {
+    const previous = importedSource;
+    importedSource = null;
+    if (previous.stored) cleanupUpload(previous.id);
+    resetPreview();
+    $('#fileinfo').hidden = true;
+    showVerdict(null);
+  }
+};
 $('#go').onclick = go;
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
