@@ -122,9 +122,26 @@ class Html2Mp4Tests(unittest.TestCase):
         '</script></body></html>'
     )
 
+    # Variante GSAP qui utilise if (started) au lieu du ternaire started ? a.currentTime.
+    GSAPVIDEO_IF_STARTED_VARIANT = (
+        '<html><head><style>#st{width:1080px;height:1920px}</style></head><body><div id="st"></div>'
+        '<audio id="a" src="data:audio/mpeg;base64,QUJD"></audio><script>'
+        'const T=[0,88.69],SUB=[];const tl=gsap.timeline({paused:true});let started=false;'
+        '(function lp(){let t=0;if(started){if(a.duration&& !isNaN(a.duration)&&a.duration>1){'
+        't=Math.max(0,a.currentTime);}else{t=1;}}tl.time(t,false);requestAnimationFrame(lp)})();'
+        '</script></body></html>'
+    )
+
     def test_gsap_audio_timeline_pattern_is_recognised(self):
         self.assertEqual(renderer.detect_profile(self.GSAPVIDEO)[0], "gsapvideo")
         self.assertIn("gsapvideo", renderer.PRECISE_PROFILES)
+
+    def test_gsap_if_started_audio_clock_variant_is_recognised_and_patched(self):
+        self.assertEqual(renderer.detect_profile(self.GSAPVIDEO_IF_STARTED_VARIANT)[0], "gsapvideo")
+        patched, profile = renderer.patch_html(self.GSAPVIDEO_IF_STARTED_VARIANT)
+        self.assertEqual(profile, "gsapvideo")
+        self.assertLess(patched.index("window.__manual=true"), patched.index("const T=[0,88.69]"))
+        self.assertIn("(function lp(){if(window.__manual)return;", patched)
 
     def test_gsap_audio_timeline_duration_variant_is_recognised_and_patched(self):
         self.assertEqual(renderer.detect_profile(self.GSAPVIDEO_D_VARIANT)[0], "gsapvideo")
