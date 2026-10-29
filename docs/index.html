@@ -469,7 +469,7 @@ const store = {
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
 let importedSource = null, importingUrl = false;
-let zipSelection = null, zipLoading = false, zipInspectToken = 0;
+let zipSelection = null, zipLoading = false, zipInspectToken = 0, zipMainToken = 0;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
@@ -728,6 +728,7 @@ function configureZipMainPicker(htmlPaths, selectedPath) {
 async function chooseZipMain(path) {
   const selection = zipSelection;
   if (!selection) return;
+  const mainToken = ++zipMainToken;
   selection.mainPath = path || '';
   selection.mainText = '';
   selection.analysis = { kind: 'invalid', label: 'Choisis le HTML principal du ZIP.' };
@@ -750,7 +751,7 @@ async function chooseZipMain(path) {
   status('Lecture du HTML principal du ZIP…');
   try {
     const html = await selection.archive.file(path).async('string');
-    if (zipSelection !== selection) return;
+    if (zipSelection !== selection || mainToken !== zipMainToken) return;
     selection.mainText = html;
     selection.analysis = analyze(html);
     $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
@@ -763,7 +764,7 @@ async function chooseZipMain(path) {
       showVerdict(selection.analysis, 'ok', '✓ HTML principal reconnu : ' + selection.analysis.label + '.');
     }
   } catch (error) {
-    if (zipSelection !== selection) return;
+    if (zipSelection !== selection || mainToken !== zipMainToken) return;
     selection.analysis = { kind: 'invalid', label: 'Lecture du HTML principal impossible.' };
     showVerdict(selection.analysis, 'err', '✗ Lecture du HTML principal impossible : ' + (error.message || 'archive illisible') + '.');
   }
@@ -829,6 +830,8 @@ async function checkFile() {
   resetPreview(); fileText = '';
   const f = $('#file').files[0];
   const token = ++zipInspectToken;
+  zipLoading = false;
+  zipMainToken++;
   $('#prevBtn').hidden = true;
 
   if (!f && importedSource) {
