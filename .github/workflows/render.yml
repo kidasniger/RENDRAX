@@ -130,8 +130,8 @@ jobs:
             test -s "$SOURCE_FILE" && test -f "$SOURCE_FILE" || { echo "::error::HTML principal introuvable après extraction."; exit 1; }
           else
             [ -z "$HTML_PRINCIPAL" ] || { echo "::error::Un chemin HTML principal n’est accepté qu’avec un ZIP."; exit 1; }
-            case "$SOURCE_FILE" in
-              *.html|*.htm|*.HTML|*.HTM) ;;
+            case "${SOURCE_FILE,,}" in
+              *.html|*.htm) ;;
               *) echo "::error::Le fichier source doit être un HTML."; exit 1 ;;
             esac
             test -f "$SOURCE_FILE" || { echo "::error::Fichier HTML source introuvable."; exit 1; }
