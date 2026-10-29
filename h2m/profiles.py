@@ -181,17 +181,27 @@ LOTTIE_CAPTURE_SCRIPT = r"""<script>
     return result;
   };
 
+  const readNumber = (object, key) => {
+    try {
+      if (!object) return NaN;
+      const value = object[key];
+      return Number(typeof value === 'function' ? value.call(object) : value);
+    } catch (_) { return NaN; }
+  };
+
   window.__h2mLottiePlayerDuration = player => {
     let seconds = NaN;
     try {
       if (typeof player.getDuration === 'function') seconds = Number(player.getDuration(false));
     } catch (_) {}
     if (!(Number.isFinite(seconds) && seconds > 0)) {
-      try { seconds = Number(player.duration); } catch (_) {}
+      seconds = readNumber(player, 'duration');
     }
     if (!(Number.isFinite(seconds) && seconds > 0)) {
-      const frames = Number(player.totalFrames || (player.animationData && player.animationData.op));
-      const rate = Number(player.frameRate || (player.animationData && (player.animationData.fr || player.animationData.frameRate)));
+      const frames = readNumber(player, 'totalFrames') ||
+        Number(player.animationData && player.animationData.op);
+      const rate = readNumber(player, 'frameRate') ||
+        Number(player.animationData && (player.animationData.fr || player.animationData.frameRate));
       if (frames > 0 && rate > 0) seconds = frames / rate;
     }
     return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
@@ -207,11 +217,14 @@ LOTTIE_CAPTURE_SCRIPT = r"""<script>
     return list.length > 0 && list.every(player => {
       if (!(window.__h2mLottiePlayerDuration(player) > 0)) return false;
       if (typeof player.goToAndStop !== 'function' && typeof player.setFrame !== 'function') return false;
-      if (typeof player.isLoaded === 'boolean' && !player.isLoaded) return false;
-      if (typeof player.isReady === 'boolean' && !player.isReady) return false;
+      const loaded = typeof player.isLoaded === 'function' ? player.isLoaded() : player.isLoaded;
+      const ready = typeof player.isReady === 'function' ? player.isReady() : player.isReady;
+      if (typeof loaded === 'boolean' && !loaded) return false;
+      if (typeof ready === 'boolean' && !ready) return false;
       const element = player.wrapper || player.container || player.canvas ||
         (player.renderer && player.renderer.svgElement && player.renderer.svgElement.parentElement) ||
-        (player.renderer && player.renderer.canvasContext && player.renderer.canvasContext.canvas);
+        (player.renderer && player.renderer.canvasContext && player.renderer.canvasContext.canvas) ||
+        document.querySelector('canvas, .lottie, [data-animation-path], svg');
       if (!element || typeof element.getBoundingClientRect !== 'function') return false;
       const rect = element.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
