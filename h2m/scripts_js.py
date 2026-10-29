@@ -38,13 +38,15 @@ window.__seek = async (t) => {
     for (const player of players) {
       try { if (typeof player.pause === 'function') player.pause(); } catch (e) {}
       if (typeof player.goToAndStop === 'function') {
-        player.goToAndStop(time * 1000, false);
+        const seconds = window.__h2mLottiePlayerDuration(player);
+        const playerTime = seconds > 0 ? Math.min(time, seconds) : time;
+        player.goToAndStop(playerTime * 1000, false);
       } else if (typeof player.setFrame === 'function') {
         const seconds = window.__h2mLottiePlayerDuration(player);
         const frames = Number(player.totalFrames);
         const rate = Number(player.frameRate || (frames > 0 && seconds > 0 ? frames / seconds : 60));
         const frame = frames > 0 && seconds > 0
-          ? Math.min(frames - 1, Math.max(0, Math.floor(time / seconds * frames)))
+          ? Math.min(frames - 1, Math.max(0, Math.floor(Math.min(time, seconds) / seconds * frames)))
           : Math.max(0, Math.floor(time * (rate > 0 ? rate : 60)));
         player.setFrame(frame);
       }
