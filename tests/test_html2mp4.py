@@ -125,7 +125,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("lottie", PRECISE_PROFILES)
         self.assertIn("player.goToAndStop(playerTime * 1000, false)", JS_HELPERS)
         self.assertIn("animation.currentTime = time * 1000", JS_HELPERS)
-        self.assertIn("typeof player.duration === 'function'", LOTTIE_CAPTURE_SCRIPT)
+        self.assertIn("readNumber(player, 'duration')", LOTTIE_CAPTURE_SCRIPT)
         self.assertIn("typeof value === 'function'", LOTTIE_CAPTURE_SCRIPT)
         self.assertIn("typeof framesValue === 'function'", JS_HELPERS)
         self.assertIn("window.__h2mLottieDuration()", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
