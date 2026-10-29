@@ -589,7 +589,8 @@ function detectSceneSizeFromText(t) {
     if (metaWidth && metaHeight) return dimensions(metaWidth, metaHeight, 'meta viewport');
   }
   for (const tagName of ['body', 'html']) {
-    const inline = t.match(new RegExp('<' + tagName + '\\b[^>]*\\bstyle\\s*=\\s*(["\\'])(.*?)\\1', 'i'));
+    const tagMarkup = t.match(new RegExp('<' + tagName + '\\b[^>]*>', 'i'));
+    const inline = tagMarkup && tagMarkup[0].match(/\bstyle\s*=\s*(["'])(.*?)\1/i);
     if (inline) {
       const size = declarations(inline[2]);
       if (size) {
