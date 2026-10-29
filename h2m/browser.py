@@ -16,12 +16,30 @@ from h2m.ui import die
 class LocalHTTPServer:
     """Serve un projet HTML localement, uniquement sur l'interface loopback."""
 
-    def __init__(self, directory):
+    def __init__(self, directory, entry_file=None):
         self.directory = os.path.realpath(os.fspath(directory))
+        self.entry_file = os.path.realpath(os.fspath(entry_file)) if entry_file else None
 
         class QuietHandler(SimpleHTTPRequestHandler):
             def __init__(handler_self, *args, **kwargs):
                 super().__init__(*args, directory=self.directory, **kwargs)
+
+            def do_GET(self):
+                if self.path.split("?", 1)[0] == "/__h2m_entry__.html" and self.entry_file:
+                    try:
+                        with open(self.entry_file, "rb") as source:
+                            payload = source.read()
+                    except OSError:
+                        self.send_error(404)
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(payload)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(payload)
+                    return
+                super().do_GET()
 
             def log_message(self, _format, *_args):
                 pass
@@ -46,9 +64,9 @@ class LocalHTTPServer:
         self.thread.join(timeout=3)
 
 
-def start_local_http_server(directory):
+def start_local_http_server(directory, entry_file=None):
     """Démarre le serveur HTTP temporaire du dossier source."""
-    return LocalHTTPServer(directory)
+    return LocalHTTPServer(directory, entry_file=entry_file)
 
 
 class CDP:
