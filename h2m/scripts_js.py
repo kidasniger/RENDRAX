@@ -43,8 +43,11 @@ window.__seek = async (t) => {
         player.goToAndStop(playerTime * 1000, false);
       } else if (typeof player.setFrame === 'function') {
         const seconds = window.__h2mLottiePlayerDuration(player);
-        const frames = Number(player.totalFrames);
-        const rate = Number(player.frameRate || (frames > 0 && seconds > 0 ? frames / seconds : 60));
+        const framesValue = player.totalFrames;
+        const frames = Number(typeof framesValue === 'function' ? framesValue.call(player) : framesValue);
+        const rateValue = player.frameRate;
+        const rate = Number(typeof rateValue === 'function' ? rateValue.call(player) :
+          (rateValue || (frames > 0 && seconds > 0 ? frames / seconds : 60)));
         const frame = frames > 0 && seconds > 0
           ? Math.min(frames - 1, Math.max(0, Math.floor(Math.min(time, seconds) / seconds * frames)))
           : Math.max(0, Math.floor(time * (rate > 0 ? rate : 60)));
