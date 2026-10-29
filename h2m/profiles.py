@@ -281,8 +281,8 @@ def patch_html(text):
                     constructors.add(parts[-1].strip())
         for constructor in sorted(constructors, key=len, reverse=True):
             text = re.sub(
-                r"\bnew\s+" + re.escape(constructor) + r"\s*\(",
-                lambda m, name=constructor: "new (window.__h2mTrackLottieClass(" + name + "))(",
+                r"\bnew\s+((?:window\s*\.\s*)?)" + re.escape(constructor) + r"\s*\(",
+                lambda m, name=constructor: "new (window.__h2mTrackLottieClass(" + m.group(1) + name + "))(",
                 text
             )
         manual = LOTTIE_CAPTURE_SCRIPT
