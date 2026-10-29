@@ -58,6 +58,7 @@ def main():
     ap = argparse.ArgumentParser(description="HTML animé → MP4")
     ap.add_argument("dossier", nargs="?", help="dossier à scanner (défaut : dossier du script)")
     ap.add_argument("--file", help="fichier HTML à convertir directement (sans menu)")
+    ap.add_argument("--asset-root", help="racine du projet contenant les ressources relatives du HTML")
     ap.add_argument("--fps", type=parse_fps, default="auto",
                     help="auto (60 i/s pour profils synchronisés, 30 pour HTML générique), ou 1–120")
     ap.add_argument("--scale", type=float, default=1.0, help="échelle de sortie, ex. 0.5 = 540×960 (défaut 1)")
