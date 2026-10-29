@@ -423,6 +423,74 @@ async function downloadHtml(rawUrl) {
   }
 }
 
+
+function analyzeHtml(t) {
+  const count = (s, sub) => s.split(sub).length - 1;
+  if (t.trim().length < 20 || !/<(?:!doctype|html|head|body|script|svg|canvas|div|style)\b/i.test(t)) {
+    return { kind: 'invalid', label: 'Ce fichier ne ressemble pas à une page HTML.' };
+  }
+
+  const kidas = count(t, 'const [t,setT]=useState(0),') === 1 && /[.#]stage\s*\{/.test(t)
+    && /\bAUD\s*=\s*'data:audio\//.test(t) && /\bD\s*=\s*\d/.test(t);
+  if (kidas) return { kind: 'kidas', label: 'KIDAS (React + audio intégré)' };
+
+  const editpro = t.includes('function render(t)') && count(t, '(function loop(){let t=') === 1
+    && t.includes('const IM=') && /"voice"\s*:\s*"[A-Za-z0-9+\/=]{1000,}"/.test(t);
+  if (editpro) return { kind: 'editpro', label: 'EditPro (canvas + voix intégrée)' };
+
+  const voicevideo = t.includes('window.__video') && /\bseek\s*\(/.test(t)
+    && /<audio\b[^>]*\ssrc=["']data:audio\//i.test(t) && /\bDUR\s*=/.test(t);
+  if (voicevideo) return { kind: 'voicevideo', label: 'Vidéo React (audio intégré + window.__video)' };
+
+  const musicpro = t.includes('function render(t)') && /atob\(\s*VOICE\s*\)/.test(t)
+    && /function\s+music\s*\(/.test(t) && /function\s+go\s*\(/.test(t)
+    && /\(function\s+lp\s*\(\)\s*\{/.test(t) && /\bconst\s+D\s*=\s*\d/.test(t)
+    && /\bvP\s*=/.test(t) && /\bmP\s*=/.test(t);
+  if (musicpro) return { kind: 'musicpro', label: 'MusicPro (canvas + voix et musique synchronisées)' };
+
+  const gsapvideo = /<audio\b[^>]*\bsrc=["']data:audio\/[a-z0-9.+-]+;base64,/i.test(t)
+    && /\b(?:const\s+T\s*=\s*\[\s*\d|const\s+D\s*=\s*\d)/.test(t) && /\bSUB\s*=/.test(t)
+    && /\btl\s*=\s*gsap\.timeline\(\s*\{\s*paused\s*:\s*true\s*\}\s*\)/.test(t)
+    && /\btl\.time\([^;]*?,\s*false\s*\)/.test(t)
+    && (
+      /\bstarted\s*\?\s*a\.currentTime/.test(t)
+      || /\bif\s*\(\s*started\s*\)\s*\{[\s\S]{0,1200}?\ba\.currentTime\b/.test(t)
+    )
+    && /requestAnimationFrame\s*\(\s*lp\s*\)/.test(t)
+    && /[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px/.test(t);
+  if (gsapvideo) return { kind: 'gsapvideo', label: 'Vidéo GSAP synchronisée sur la piste audio' };
+
+  return { kind: 'generic', label: 'Page HTML générique' };
+}
+
+function sourceFileName(rawUrl) {
+  let url;
+  try {
+    url = new URL(rawUrl.trim());
+  } catch {
+    return 'import.html';
+  }
+
+  const host = url.hostname.toLowerCase();
+  let name = '';
+
+  if (host === 'gist.github.com' || host === 'www.gist.github.com') {
+    const file = url.searchParams.get('file');
+    if (file) name = file.split('/').pop();
+  }
+
+  if (!name) {
+    const parts = url.pathname.split('/').filter(Boolean);
+    name = parts[parts.length - 1] || '';
+    try { name = decodeURIComponent(name); } catch {}
+  }
+
+  name = name.replace(/[\u0000-\u001f]/g, '').trim();
+  if (!name || name.toLowerCase() === 'raw') name = 'import';
+  if (!HTML_EXTENSION.test(name)) name += '.html';
+  return name.slice(0, 160);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return send(res, 405, { error: 'Méthode non autorisée.' });
@@ -453,6 +521,19 @@ export default async function handler(req, res) {
 
     stage = 'validation et téléchargement de l’URL';
     const downloaded = await downloadHtml(url);
+    const analysis = analyzeHtml(downloaded.buffer.toString('utf8'));
+    const name = sourceFileName(url);
+
+    // Match the local-file check before persisting anything to private Blob.
+    if (analysis.kind === 'invalid') {
+      return send(res, 200, {
+        id,
+        size: downloaded.size,
+        name,
+        analysis,
+        stored: false
+      });
+    }
 
     stage = 'enregistrement du HTML dans le stockage privé';
     await put('incoming/' + id + '.html', downloaded.buffer, {
@@ -462,7 +543,13 @@ export default async function handler(req, res) {
       allowOverwrite: true
     });
 
-    return send(res, 200, { id, size: downloaded.size });
+    return send(res, 200, {
+      id,
+      size: downloaded.size,
+      name,
+      analysis,
+      stored: true
+    });
   } catch (error) {
     const status = Number(error?.status) || 500;
     console.error('[RENDRAX import-url]', {
