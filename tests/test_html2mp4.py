@@ -7,8 +7,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from h2m.profiles import PRECISE_PROFILES
-from h2m.render import select_fps, select_quality
+from h2m.profiles import PRECISE_PROFILES, detect_lottie_stage_size
+from h2m.render import (
+    centered_crop_clip, detect_scene_rect, detect_scene_size, format_description,
+    output_dimensions, resolve_scene_format, select_fps, select_quality,
+)
 from h2m.scripts_js import JS_HELPERS
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +33,83 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertEqual(renderer.choose_frame_size(sample, "landscape"), (1920, 1080))
         self.assertEqual(renderer.choose_frame_size(sample, "square"), (1080, 1080))
         self.assertEqual(renderer.choose_frame_size(sample, "auto"), (720, 1280))
+
+    def test_runtime_scene_size_detection_and_aspect_formats(self):
+        fixtures = ROOT / "tests" / "fixtures"
+        cases = (
+            ("scene-landscape.html", (1920, 1080), "landscape"),
+            ("scene-portrait.html", (1080, 1920), "portrait"),
+            ("scene-square.html", (1080, 1080), "square"),
+        )
+        for filename, expected_size, expected_format in cases:
+            with self.subTest(filename=filename):
+                html = (fixtures / filename).read_text(encoding="utf-8")
+                size = renderer.detect_stage_size(html)
+                self.assertEqual(size, expected_size)
+                self.assertEqual(resolve_scene_format(*size), expected_format)
+                self.assertEqual(output_dimensions(*size, "auto", 1), expected_size)
+                half = output_dimensions(*size, "auto", 0.5)
+                self.assertEqual(half, (expected_size[0] // 2, expected_size[1] // 2))
+                self.assertEqual(format_description(expected_format), {
+                    "landscape": "paysage 16:9",
+                    "portrait": "portrait 9:16",
+                    "square": "carré 1:1",
+                }[expected_format])
+
+    def test_runtime_detector_prefers_measured_canvas_scene_dimensions(self):
+        class FakeCDP:
+            def ev(self, expression, await_promise=False):
+                return {
+                    "x": 0, "y": 0, "width": 960, "height": 540,
+                    "sceneWidth": 1920, "sceneHeight": 1080, "source": "canvas",
+                }
+        self.assertEqual(detect_scene_size(FakeCDP()), (1920, 1080))
+        self.assertEqual(detect_scene_rect(FakeCDP())["source"], "canvas")
+
+    def test_runtime_detector_falls_back_when_browser_measurement_fails(self):
+        class BrokenCDP:
+            def ev(self, expression, await_promise=False):
+                raise RuntimeError("document unavailable")
+        self.assertEqual(detect_scene_size(BrokenCDP(), (720, 1280)), (720, 1280))
+
+    def test_manual_format_forces_output_ratio_and_scale(self):
+        self.assertEqual(output_dimensions(1920, 1080, "portrait", 1), (1080, 1920))
+        self.assertEqual(output_dimensions(1080, 1920, "landscape", 0.5), (960, 540))
+        self.assertEqual(output_dimensions(1921, 1081, "auto", 1), (1920, 1080))
+        self.assertEqual(output_dimensions(1081, 1921, "auto", 0.5), (540, 960))
+
+    def test_manual_format_center_crops_without_distortion_or_bars(self):
+        portrait_scene = {
+            "x": 0, "y": 0, "width": 1080, "height": 1920,
+            "scene_width": 1080, "scene_height": 1920, "source": "stage",
+        }
+        clip = centered_crop_clip(portrait_scene, 1920, 1080)
+        self.assertAlmostEqual(clip["width"] / clip["height"], 1920 / 1080, places=3)
+        self.assertGreater(clip["y"], 0)
+        self.assertLess(clip["height"], portrait_scene["height"])
+        self.assertAlmostEqual(clip["scale"] * clip["width"], 1920, delta=1)
+
+    def test_lottie_web_and_dotlottie_profiles_are_detected_and_patched(self):
+        fixtures = ROOT / "tests" / "fixtures"
+        web_html = (fixtures / "lottie-web.html").read_text(encoding="utf-8")
+        self.assertEqual(renderer.detect_profile(web_html)[0], "lottie")
+        patched_web, profile_web = renderer.patch_html(web_html)
+        self.assertEqual(profile_web, "lottie")
+        self.assertIn("window.__h2mCallLottieLoad(lottie,", patched_web)
+        self.assertIn("window.__h2mLottieReady", patched_web)
+
+        dotlottie_html = (fixtures / "lottie-dotlottie.html").read_text(encoding="utf-8")
+        self.assertEqual(renderer.detect_profile(dotlottie_html)[0], "lottie")
+        patched_dotlottie, profile_dotlottie = renderer.patch_html(dotlottie_html)
+        self.assertEqual(profile_dotlottie, "lottie")
+        self.assertIn("window.__h2mTrackLottieClass(Player)", patched_dotlottie)
+        self.assertIn("window.__manual = true", patched_dotlottie)
+
+    def test_lottie_profile_is_seekable_and_accepts_silent_animation(self):
+        self.assertIn("lottie", PRECISE_PROFILES)
+        self.assertIn("player.goToAndStop(playerTime * 1000, false)", JS_HELPERS)
+        self.assertIn("window.__h2mLottieDuration()", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
+        self.assertIn("rendu Lottie sera exporté sans son", (ROOT / "h2m" / "render.py").read_text(encoding="utf-8"))
 
     def test_relative_asset_base_is_injected(self):
         html = "<html><head></head><body><img src='assets/pic.png'></body></html>"
