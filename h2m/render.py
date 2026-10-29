@@ -64,9 +64,15 @@ def render(html_path, args):
         page = tmp / "page.html"
         if not precise_candidate:
             text = inject_generic_audio_capture(text)
-        page.write_text(text, encoding="utf-8")
-        http_server = start_local_http_server(html_path.parent.resolve(), entry_file=page)
-        text = inject_base_url(text, http_server.base_url)
+        asset_root_arg = getattr(args, "asset_root", None)
+        asset_root = Path(asset_root_arg).expanduser().resolve() if asset_root_arg else html_path.parent.resolve()
+        try:
+            relative_html = html_path.resolve().relative_to(asset_root)
+        except ValueError:
+            die("Le HTML principal doit se trouver dans le dossier racine des ressources.")
+        relative_parent = "" if str(relative_html.parent) == "." else relative_html.parent.as_posix()
+        http_server = start_local_http_server(asset_root, entry_file=page)
+        text = inject_base_url(text, http_server.base_url_for(relative_parent))
         page.write_text(text, encoding="utf-8")
         audio = extract_audio(text, tmp, profile) if precise_candidate else {"voice": None, "music": None, "music_volume": 0.2}
         info(f"Fenêtre {W}×{H} · mode : {'image par image (synchronisé)' if precise_candidate else 'universel (temps réel, synchro non garantie)'}")
