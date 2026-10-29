@@ -573,7 +573,10 @@ function analyze(t) {
     && /\b(?:const\s+T\s*=\s*\[\s*\d|const\s+D\s*=\s*\d)/.test(t) && /\bSUB\s*=/.test(t)
     && /\btl\s*=\s*gsap\.timeline\(\s*\{\s*paused\s*:\s*true\s*\}\s*\)/.test(t)
     && /\btl\.time\([^;]*?,\s*false\s*\)/.test(t)
-    && /\bstarted\s*\?\s*a\.currentTime/.test(t)
+    && (
+      /\bstarted\s*\?\s*a\.currentTime/.test(t)
+      || /\bif\s*\(\s*started\s*\)\s*\{[\s\S]{0,1200}?\ba\.currentTime\b/.test(t)
+    )
     && /requestAnimationFrame\s*\(\s*lp\s*\)/.test(t)
     && /[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px/.test(t);
   if (gsapvideo) return { kind: 'gsapvideo', label: 'Vidéo GSAP synchronisée sur la piste audio' };
