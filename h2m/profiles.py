@@ -65,6 +65,49 @@ def _is_gsapvideo(text):
     )
 
 
+def _is_lottie(text):
+    """Reconnaît les initialisations Lottie Web et dotLottie courantes."""
+    aliases = {"lottie", "bodymovin"}
+    module_import = re.compile(
+        r"\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+        re.I
+    )
+    for match in module_import.finditer(text):
+        aliases.add(match.group(1))
+    named_import = re.compile(
+        r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+        re.I
+    )
+    for match in named_import.finditer(text):
+        for item in match.group(1).split(","):
+            parts = re.split(r"\s+as\s+", item.strip(), flags=re.I)
+            if parts and parts[0].strip().lower() in ("lottie", "bodymovin"):
+                aliases.add(parts[-1].strip())
+
+    lottie_web = any(
+        re.search(r"\b" + re.escape(alias) + r"\s*\.\s*loadAnimation\s*\(", text, re.I)
+        for alias in aliases if alias
+    ) or bool(re.search(
+        r"\bwindow\s*\.\s*(?:lottie|bodymovin)\s*\.\s*loadAnimation\s*\(", text, re.I
+    ))
+
+    constructors = {"DotLottie", "dotLottie"}
+    dotlottie_import = re.compile(
+        r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*@lottiefiles/dotlottie[^'\"]*\2",
+        re.I
+    )
+    for match in dotlottie_import.finditer(text):
+        for item in match.group(1).split(","):
+            parts = re.split(r"\s+as\s+", item.strip(), flags=re.I)
+            if parts and parts[0].strip().lower() == "dotlottie":
+                constructors.add(parts[-1].strip())
+    dotlottie = any(
+        re.search(r"\bnew\s+(?:(?:window\s*\.\s*)?)" + re.escape(name) + r"\s*\(", text)
+        for name in constructors if name
+    )
+    return lottie_web or dotlottie
+
+
 # Table des profils reconnus, testés dans l'ordre. Pour en ajouter un : écrire son test
 # _is_xxx(text), l'inscrire ici, puis prévoir son correctif dans patch_html et son audio
 # dans extract_audio / render.
@@ -74,6 +117,7 @@ PROFILES = (
     ("musicpro", "MusicPro (canvas + voix et musique Web Audio)", _is_musicpro),
     ("voicevideo", "Vidéo React (audio intégré + window.__video)", _is_voicevideo),
     ("gsapvideo", "Vidéo GSAP synchronisée sur la piste audio", _is_gsapvideo),
+    ("lottie", "Animation Lottie / dotLottie", _is_lottie),
 )
 PRECISE_PROFILES = tuple(name for name, _, _ in PROFILES)
 
@@ -91,6 +135,124 @@ def detect_profile(text):
         if matches(text):
             return name, label
     return "generic", "Page HTML générique (mode universel)"
+
+
+LOTTIE_CAPTURE_SCRIPT = r"""<script>
+(() => {
+  window.__manual = true;
+  const players = window.__h2mLottiePlayers = window.__h2mLottiePlayers || [];
+
+  window.__h2mTrackLottie = player => {
+    if (!player || (typeof player.goToAndStop !== 'function' && typeof player.setFrame !== 'function')) return player;
+    if (!players.includes(player)) players.push(player);
+    try { if (typeof player.pause === 'function') player.pause(); } catch (_) {}
+    try { if (typeof player.setUseFrameInterpolation === 'function') player.setUseFrameInterpolation(false); } catch (_) {}
+    return player;
+  };
+
+  window.__h2mCallLottieLoad = (api, ...args) => {
+    const target = api && typeof api.loadAnimation === 'function' ? api :
+      (api && api.default && typeof api.default.loadAnimation === 'function' ? api.default : null);
+    if (!target) throw new Error('API Lottie introuvable.');
+    return window.__h2mTrackLottie(target.loadAnimation.apply(target, args));
+  };
+
+  window.__h2mTrackLottieClass = Constructor => {
+    if (typeof Constructor !== 'function') throw new Error('Constructeur dotLottie introuvable.');
+    return new Proxy(Constructor, {
+      construct(target, args, newTarget) {
+        const player = Reflect.construct(target, args, newTarget);
+        return window.__h2mTrackLottie(player);
+      }
+    });
+  };
+
+  window.__h2mLottieList = () => {
+    const result = players.slice();
+    for (const api of [window.lottie, window.bodymovin]) {
+      try {
+        if (api && typeof api.getRegisteredAnimations === 'function') {
+          for (const player of api.getRegisteredAnimations()) {
+            if (player && !result.includes(player)) result.push(player);
+          }
+        }
+      } catch (_) {}
+    }
+    return result;
+  };
+
+  const readNumber = (object, key) => {
+    try {
+      if (!object) return NaN;
+      const value = object[key];
+      return Number(typeof value === 'function' ? value.call(object) : value);
+    } catch (_) { return NaN; }
+  };
+
+  window.__h2mLottiePlayerDuration = player => {
+    let seconds = NaN;
+    try {
+      if (typeof player.getDuration === 'function') seconds = Number(player.getDuration(false));
+    } catch (_) {}
+    if (!(Number.isFinite(seconds) && seconds > 0)) {
+      seconds = readNumber(player, 'duration');
+    }
+    if (!(Number.isFinite(seconds) && seconds > 0)) {
+      const frames = readNumber(player, 'totalFrames') ||
+        Number(player.animationData && player.animationData.op);
+      const rate = readNumber(player, 'frameRate') ||
+        Number(player.animationData && (player.animationData.fr || player.animationData.frameRate));
+      if (frames > 0 && rate > 0) seconds = frames / rate;
+    }
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+  };
+
+  window.__h2mLottieDuration = () => {
+    const durations = window.__h2mLottieList().map(window.__h2mLottiePlayerDuration);
+    return durations.length ? Math.max(...durations) : 0;
+  };
+
+  window.__h2mLottieReady = () => {
+    const list = window.__h2mLottieList();
+    return list.length > 0 && list.every(player => {
+      if (!(window.__h2mLottiePlayerDuration(player) > 0)) return false;
+      if (typeof player.goToAndStop !== 'function' && typeof player.setFrame !== 'function') return false;
+      const loaded = typeof player.isLoaded === 'function' ? player.isLoaded() : player.isLoaded;
+      const ready = typeof player.isReady === 'function' ? player.isReady() : player.isReady;
+      if (typeof loaded === 'boolean' && !loaded) return false;
+      if (typeof ready === 'boolean' && !ready) return false;
+      const element = player.wrapper || player.container || player.canvas ||
+        (player.renderer && player.renderer.svgElement && player.renderer.svgElement.parentElement) ||
+        (player.renderer && player.renderer.canvasContext && player.renderer.canvasContext.canvas) ||
+        document.querySelector('canvas, .lottie, [data-animation-path], svg');
+      if (!element || typeof element.getBoundingClientRect !== 'function') return false;
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+  };
+
+  window.__h2mLottieStage = () => {
+    const list = window.__h2mLottieList();
+    const candidates = [];
+    for (const player of list) {
+      candidates.push(
+        player.wrapper,
+        player.container,
+        player.canvas,
+        player.renderer && player.renderer.svgElement && player.renderer.svgElement.parentElement,
+        player.renderer && player.renderer.canvasContext && player.renderer.canvasContext.canvas
+      );
+    }
+    candidates.push(document.querySelector('.stage, #stage, #st, .lottie, [data-animation-path], canvas, svg'));
+    for (const element of candidates) {
+      if (!element || typeof element.getBoundingClientRect !== 'function') continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) return [rect.x, rect.y, rect.width, rect.height];
+    }
+    return null;
+  };
+})();
+</script>"""
 
 
 def patch_html(text):
@@ -129,6 +291,47 @@ def patch_html(text):
         m = re.search(r"<head\b[^>]*>", text, flags=re.I)
         text = text[:m.end()] + manual + text[m.end():] if m else manual + text
         return text, "gsapvideo"
+    if profile == "lottie":
+        # Enregistre les instances Lottie pour les arrêter et les piloter par temps virtuel.
+        api_names = {"lottie", "bodymovin", "Lottie", "Bodymovin"}
+        for match in re.finditer(
+            r"\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+            text, re.I
+        ):
+            api_names.add(match.group(1))
+        for match in re.finditer(
+            r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+            text, re.I
+        ):
+            for entry in match.group(1).split(","):
+                parts = re.split(r"\s+as\s+", entry.strip(), flags=re.I)
+                if parts and parts[0].strip().lower() in ("lottie", "bodymovin"):
+                    api_names.add(parts[-1].strip())
+        for api_name in sorted(api_names, key=len, reverse=True):
+            text = re.sub(
+                r"\b((?:window\s*\.\s*)?)" + re.escape(api_name) + r"\s*\.\s*loadAnimation\s*\(",
+                lambda m, name=api_name: "window.__h2mCallLottieLoad(" + m.group(1) + name + ", ",
+                text
+            )
+        constructors = {"DotLottie", "dotLottie"}
+        for match in re.finditer(
+            r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*dotlottie[^'\"]*\2",
+            text, re.I
+        ):
+            for entry in match.group(1).split(","):
+                parts = re.split(r"\s+as\s+", entry.strip(), flags=re.I)
+                if parts and parts[0].strip().lower() == "dotlottie":
+                    constructors.add(parts[-1].strip())
+        for constructor in sorted(constructors, key=len, reverse=True):
+            text = re.sub(
+                r"\bnew\s+((?:window\s*\.\s*)?)" + re.escape(constructor) + r"\s*\(",
+                lambda m, name=constructor: "new (window.__h2mTrackLottieClass(" + m.group(1) + name + "))(",
+                text
+            )
+        manual = LOTTIE_CAPTURE_SCRIPT
+        m = re.search(r"<head\b[^>]*>", text, flags=re.I)
+        text = text[:m.end()] + manual + text[m.end():] if m else manual + text
+        return text, "lottie"
     return text, ""
 
 
@@ -152,7 +355,7 @@ def extract_audio(text, tmp, profile="kidas"):
             p.write_bytes(base64.b64decode(m.group(1)))
             out["voice"] = p
         return out
-    if profile in ("voicevideo", "gsapvideo"):
+    if profile in ("voicevideo", "gsapvideo", "lottie"):
         tags = re.findall(r"<audio\b[^>]*\ssrc=[\"']data:audio/([a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)[\"']", text, re.I)
         for key, (mime, b64) in zip(("voice", "music"), tags):
             p = tmp / f"{key}.{MIME_EXT.get(mime.lower(), 'mp3')}"
@@ -202,6 +405,42 @@ def inject_generic_audio_capture(text):
     return GENERIC_AUDIO_CAPTURE + text
 
 
-def choose_frame_size(text, fmt):
+def detect_lottie_stage_size(text):
+    """Détecte la taille des conteneurs Lottie usuels sans changer les autres profils."""
+    for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", text):
+        selectors, declarations = rule.group(1), rule.group(2)
+        if not re.search(
+            r"(?:^|[\s>+~,])(?:[.#](?:lottie[a-z_-]*|animation[a-z_-]*|anim[a-z_-]*container)|\[data-animation-path\])(?=$|[\s,:>+~])",
+            selectors, re.I
+        ):
+            continue
+        width = re.search(r"\bwidth\s*:\s*(\d+)px", declarations, re.I)
+        height = re.search(r"\bheight\s*:\s*(\d+)px", declarations, re.I)
+        if width and height:
+            return int(width.group(1)), int(height.group(1))
+
+    for tag in re.finditer(r"<(?:div|section|canvas)\b[^>]*>", text, re.I):
+        markup = tag.group(0)
+        if not re.search(r"\b(?:class|id)\s*=\s*['\"][^'\"]*(?:lottie|animation)[^'\"]*['\"]", markup, re.I) and not re.search(r"\bdata-animation-path\b", markup, re.I):
+            continue
+        inline = re.search(r"\bstyle\s*=\s*(['\"])(.*?)\1", markup, re.I)
+        if inline:
+            width = re.search(r"\bwidth\s*:\s*(\d+)px", inline.group(2), re.I)
+            height = re.search(r"\bheight\s*:\s*(\d+)px", inline.group(2), re.I)
+            if width and height:
+                return int(width.group(1)), int(height.group(1))
+        if tag.group(0).lower().startswith("<canvas"):
+            width = re.search(r"\bwidth\s*=\s*['\"]?(\d+)", markup, re.I)
+            height = re.search(r"\bheight\s*=\s*['\"]?(\d+)", markup, re.I)
+            if width and height:
+                return int(width.group(1)), int(height.group(1))
+    return detect_stage_size(text)
+
+
+def choose_frame_size(text, fmt, profile=""):
     sizes = {"portrait": (1080, 1920), "landscape": (1920, 1080), "square": (1080, 1080)}
-    return sizes[fmt] if fmt in sizes else detect_stage_size(text)
+    if fmt in sizes:
+        return sizes[fmt]
+    if profile == "lottie":
+        return detect_lottie_stage_size(text)
+    return detect_stage_size(text)

@@ -1,6 +1,7 @@
 """Rendu image par image d'un fichier HTML."""
 import base64
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -39,6 +40,208 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
     return "standard"
 
 
+
+FORMAT_SIZES = {
+    "portrait": (1080, 1920),
+    "landscape": (1920, 1080),
+    "square": (1080, 1080),
+}
+FORMAT_LABELS = {
+    "portrait": "portrait 9:16",
+    "landscape": "paysage 16:9",
+    "square": "carré 1:1",
+}
+
+
+def resolve_scene_format(width, height):
+    """Classe une scène en portrait, carré ou paysage à partir de son ratio."""
+    try:
+        width, height = float(width), float(height)
+    except (TypeError, ValueError):
+        return "portrait"
+    if not math.isfinite(width) or not math.isfinite(height) or width <= 1 or height <= 1:
+        return "portrait"
+    ratio = width / height
+    if ratio < 0.9:
+        return "portrait"
+    if ratio <= 1.1:
+        return "square"
+    return "landscape"
+
+
+def output_dimensions(scene_width, scene_height, requested_format="auto", scale=1.0):
+    """Calcule la taille du MP4 ; les dimensions sont paires pour FFmpeg/yuv420p."""
+    if requested_format in FORMAT_SIZES:
+        width, height = FORMAT_SIZES[requested_format]
+    else:
+        # En auto, la scène décide du format, puis la sortie utilise sa définition standard.
+        scene_format = resolve_scene_format(scene_width, scene_height)
+        width, height = FORMAT_SIZES[scene_format]
+    try:
+        scale = float(scale)
+    except (TypeError, ValueError):
+        scale = 1.0
+    if not math.isfinite(scale) or scale <= 0:
+        scale = 1.0
+
+    def even(value):
+        return max(2, int(math.floor(float(value) * scale / 2.0)) * 2)
+
+    return even(width), even(height)
+
+
+def detect_scene_rect(cdp, default_viewport=(1080, 1920)):
+    """Renvoie le rectangle de la scène visible et sa source, après chargement DOM."""
+    try:
+        fallback_width, fallback_height = int(default_viewport[0]), int(default_viewport[1])
+    except (TypeError, ValueError, IndexError):
+        fallback_width, fallback_height = 1080, 1920
+    if fallback_width <= 1 or fallback_height <= 1:
+        fallback_width, fallback_height = 1080, 1920
+
+    expression = r"""(() => {
+      const rectOf = (el, source, sceneWidth, sceneHeight) => {
+        if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+        const r = el.getBoundingClientRect();
+        if (!(r.width > 1 && r.height > 1)) return null;
+        return {
+          x: Number(r.x), y: Number(r.y),
+          width: Number(r.width), height: Number(r.height),
+          sceneWidth: Number(sceneWidth || r.width),
+          sceneHeight: Number(sceneHeight || r.height),
+          source
+        };
+      };
+      const stage = document.querySelector('.stage, #stage, .st, #st');
+      const stageRect = rectOf(stage, 'stage');
+      if (stageRect) return stageRect;
+
+      const canvases = [...document.querySelectorAll('canvas')]
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          if (!(r.width > 1 && r.height > 1) || style.display === 'none' ||
+              style.visibility === 'hidden') return null;
+          const explicit = el.hasAttribute('width') && el.hasAttribute('height');
+          return {
+            element: el,
+            rect: rectOf(el, 'canvas', explicit ? el.width : r.width,
+              explicit ? el.height : r.height)
+          };
+        })
+        .filter((item) => item && item.rect);
+      const mainCanvas = canvases.find((item) => item.element.closest('main')) ||
+        canvases.sort((a, b) =>
+          (b.rect.sceneWidth * b.rect.sceneHeight) -
+          (a.rect.sceneWidth * a.rect.sceneHeight))[0];
+      if (mainCanvas) return mainCanvas.rect;
+
+      const lottieElement = document.querySelector(
+        '.lottie, [class*="lottie" i], [id*="lottie" i], [data-animation-path], svg'
+      );
+      const lottieRect = rectOf(lottieElement, 'lottie');
+      if (lottieRect) return lottieRect;
+
+      const meta = document.querySelector('meta[name="viewport" i]');
+      if (meta) {
+        const value = meta.getAttribute('content') || '';
+        const read = (key) => {
+          const match = value.match(new RegExp('(?:^|[,;\\s])' + key +
+            '\\s*=\\s*(device-[a-z]+|[0-9]+(?:\\.[0-9]+)?)', 'i'));
+          if (!match) return null;
+          return /^device-/i.test(match[1])
+            ? (key === 'width' ? window.innerWidth : window.innerHeight)
+            : Number(match[1]);
+        };
+        const width = read('width');
+        const height = read('height');
+        if (width && height && width > 1 && height > 1) {
+          return {x: 0, y: 0, width, height, sceneWidth: width,
+            sceneHeight: height, source: 'meta viewport'};
+        }
+        if (width && width > 1) {
+          return {x: 0, y: 0, width, height: window.innerHeight,
+            sceneWidth: width, sceneHeight: window.innerHeight, source: 'meta viewport'};
+        }
+      }
+
+      for (const [el, name] of [[document.body, 'body'], [document.documentElement, 'html']]) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const width = r.width || el.clientWidth || el.offsetWidth;
+        const height = r.height || el.clientHeight || el.offsetHeight;
+        if (width > 1 && height > 1) {
+          return {x: Math.max(0, r.x), y: Math.max(0, r.y), width, height,
+            sceneWidth: width, sceneHeight: height, source: name};
+        }
+      }
+      return {x: 0, y: 0, width: window.innerWidth || 1080,
+        height: window.innerHeight || 1920, sceneWidth: window.innerWidth || 1080,
+        sceneHeight: window.innerHeight || 1920, source: 'viewport par défaut'};
+    })()"""
+    try:
+        measured = cdp.ev(expression, await_promise=False)
+        if isinstance(measured, dict):
+            values = {
+                "x": float(measured.get("x", 0)),
+                "y": float(measured.get("y", 0)),
+                "width": float(measured.get("width", 0)),
+                "height": float(measured.get("height", 0)),
+                "scene_width": float(measured.get("sceneWidth", measured.get("width", 0))),
+                "scene_height": float(measured.get("sceneHeight", measured.get("height", 0))),
+                "source": str(measured.get("source", "viewport par défaut")),
+            }
+            if values["width"] > 1 and values["height"] > 1:
+                return values
+        elif isinstance(measured, (list, tuple)) and len(measured) >= 4:
+            x, y, width, height = (float(measured[i]) for i in range(4))
+            if width > 1 and height > 1:
+                return {"x": x, "y": y, "width": width, "height": height,
+                        "scene_width": width, "scene_height": height, "source": "DOM"}
+    except (RuntimeError, TypeError, ValueError, OverflowError):
+        pass
+    return {"x": 0.0, "y": 0.0, "width": float(fallback_width), "height": float(fallback_height),
+            "scene_width": float(fallback_width), "scene_height": float(fallback_height),
+            "source": "viewport par défaut"}
+
+
+def detect_scene_size(cdp, default_viewport=(1080, 1920)):
+    """Retourne (largeur, hauteur) en lisant la scène réelle dans Chromium."""
+    rect = detect_scene_rect(cdp, default_viewport)
+    return int(round(rect["scene_width"])), int(round(rect["scene_height"]))
+
+
+def format_description(scene_format):
+    return FORMAT_LABELS.get(scene_format, "format inconnu")
+
+
+def centered_crop_clip(scene_rect, output_width, output_height):
+    """Centre un recadrage de même ratio que la sortie, sans étirement ni bandes."""
+    x = float(scene_rect.get("x", 0))
+    y = float(scene_rect.get("y", 0))
+    width = max(2.0, float(scene_rect.get("width", output_width)))
+    height = max(2.0, float(scene_rect.get("height", output_height)))
+    target_ratio = max(2, int(output_width)) / max(2, int(output_height))
+    source_ratio = width / height
+
+    if source_ratio > target_ratio:
+        crop_width, crop_height = height * target_ratio, height
+    else:
+        crop_width, crop_height = width, width / target_ratio
+    x += (width - crop_width) / 2.0
+    y += (height - crop_height) / 2.0
+    # Page.captureScreenshot multiplie le rectangle par « scale » : le JPEG arrive
+    # donc directement à la résolution de sortie calculée, sans redimensionnement anisotrope.
+    factor = int(output_width) / crop_width
+    return {
+        "x": round(max(0.0, x), 3),
+        "y": round(max(0.0, y), 3),
+        "width": round(crop_width, 3),
+        "height": round(crop_height, 3),
+        "scale": factor,
+    }
+
+
 def render(html_path, args):
     tmp = Path(tempfile.mkdtemp(prefix="html2mp4_"))
     chrome = proc = cdp = enc = None
@@ -59,23 +262,25 @@ def render(html_path, args):
         info(f"Qualité d’encodage automatique : {selected_quality}.")
         text, profile = patch_html(text)
         precise_candidate = profile in PRECISE_PROFILES
-        W, H = choose_frame_size(text, "auto" if precise_candidate else args.format)
+        requested_format = getattr(args, "format", "auto") or "auto"
+        W, H = choose_frame_size(text, requested_format, profile=profile)
+        initial_W, initial_H = W, H
         page = tmp / "page.html"
         text = inject_base_url(text, html_path.parent.resolve().as_uri().rstrip("/") + "/")
         if not precise_candidate:
             text = inject_generic_audio_capture(text)
         page.write_text(text, encoding="utf-8")
         audio = extract_audio(text, tmp, profile) if precise_candidate else {"voice": None, "music": None, "music_volume": 0.2}
-        info(f"Fenêtre {W}×{H} · mode : {'image par image (synchronisé)' if precise_candidate else 'universel (temps réel, synchro non garantie)'}")
+        info(f"Fenêtre initiale {initial_W}×{initial_H} · mode : {'image par image (synchronisé)' if precise_candidate else 'universel (temps réel, synchro non garantie)'}")
 
         chrome = find_chrome()
-        viewport_height = H + 300 if precise_candidate else H
+        initial_viewport_height = initial_H + 300 if precise_candidate else initial_H
         info("Démarrage de Chromium…")
-        proc, port = launch_chrome(chrome, tmp, W, viewport_height)
+        proc, port = launch_chrome(chrome, tmp, initial_W, initial_viewport_height)
         cdp = CDP(page_ws_url(port))
         cdp.call("Page.enable")
         cdp.call("Runtime.enable")
-        cdp.call("Emulation.setDeviceMetricsOverride", width=W, height=viewport_height, deviceScaleFactor=1, mobile=False)
+        cdp.call("Emulation.setDeviceMetricsOverride", width=initial_W, height=initial_viewport_height, deviceScaleFactor=1, mobile=False)
         cdp.call("Page.navigate", url=page.as_uri())
 
         info("Chargement du document HTML…")
@@ -107,6 +312,8 @@ def render(html_path, args):
                 check = "(()=>!!document.querySelector('#st')&&typeof render==='function'&&typeof D==='number'&&typeof vP!=='undefined'&&typeof mP!=='undefined')()"
             elif profile == "gsapvideo":
                 check = "(()=>!!document.querySelector('#st')&&!!document.querySelector('#a')&&typeof gsap!=='undefined'&&typeof tl!=='undefined'&&typeof SUB!=='undefined')()"
+            elif profile == "lottie":
+                check = "(()=>!!window.__h2mLottieReady&&window.__h2mLottieReady())()"
             else:
                 check = "(()=>!!document.querySelector('#stage')&&typeof render==='function'&&typeof IM==='object')()"
             t1 = time.time()
@@ -121,6 +328,42 @@ def render(html_path, args):
                 die(f"Fichier reconnu ({label}) mais la page ne s'est pas initialisée : "
                     "Internet est-il disponible pour charger React et les polices ?")
 
+        # Mesure après chargement du DOM, afin de couvrir aussi les scènes créées en JavaScript.
+        scene_rect = detect_scene_rect(cdp, (initial_W, initial_H))
+        scene_width = max(2, int(round(scene_rect["scene_width"])))
+        scene_height = max(2, int(round(scene_rect["scene_height"])))
+        if requested_format == "auto" and scene_rect["source"] == "canvas":
+            # Un canvas a souvent des dimensions intrinsèques qui doivent guider le viewport.
+            viewport_width, viewport_height = scene_width, scene_height
+        else:
+            viewport_width = max(initial_W, W, int(math.ceil(scene_rect["x"] + scene_rect["width"])),
+                                 scene_width)
+            viewport_height = max(
+                initial_viewport_height, H + (300 if precise_candidate else 0),
+                int(math.ceil(scene_rect["y"] + scene_rect["height"])),
+                scene_height + (300 if precise_candidate else 0),
+            )
+        if viewport_width != initial_W or viewport_height != initial_viewport_height:
+            cdp.call("Emulation.setDeviceMetricsOverride", width=viewport_width, height=viewport_height,
+                     deviceScaleFactor=1, mobile=False)
+            time.sleep(0.15)
+            scene_rect = detect_scene_rect(cdp, (viewport_width, viewport_height))
+            scene_width = max(2, int(round(scene_rect["scene_width"])))
+            scene_height = max(2, int(round(scene_rect["scene_height"])))
+
+        if requested_format == "auto":
+            detected_format = resolve_scene_format(scene_width, scene_height)
+            base_width, base_height = scene_width, scene_height
+        else:
+            detected_format = requested_format
+            base_width, base_height = choose_frame_size(text, requested_format, profile=profile)
+        W, H = output_dimensions(base_width, base_height, requested_format, getattr(args, "scale", 1.0))
+        description = format_description(detected_format)
+        if requested_format == "auto":
+            info(f"Format détecté : {description} · scène {scene_width}×{scene_height} · sortie {W}×{H}")
+        else:
+            info(f"Format imposé : {description} · scène {scene_width}×{scene_height} · sortie {W}×{H}")
+
         if is_precise:
             cdp.ev(f"window.__profile = {json.dumps(profile)}; 0", await_promise=False)
             cdp.ev(JS_HELPERS, await_promise=False)
@@ -132,6 +375,8 @@ def render(html_path, args):
             elif profile == "gsapvideo":
                 # The embedded narration is the master clock for the original GSAP timeline.
                 total = float(cdp.ev("document.querySelector('#a').duration"))
+            elif profile == "lottie":
+                total = float(cdp.ev("window.__h2mLottieDuration()"))
             else:
                 total = editpro_duration(text)
             dur = min(total, args.duration) if args.duration > 0 else total
@@ -173,14 +418,22 @@ def render(html_path, args):
                         info(f"Piste {label_fr} récupérée depuis le navigateur.")
                     else:
                         warn(f"Piste {label_fr} introuvable ou non décodée par le navigateur.")
-            if not audio_inputs:
+            if not audio_inputs and profile != "lottie":
                 die("Aucune piste audio valide n’a été récupérée pour ce profil synchronisé. Le MP4 muet a été bloqué.")
+            if not audio_inputs and profile == "lottie":
+                warn("Aucune piste audio intégrée détectée : le rendu Lottie sera exporté sans son.")
 
             cdp.ev("window.__seek(0)")
-            r = cdp.ev("(()=>{const r=document.querySelector('.stage,#stage,#st').getBoundingClientRect();return [r.x,r.y,r.width,r.height]})()")
-            if abs(r[2] - W) > 2 or abs(r[3] - H) > 2:
-                warn(f"La scène mesure {r[2]:.0f}×{r[3]:.0f} au lieu de {W}×{H} : rendu possiblement flou.")
-            clip = {"x": round(r[0]), "y": round(r[1]), "width": W, "height": H, "scale": args.scale}
+            if profile == "lottie":
+                r = cdp.ev("window.__h2mLottieStage()")
+                if not r or len(r) < 4:
+                    die("Impossible de déterminer la scène de l’animation Lottie.")
+                scene_rect = {"x": float(r[0]), "y": float(r[1]), "width": float(r[2]),
+                              "height": float(r[3]), "scene_width": float(r[2]),
+                              "scene_height": float(r[3]), "source": "lottie"}
+            else:
+                scene_rect = detect_scene_rect(cdp, (viewport_width, viewport_height))
+            clip = centered_crop_clip(scene_rect, W, H)
             mode = "synchronisé"
         else:
             # Mode générique : la page n'a besoin ni de .stage, ni de D, ni d'AUD/MUS.
@@ -209,8 +462,8 @@ def render(html_path, args):
                 dur = min(dur, args.test)
             fps = select_fps(profile, getattr(args, "fps", "auto"))
             n_frames = max(1, int(round(dur * fps)))
-            info(f"Mode universel · durée {dur:.2f} s · {fps} i/s · capture de la fenêtre")
-            clip = {"x": 0, "y": 0, "width": W, "height": H, "scale": args.scale}
+            info(f"Mode universel · durée {dur:.2f} s · {fps} i/s · capture de la scène")
+            clip = centered_crop_clip(scene_rect, W, H)
             audio_inputs = []
             mode = "universel"
 
@@ -267,6 +520,30 @@ def render(html_path, args):
                 info("Capture audio du navigateur activée (médias HTML et Web Audio si disponibles).")
             except Exception as e:  # noqa: BLE001
                 warn(f"Activation automatique ou capture audio indisponible : {e}")
+
+            latest_rect = detect_scene_rect(cdp, (viewport_width, viewport_height))
+            scene_became_visible = latest_rect["source"] in ("stage", "canvas", "lottie") and (
+                latest_rect["source"] != scene_rect["source"] or
+                abs(latest_rect["scene_width"] - scene_rect["scene_width"]) > 2 or
+                abs(latest_rect["scene_height"] - scene_rect["scene_height"]) > 2
+            )
+            if requested_format == "auto" and scene_became_visible:
+                if latest_rect["source"] == "canvas":
+                    late_width = max(2, int(round(latest_rect["scene_width"])))
+                    late_height = max(2, int(round(latest_rect["scene_height"])))
+                    cdp.call("Emulation.setDeviceMetricsOverride", width=late_width, height=late_height,
+                             deviceScaleFactor=1, mobile=False)
+                    time.sleep(0.1)
+                    latest_rect = detect_scene_rect(cdp, (late_width, late_height))
+                scene_rect = latest_rect
+                scene_width = max(2, int(round(scene_rect["scene_width"])))
+                scene_height = max(2, int(round(scene_rect["scene_height"])))
+                detected_format = resolve_scene_format(scene_width, scene_height)
+                W, H = output_dimensions(scene_width, scene_height, "auto", getattr(args, "scale", 1.0))
+                info(f"Format détecté après démarrage : {format_description(detected_format)} · scène {scene_width}×{scene_height} · sortie {W}×{H}")
+            else:
+                scene_rect = latest_rect
+            clip = centered_crop_clip(scene_rect, W, H)
 
         out_final = unique_path(output_path(html_path, args))
         out_tmp = tmp / "out.mp4"

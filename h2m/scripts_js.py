@@ -30,6 +30,36 @@ window.__seek = async (t) => {
     await window.__finish();
     return 1;
   }
+  if (window.__profile === 'lottie') {
+    window.__manual = true;
+    const time = Math.max(0, Number(t) || 0);
+    const players = window.__h2mLottieList ? window.__h2mLottieList() : [];
+    if (!players.length) throw new Error('Aucune animation Lottie n’a été initialisée.');
+    for (const player of players) {
+      try { if (typeof player.pause === 'function') player.pause(); } catch (e) {}
+      if (typeof player.goToAndStop === 'function') {
+        const seconds = window.__h2mLottiePlayerDuration(player);
+        const playerTime = seconds > 0 ? Math.min(time, seconds) : time;
+        player.goToAndStop(playerTime * 1000, false);
+      } else if (typeof player.setFrame === 'function') {
+        const seconds = window.__h2mLottiePlayerDuration(player);
+        const framesValue = player.totalFrames;
+        const frames = Number(typeof framesValue === 'function' ? framesValue.call(player) : framesValue);
+        const rateValue = player.frameRate;
+        const rate = Number(typeof rateValue === 'function' ? rateValue.call(player) :
+          (rateValue || (frames > 0 && seconds > 0 ? frames / seconds : 60)));
+        const frame = frames > 0 && seconds > 0
+          ? Math.min(frames - 1, Math.max(0, Math.floor(Math.min(time, seconds) / seconds * frames)))
+          : Math.max(0, Math.floor(time * (rate > 0 ? rate : 60)));
+        player.setFrame(frame);
+      }
+    }
+    for (const animation of document.getAnimations()) {
+      try { animation.pause(); animation.currentTime = time * 1000; } catch (e) {}
+    }
+    await window.__finish();
+    return 1;
+  }
   if (window.__profile === 'gsapvideo') {
     window.__manual = true;
     const time = Math.max(0, Number(t) || 0);
