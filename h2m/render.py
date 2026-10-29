@@ -74,10 +74,9 @@ def output_dimensions(scene_width, scene_height, requested_format="auto", scale=
     if requested_format in FORMAT_SIZES:
         width, height = FORMAT_SIZES[requested_format]
     else:
-        try:
-            width, height = int(round(float(scene_width))), int(round(float(scene_height)))
-        except (TypeError, ValueError):
-            width, height = 1080, 1920
+        # En auto, la scène décide du format, puis la sortie utilise sa définition standard.
+        scene_format = resolve_scene_format(scene_width, scene_height)
+        width, height = FORMAT_SIZES[scene_format]
     try:
         scale = float(scale)
     except (TypeError, ValueError):
