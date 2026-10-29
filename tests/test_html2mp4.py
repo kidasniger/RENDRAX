@@ -76,6 +76,8 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertEqual(output_dimensions(1920, 1080, "portrait", 1), (1080, 1920))
         self.assertEqual(output_dimensions(1080, 1920, "landscape", 0.5), (960, 540))
         self.assertEqual(output_dimensions(1921, 1081, "auto", 1), (1920, 1080))
+        self.assertEqual(output_dimensions(1280, 720, "auto", 1), (1920, 1080))
+        self.assertEqual(output_dimensions(1600, 1200, "auto", 1), (1920, 1080))
         self.assertEqual(output_dimensions(1081, 1921, "auto", 0.5), (540, 960))
 
     def test_manual_format_center_crops_without_distortion_or_bars(self):
