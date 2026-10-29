@@ -287,6 +287,9 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertNotIn('<select id="fps">', page)
         self.assertIn("const gsapvideo =", page)
         self.assertIn("const musicpro =", page)
+        self.assertIn("const lottieWeb =", page)
+        self.assertIn("detectSceneSizeFromText", page)
+        self.assertIn("Format détecté :", page)
         self.assertIn("workflowStepLabel", page)
         # Explicitly delegate media playback but keep untrusted HTML isolated.
         self.assertIn('sandbox="allow-scripts" allow="autoplay"', page)
