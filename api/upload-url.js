@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       maximumSizeInBytes: MAX_BYTES,
       validUntil,
       addRandomSuffix: false,
-      allowOverwrite: false
+      allowOverwrite: true
     });
     return send(res, 200, { url: signed.presignedUrl });
   } catch (error) {
