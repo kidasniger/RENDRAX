@@ -275,12 +275,13 @@ def render(html_path, args):
         info(f"Fenêtre initiale {initial_W}×{initial_H} · mode : {'image par image (synchronisé)' if precise_candidate else 'universel (temps réel, synchro non garantie)'}")
 
         chrome = find_chrome()
+        initial_viewport_height = initial_H + 300 if precise_candidate else initial_H
         info("Démarrage de Chromium…")
-        proc, port = launch_chrome(chrome, tmp, initial_W, initial_H)
+        proc, port = launch_chrome(chrome, tmp, initial_W, initial_viewport_height)
         cdp = CDP(page_ws_url(port))
         cdp.call("Page.enable")
         cdp.call("Runtime.enable")
-        cdp.call("Emulation.setDeviceMetricsOverride", width=initial_W, height=initial_H, deviceScaleFactor=1, mobile=False)
+        cdp.call("Emulation.setDeviceMetricsOverride", width=initial_W, height=initial_viewport_height, deviceScaleFactor=1, mobile=False)
         cdp.call("Page.navigate", url=page.as_uri())
 
         info("Chargement du document HTML…")
@@ -338,9 +339,12 @@ def render(html_path, args):
         else:
             viewport_width = max(initial_W, W, int(math.ceil(scene_rect["x"] + scene_rect["width"])),
                                  scene_width)
-            viewport_height = max(initial_H, H, int(math.ceil(scene_rect["y"] + scene_rect["height"])),
-                                  scene_height)
-        if viewport_width != initial_W or viewport_height != initial_H:
+            viewport_height = max(
+                initial_viewport_height, H + (300 if precise_candidate else 0),
+                int(math.ceil(scene_rect["y"] + scene_rect["height"])),
+                scene_height + (300 if precise_candidate else 0),
+            )
+        if viewport_width != initial_W or viewport_height != initial_viewport_height:
             cdp.call("Emulation.setDeviceMetricsOverride", width=viewport_width, height=viewport_height,
                      deviceScaleFactor=1, mobile=False)
             time.sleep(0.15)
