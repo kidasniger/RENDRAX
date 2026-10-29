@@ -339,6 +339,42 @@ def inject_generic_audio_capture(text):
     return GENERIC_AUDIO_CAPTURE + text
 
 
-def choose_frame_size(text, fmt):
+def detect_lottie_stage_size(text):
+    """Détecte la taille des conteneurs Lottie usuels sans changer les autres profils."""
+    for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", text):
+        selectors, declarations = rule.group(1), rule.group(2)
+        if not re.search(
+            r"(?:^|[\s>+~,])(?:[.#](?:lottie[a-z_-]*|animation[a-z_-]*|anim[a-z_-]*container)|\[data-animation-path\])(?=$|[\s,:>+~])",
+            selectors, re.I
+        ):
+            continue
+        width = re.search(r"\bwidth\s*:\s*(\d+)px", declarations, re.I)
+        height = re.search(r"\bheight\s*:\s*(\d+)px", declarations, re.I)
+        if width and height:
+            return int(width.group(1)), int(height.group(1))
+
+    for tag in re.finditer(r"<(?:div|section|canvas)\b[^>]*>", text, re.I):
+        markup = tag.group(0)
+        if not re.search(r"\b(?:class|id)\s*=\s*['\"][^'\"]*(?:lottie|animation)[^'\"]*['\"]", markup, re.I) and not re.search(r"\bdata-animation-path\b", markup, re.I):
+            continue
+        inline = re.search(r"\bstyle\s*=\s*(['\"])(.*?)\1", markup, re.I)
+        if inline:
+            width = re.search(r"\bwidth\s*:\s*(\d+)px", inline.group(2), re.I)
+            height = re.search(r"\bheight\s*:\s*(\d+)px", inline.group(2), re.I)
+            if width and height:
+                return int(width.group(1)), int(height.group(1))
+        if tag.group(0).lower().startswith("<canvas"):
+            width = re.search(r"\bwidth\s*=\s*['\"]?(\d+)", markup, re.I)
+            height = re.search(r"\bheight\s*=\s*['\"]?(\d+)", markup, re.I)
+            if width and height:
+                return int(width.group(1)), int(height.group(1))
+    return detect_stage_size(text)
+
+
+def choose_frame_size(text, fmt, profile=""):
     sizes = {"portrait": (1080, 1920), "landscape": (1920, 1080), "square": (1080, 1080)}
-    return sizes[fmt] if fmt in sizes else detect_stage_size(text)
+    if fmt in sizes:
+        return sizes[fmt]
+    if profile == "lottie":
+        return detect_lottie_stage_size(text)
+    return detect_stage_size(text)
