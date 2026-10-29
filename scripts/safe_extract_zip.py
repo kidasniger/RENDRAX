@@ -149,7 +149,7 @@ def main():
     args = parser.parse_args()
     try:
         extract_archive(args.archive, args.dest, args.main)
-    except (UnsafeArchive, zipfile.BadZipFile, OSError, RuntimeError) as error:
+    except Exception as error:
         print(f"Extraction ZIP refusée ou impossible : {error}", file=sys.stderr)
         return 2
     return 0
