@@ -40,7 +40,7 @@ window.__seek = async (t) => {
       if (typeof player.goToAndStop === 'function') {
         const seconds = window.__h2mLottiePlayerDuration(player);
         const playerTime = seconds > 0 ? Math.min(time, seconds) : time;
-        player.goToAndStop(playerTime * 1000, false);
+        player.goToAndStop(playerTime, false);
       } else if (typeof player.setFrame === 'function') {
         const seconds = window.__h2mLottiePlayerDuration(player);
         const frames = Number(player.totalFrames);
