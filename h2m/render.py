@@ -107,6 +107,8 @@ def render(html_path, args):
                 check = "(()=>!!document.querySelector('#st')&&typeof render==='function'&&typeof D==='number'&&typeof vP!=='undefined'&&typeof mP!=='undefined')()"
             elif profile == "gsapvideo":
                 check = "(()=>!!document.querySelector('#st')&&!!document.querySelector('#a')&&typeof gsap!=='undefined'&&typeof tl!=='undefined'&&typeof SUB!=='undefined')()"
+            elif profile == "lottie":
+                check = "(()=>!!window.__h2mLottieReady&&window.__h2mLottieReady())()"
             else:
                 check = "(()=>!!document.querySelector('#stage')&&typeof render==='function'&&typeof IM==='object')()"
             t1 = time.time()
@@ -132,6 +134,8 @@ def render(html_path, args):
             elif profile == "gsapvideo":
                 # The embedded narration is the master clock for the original GSAP timeline.
                 total = float(cdp.ev("document.querySelector('#a').duration"))
+            elif profile == "lottie":
+                total = float(cdp.ev("window.__h2mLottieDuration()"))
             else:
                 total = editpro_duration(text)
             dur = min(total, args.duration) if args.duration > 0 else total
@@ -173,11 +177,18 @@ def render(html_path, args):
                         info(f"Piste {label_fr} récupérée depuis le navigateur.")
                     else:
                         warn(f"Piste {label_fr} introuvable ou non décodée par le navigateur.")
-            if not audio_inputs:
+            if not audio_inputs and profile != "lottie":
                 die("Aucune piste audio valide n’a été récupérée pour ce profil synchronisé. Le MP4 muet a été bloqué.")
+            if not audio_inputs and profile == "lottie":
+                warn("Aucune piste audio intégrée détectée : le rendu Lottie sera exporté sans son.")
 
             cdp.ev("window.__seek(0)")
-            r = cdp.ev("(()=>{const r=document.querySelector('.stage,#stage,#st').getBoundingClientRect();return [r.x,r.y,r.width,r.height]})()")
+            if profile == "lottie":
+                r = cdp.ev("window.__h2mLottieStage()")
+                if not r:
+                    die("Impossible de déterminer la scène de l’animation Lottie.")
+            else:
+                r = cdp.ev("(()=>{const r=document.querySelector('.stage,#stage,#st').getBoundingClientRect();return [r.x,r.y,r.width,r.height]})()")
             if abs(r[2] - W) > 2 or abs(r[3] - H) > 2:
                 warn(f"La scène mesure {r[2]:.0f}×{r[3]:.0f} au lieu de {W}×{H} : rendu possiblement flou.")
             clip = {"x": round(r[0]), "y": round(r[1]), "width": W, "height": H, "scale": args.scale}
