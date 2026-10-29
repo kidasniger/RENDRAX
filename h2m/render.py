@@ -430,15 +430,63 @@ def render(html_path, args):
 
 
 def _is_browser_failure(exc):
-    """Vrai pour une panne de Chromium ou de sa connexion (et non une erreur de la page)."""
+    """Détecte les pannes transitoires du navigateur, de DevTools et du réseau."""
+    import errno
+    import socket
+
     try:
         from websocket import WebSocketException
     except ImportError:
         WebSocketException = ()
-    if isinstance(exc, (OSError, WebSocketException)):
+
+    # Les erreurs de transport sont temporaires ; les OSError de fichiers locaux
+    # (HTML absent, permissions, sortie impossible) ne doivent pas déclencher
+    # une nouvelle tentative.
+    if isinstance(exc, (ConnectionError, TimeoutError, socket.timeout, WebSocketException)):
         return True
-    return isinstance(exc, RuntimeError) and bool(
-        re.search(r"closed|crash|disconnect|Target|Inspected target", str(exc), re.I))
+    if isinstance(exc, OSError):
+        transient_errnos = {
+            errno.ECONNABORTED,
+            errno.ECONNREFUSED,
+            errno.ECONNRESET,
+            errno.EHOSTUNREACH,
+            errno.ENETDOWN,
+            errno.ENETUNREACH,
+            errno.ETIMEDOUT,
+            errno.EPIPE,
+            errno.EADDRINUSE,
+        }
+        if getattr(exc, "errno", None) in transient_errnos:
+            return True
+
+    if not isinstance(exc, RuntimeError):
+        return False
+
+    message = str(exc)
+    temporary_patterns = (
+        # WebSocket / connexion DevTools interrompue.
+        r"websocket.*(?:closed|close|disconnect)",
+        r"(?:connection|socket).*(?:closed|reset|aborted|broken pipe)",
+        r"connection is already closed",
+        r"websocketconnectionclosed",
+        r"inspected target.*(?:closed|crash|disappear)",
+        r"target.*(?:closed|crash|disappear|detached)",
+        r"(?:browser|chromium).*(?:crash|crashed|terminated|exited)",
+        r"(?:crash|crashed|terminated|exited).*(?:browser|chromium)",
+        # Démarrage Chromium / endpoint DevTools indisponible.
+        r"chromium n'a pas démarré",
+        r"chromium.*(?:timeout|timed out|ne répond pas)",
+        r"(?:devtools|debugging port|remote debugging).*(?:timeout|timed out|unavailable|occup|in use)",
+        r"(?:address already in use|only one usage of each socket address)",
+        r"impossible de se connecter à chromium",
+        r"impossible de récupérer.*(?:devtools|websocket)",
+        # Erreurs réseau Chromium lors du chargement d'une ressource.
+        r"net::err_(?:",
+        r"net::err_(?:name_not_resolved|connection|timed_out|internet_disconnected|address_unreachable|network_changed|ssl_protocol_error|http2_protocol_error)",
+        r"(?:network|réseau).*(?:timeout|timed out|temporarily unavailable|connection reset|connection refused)",
+        r"(?:download|téléchargement|resource|ressource).*(?:failed|failure|timeout|timed out|network|réseau)",
+    )
+    return any(re.search(pattern, message, re.I) for pattern in temporary_patterns)
 
 
 def render_with_retry(html_path, args, attempts=2):
