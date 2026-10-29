@@ -282,6 +282,8 @@ function requestOnce(url, addresses, deadline) {
     }, (response) => {
       responseReceived = true;
       activeResponse = response;
+      response.once('end', () => clearTimeout(timer));
+      response.once('close', () => clearTimeout(timer));
       resolve({ request, response });
     });
 
@@ -293,7 +295,9 @@ function requestOnce(url, addresses, deadline) {
     }, remaining);
     timer.unref?.();
 
-    request.once('close', () => clearTimeout(timer));
+    request.once('close', () => {
+      if (!responseReceived) clearTimeout(timer);
+    });
     request.once('error', (error) => {
       if (!responseReceived) {
         clearTimeout(timer);
