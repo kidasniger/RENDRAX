@@ -106,7 +106,7 @@ def detect_scene_size(cdp, default_viewport=(1080, 1920)):
         const content = viewportMeta.getAttribute('content') || '';
         const readMeta = (key, deviceValue) => {
           const match = content.match(new RegExp('(?:^|[,;\\\\s])' + key +
-            '\\\\s*=\\\\s*([0-9]+(?:\\\\.[0-9]+)?|device-' + deviceValue + ')', 'i'));
+            '\\s*=\\s*([0-9]+(?:\\.[0-9]+)?|device-' + deviceValue + ')', 'i'));
           if (!match) return null;
           if (/^device-/i.test(match[1])) {
             return deviceValue === 'width' ? window.innerWidth : window.innerHeight;
