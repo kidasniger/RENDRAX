@@ -8,6 +8,18 @@ on:
         description: "Fichier HTML à convertir"
         required: true
         default: "kidas.html"
+      type_fichier:
+        description: "Type de source à convertir"
+        type: choice
+        options:
+          - html
+          - zip
+        required: false
+        default: "html"
+      html_principal:
+        description: "Chemin relatif du HTML principal à l’intérieur du ZIP"
+        required: false
+        default: ""
       scale:
         description: "Échelle (1 = 1080x1920, 0.5 = 540x960)"
         default: "1"
@@ -42,7 +54,7 @@ on:
         required: false
         default: ""
       blob_id:
-        description: "Identifiant du HTML temporaire dans le stockage privé"
+        description: "Identifiant du fichier temporaire dans le stockage privé"
         required: false
         default: ""
 
@@ -62,8 +74,15 @@ jobs:
         env:
           FICHIER: ${{ inputs.fichier }}
           BLOB_ID: ${{ inputs.blob_id }}
+          TYPE_FICHIER: ${{ inputs.type_fichier }}
+          HTML_PRINCIPAL: ${{ inputs.html_principal }}
         run: |
           set -euo pipefail
+          case "${TYPE_FICHIER:-html}" in
+            html|zip) TYPE_FICHIER="${TYPE_FICHIER:-html}" ;;
+            *) echo "::error::Type de fichier invalide."; exit 1 ;;
+          esac
+
           if [ -n "$BLOB_ID" ]; then
             [[ "$BLOB_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant temporaire invalide."; exit 1; }
             : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible; vérifie id-token: write}"
@@ -74,26 +93,46 @@ jobs:
               "$OIDC_REQUEST_URL" | jq -er '.value')"
             echo "::add-mask::${OIDC_TOKEN}"
             mkdir -p kidas-tmp
+            SOURCE_FILE="kidas-tmp/input.${TYPE_FICHIER}"
             curl --fail --silent --show-error --location --retry 2 \
               -H "Authorization: Bearer ${OIDC_TOKEN}" \
-              "https://rendrax.vercel.app/api/runner-source?id=${BLOB_ID}&run_id=${GITHUB_RUN_ID}" \
-              --output kidas-tmp/input.html
-            test -s kidas-tmp/input.html || { echo "::error::Le HTML temporaire est vide."; exit 1; }
-            echo "fichier=kidas-tmp/input.html" >> "$GITHUB_OUTPUT"
+              "https://rendrax.vercel.app/api/runner-source?id=${BLOB_ID}&run_id=${GITHUB_RUN_ID}&type_fichier=${TYPE_FICHIER}" \
+              --output "$SOURCE_FILE"
+            test -s "$SOURCE_FILE" || { echo "::error::Le fichier temporaire est vide."; exit 1; }
           else
-            case "$FICHIER" in
+            SOURCE_FILE="$FICHIER"
+            case "$SOURCE_FILE" in
               uploads/*)
                 git fetch --no-tags origin video-uploads
-                mkdir -p "$(dirname "$FICHIER")"
-                git show "FETCH_HEAD:$FICHIER" > "$FICHIER"
+                mkdir -p "$(dirname "$SOURCE_FILE")"
+                git show "FETCH_HEAD:$SOURCE_FILE" > "$SOURCE_FILE"
                 ;;
             esac
-            if [ ! -f "$FICHIER" ]; then
+            if [ ! -f "$SOURCE_FILE" ]; then
               git fetch --depth=1 origin uploads
-              git checkout FETCH_HEAD -- "$FICHIER"
+              git checkout FETCH_HEAD -- "$SOURCE_FILE"
             fi
-            echo "fichier=$FICHIER" >> "$GITHUB_OUTPUT"
+            test -s "$SOURCE_FILE" || { echo "::error::Le fichier source est vide ou absent."; exit 1; }
           fi
+
+          if [ "$TYPE_FICHIER" = "zip" ]; then
+            [ -n "$HTML_PRINCIPAL" ] || { echo "::error::Le chemin du HTML principal est requis pour un ZIP."; exit 1; }
+            mkdir -p kidas-tmp
+            python scripts/safe_extract_zip.py \
+              --archive "$SOURCE_FILE" \
+              --dest kidas-tmp/extracted \
+              --main "$HTML_PRINCIPAL" > kidas-tmp/main-file.txt
+            SOURCE_FILE="$(cat kidas-tmp/main-file.txt)"
+            test -s "$SOURCE_FILE" && test -f "$SOURCE_FILE" || { echo "::error::HTML principal introuvable après extraction."; exit 1; }
+          else
+            [ -z "$HTML_PRINCIPAL" ] || { echo "::error::Un chemin HTML principal n’est accepté qu’avec un ZIP."; exit 1; }
+            case "$SOURCE_FILE" in
+              *.html|*.htm|*.HTML|*.HTM) ;;
+              *) echo "::error::Le fichier source doit être un HTML."; exit 1 ;;
+            esac
+            test -f "$SOURCE_FILE" || { echo "::error::Fichier HTML source introuvable."; exit 1; }
+          fi
+          echo "fichier=$SOURCE_FILE" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
@@ -165,15 +204,17 @@ jobs:
         run: |
           gh release create "$TAG" $(find . -name '*.mp4' -not -path './.git/*') \
             --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
+
       - name: Supprimer les fichiers temporaires
         if: always()
         env:
           BLOB_ID: ${{ inputs.blob_id }}
+          TYPE_FICHIER: ${{ inputs.type_fichier }}
         run: |
           rm -rf kidas-tmp
           if [ -n "$BLOB_ID" ]; then
             if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-              echo "::warning::OIDC indisponible; le HTML privé doit être supprimé depuis le stockage Vercel."
+              echo "::warning::OIDC indisponible; le fichier privé doit être supprimé depuis le stockage Vercel."
               exit 0
             fi
             OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
@@ -188,6 +229,6 @@ jobs:
               -X POST "https://rendrax.vercel.app/api/cleanup" \
               -H "Authorization: Bearer ${OIDC_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\"}" \
-              || echo "::warning::Le nettoyage du HTML privé a échoué; vérifie les journaux Vercel."
+              --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"type_fichier\":\"${TYPE_FICHIER:-html}\"}" \
+              || echo "::warning::Le nettoyage du fichier privé a échoué; vérifie les journaux Vercel."
           fi
