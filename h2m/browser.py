@@ -59,6 +59,14 @@ class LocalHTTPServer:
             raise ValueError("Chemin local invalide pour le serveur HTTP.")
         return self.base_url + "/".join(quote(part) for part in parts)
 
+    def base_url_for(self, relative_directory=""):
+        """URL de base d'un sous-dossier du projet, terminée par /."""
+        parts = os.fspath(relative_directory).replace("\\", "/").split("/") if relative_directory else []
+        if any(part in ("", ".", "..") for part in parts):
+            raise ValueError("Dossier relatif invalide pour le serveur HTTP.")
+        suffix = "/".join(quote(part) for part in parts)
+        return self.base_url + (suffix + "/" if suffix else "")
+
     def close(self):
         self.httpd.shutdown()
         self.httpd.server_close()
