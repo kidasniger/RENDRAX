@@ -62,10 +62,11 @@ def render(html_path, args):
         precise_candidate = profile in PRECISE_PROFILES
         W, H = choose_frame_size(text, "auto" if precise_candidate else args.format)
         page = tmp / "page.html"
-        http_server = start_local_http_server(html_path.parent.resolve())
-        text = inject_base_url(text, http_server.base_url)
         if not precise_candidate:
             text = inject_generic_audio_capture(text)
+        page.write_text(text, encoding="utf-8")
+        http_server = start_local_http_server(html_path.parent.resolve(), entry_file=page)
+        text = inject_base_url(text, http_server.base_url)
         page.write_text(text, encoding="utf-8")
         audio = extract_audio(text, tmp, profile) if precise_candidate else {"voice": None, "music": None, "music_volume": 0.2}
         info(f"Fenêtre {W}×{H} · mode : {'image par image (synchronisé)' if precise_candidate else 'universel (temps réel, synchro non garantie)'}")
@@ -78,7 +79,7 @@ def render(html_path, args):
         cdp.call("Page.enable")
         cdp.call("Runtime.enable")
         cdp.call("Emulation.setDeviceMetricsOverride", width=W, height=viewport_height, deviceScaleFactor=1, mobile=False)
-        cdp.call("Page.navigate", url=http_server.url_for(html_path.name))
+        cdp.call("Page.navigate", url=http_server.url_for("__h2m_entry__.html"))
 
         info("Chargement du document HTML…")
         t0 = time.time()
