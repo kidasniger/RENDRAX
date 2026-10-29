@@ -614,6 +614,7 @@ function uploadPrivateBlob(url, file) {
     currentUploadXhr = xhr;
     xhr.open('PUT', url, true);
     xhr.setRequestHeader('Content-Type', 'text/html');
+    xhr.timeout = 480000;
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) status('Envoi sécurisé du HTML… ' + Math.round(e.loaded / e.total * 100) + '%');
     };
@@ -622,10 +623,55 @@ function uploadPrivateBlob(url, file) {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
       else reject(new Error('Le stockage privé a refusé le fichier (' + xhr.status + ').'));
     };
-    xhr.onerror = () => { currentUploadXhr = null; reject(new Error('Échec de l’envoi au stockage privé.')); };
+    xhr.onerror = () => { currentUploadXhr = null; reject(new Error('Le transfert a été interrompu par le réseau ou le serveur Blob.')); };
+    xhr.ontimeout = () => { currentUploadXhr = null; reject(new Error('Le transfert a dépassé 8 minutes sans réponse.')); };
     xhr.onabort = () => { currentUploadXhr = null; const e = new Error('annulé'); e.cancelled = true; reject(e); };
     xhr.send(file);
   });
+}
+async function uploadPrivateBlobWithRecovery(url, id, file) {
+  let activeUrl = url;
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
+    try {
+      await uploadPrivateBlob(activeUrl, file);
+      return;
+    } catch (error) {
+      if (error.cancelled || cancelled) {
+        const e = new Error('annulé'); e.cancelled = true; throw e;
+      }
+      lastError = error;
+      status('Vérification de la réception du HTML…');
+      let confirmed = false;
+      try {
+        const checkCaptcha = await captchaToken();
+        if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
+        const check = await api('/upload-check', {
+          method: 'POST',
+          body: { id, captchaToken: checkCaptcha, size: file.size }
+        });
+        confirmed = check.uploaded === true;
+      } catch (checkError) {
+        if (checkError.cancelled || cancelled) {
+          const e = new Error('annulé'); e.cancelled = true; throw e;
+        }
+      }
+      if (confirmed) return;
+      if (attempt === 1) {
+        throw new Error('Le stockage privé n’a pas confirmé la réception après deux tentatives. Vérifie la connexion et réessaie. Détail : ' + (lastError.message || 'transfert interrompu'));
+      }
+      status('Nouvelle tentative sécurisée…');
+      const retryCaptcha = await captchaToken();
+      if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
+      const signed = await api('/upload-url', {
+        method: 'POST',
+        body: { id, captchaToken: retryCaptcha }
+      });
+      activeUrl = signed.url;
+    }
+  }
+  throw lastError || new Error('Le transfert du HTML a échoué.');
 }
 function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().endsWith('.mp4')); }
 function showResult(rel) {
@@ -758,7 +804,7 @@ async function go() {
     const uploadCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
-    await uploadPrivateBlob(signed.url, f);
+    await uploadPrivateBlobWithRecovery(signed.url, id, f);
     uploadComplete = true;
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     step = 1; setSteps(1); status('Préparation du rendu…');
