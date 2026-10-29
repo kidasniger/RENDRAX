@@ -66,18 +66,46 @@ def _is_gsapvideo(text):
 
 
 def _is_lottie(text):
-    """Reconnaît Lottie Web et dotLottie avec une API de pilotage par image."""
-    lottie_web = bool(re.search(
-        r"(?:lottie-web|(?:window\s*\.\s*)?(?:lottie|bodymovin)\s*\.\s*loadAnimation\s*\()",
-        text, re.I
+    """Reconnaît les initialisations Lottie Web et dotLottie courantes."""
+    aliases = {"lottie", "bodymovin"}
+    module_import = re.compile(
+        r"\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+        re.I
+    )
+    for match in module_import.finditer(text):
+        aliases.add(match.group(1))
+    named_import = re.compile(
+        r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*lottie-web[^'\"]*\2",
+        re.I
+    )
+    for match in named_import.finditer(text):
+        for item in match.group(1).split(","):
+            parts = re.split(r"\s+as\s+", item.strip(), flags=re.I)
+            if parts and parts[0].strip().lower() in ("lottie", "bodymovin"):
+                aliases.add(parts[-1].strip())
+
+    lottie_web = any(
+        re.search(r"\b" + re.escape(alias) + r"\s*\.\s*loadAnimation\s*\(", text, re.I)
+        for alias in aliases if alias
+    ) or bool(re.search(
+        r"\bwindow\s*\.\s*(?:lottie|bodymovin)\s*\.\s*loadAnimation\s*\(", text, re.I
     ))
-    dotlottie = bool(re.search(
-        r"(?:@lottiefiles/dotlottie(?:-web)?|\bnew\s+(?:window\s*\.\s*)?DotLottie\b)",
-        text, re.I
-    ))
-    frame_api = bool(re.search(r"\b(?:goToAndStop|setFrame)\s*\(", text))
-    duration_api = bool(re.search(r"\btotalFrames\b", text))
-    return (lottie_web or dotlottie) and (frame_api or duration_api)
+
+    constructors = {"DotLottie", "dotLottie"}
+    dotlottie_import = re.compile(
+        r"\bimport\s*\{([^}]+)\}\s*from\s*(['\"])[^'\"]*@lottiefiles/dotlottie[^'\"]*\2",
+        re.I
+    )
+    for match in dotlottie_import.finditer(text):
+        for item in match.group(1).split(","):
+            parts = re.split(r"\s+as\s+", item.strip(), flags=re.I)
+            if parts and parts[0].strip().lower() == "dotlottie":
+                constructors.add(parts[-1].strip())
+    dotlottie = any(
+        re.search(r"\bnew\s+(?:(?:window\s*\.\s*)?)" + re.escape(name) + r"\s*\(", text)
+        for name in constructors if name
+    )
+    return lottie_web or dotlottie
 
 
 # Table des profils reconnus, testés dans l'ordre. Pour en ajouter un : écrire son test
@@ -123,8 +151,10 @@ LOTTIE_CAPTURE_SCRIPT = r"""<script>
   };
 
   window.__h2mCallLottieLoad = (api, ...args) => {
-    if (!api || typeof api.loadAnimation !== 'function') throw new Error('API Lottie introuvable.');
-    return window.__h2mTrackLottie(api.loadAnimation.apply(api, args));
+    const target = api && typeof api.loadAnimation === 'function' ? api :
+      (api && api.default && typeof api.default.loadAnimation === 'function' ? api.default : null);
+    if (!target) throw new Error('API Lottie introuvable.');
+    return window.__h2mTrackLottie(target.loadAnimation.apply(target, args));
   };
 
   window.__h2mTrackLottieClass = Constructor => {
@@ -174,7 +204,7 @@ LOTTIE_CAPTURE_SCRIPT = r"""<script>
 
   window.__h2mLottieReady = () => {
     const list = window.__h2mLottieList();
-    return list.some(player => {
+    return list.length > 0 && list.every(player => {
       if (!(window.__h2mLottiePlayerDuration(player) > 0)) return false;
       if (typeof player.goToAndStop !== 'function' && typeof player.setFrame !== 'function') return false;
       if (typeof player.isLoaded === 'boolean' && !player.isLoaded) return false;
