@@ -1,6 +1,9 @@
 """Client DevTools (CDP) minimal et lancement de Chromium."""
 import json
 import os
+import threading
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import quote
 import signal
 import socket
 import subprocess
@@ -8,6 +11,71 @@ import time
 import urllib.request
 
 from h2m.ui import die
+
+
+class LocalHTTPServer:
+    """Serve un projet HTML localement, uniquement sur l'interface loopback."""
+
+    def __init__(self, directory, entry_file=None):
+        self.directory = os.path.realpath(os.fspath(directory))
+        self.entry_file = os.path.realpath(os.fspath(entry_file)) if entry_file else None
+
+        class QuietHandler(SimpleHTTPRequestHandler):
+            def __init__(handler_self, *args, **kwargs):
+                handler_self.entry_file = self.entry_file
+                super().__init__(*args, directory=self.directory, **kwargs)
+
+            def do_GET(self):
+                if self.path.split("?", 1)[0] == "/__h2m_entry__.html" and self.entry_file:
+                    try:
+                        with open(self.entry_file, "rb") as source:
+                            payload = source.read()
+                    except OSError:
+                        self.send_error(404)
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(payload)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(payload)
+                    return
+                super().do_GET()
+
+            def log_message(self, _format, *_args):
+                pass
+
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), QuietHandler)
+        self.httpd.daemon_threads = True
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+        self.port = self.httpd.server_address[1]
+        self.base_url = f"http://127.0.0.1:{self.port}/"
+
+    def url_for(self, relative_path):
+        """Construit une URL HTTP pour un chemin relatif au dossier servi."""
+        parts = os.fspath(relative_path).replace("\\", "/").split("/")
+        if any(part in ("", ".", "..") for part in parts):
+            raise ValueError("Chemin local invalide pour le serveur HTTP.")
+        return self.base_url + "/".join(quote(part) for part in parts)
+
+    def base_url_for(self, relative_directory=""):
+        """URL de base d'un sous-dossier du projet, terminée par /."""
+        parts = os.fspath(relative_directory).replace("\\", "/").split("/") if relative_directory else []
+        if any(part in ("", ".", "..") for part in parts):
+            raise ValueError("Dossier relatif invalide pour le serveur HTTP.")
+        suffix = "/".join(quote(part) for part in parts)
+        return self.base_url + (suffix + "/" if suffix else "")
+
+    def close(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        self.thread.join(timeout=3)
+
+
+def start_local_http_server(directory, entry_file=None):
+    """Démarre le serveur HTTP temporaire du dossier source."""
+    return LocalHTTPServer(directory, entry_file=entry_file)
 
 
 class CDP:

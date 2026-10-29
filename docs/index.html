@@ -118,6 +118,19 @@ button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
 .drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .drop:focus-within{outline:2px solid var(--ac);outline-offset:3px}
 #fileinfo{margin:12px 0 0;font:600 .85rem/1.4 var(--mono);word-break:break-all;padding:10px 12px;border-radius:var(--rs);background:var(--surf2);border:1px solid var(--bd)}
+.zip-inspector{margin-top:12px;padding:13px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2);min-width:0}
+.zip-summary{margin:0 0 12px;font-size:.88rem;overflow-wrap:anywhere}
+.zip-main-picker{margin:12px 0}
+.zip-main-picker select{width:100%;font-size:.9rem}
+.zip-main-picker small{display:block;margin-top:7px}
+.zip-resource-heading{display:flex;flex-direction:column;gap:3px;font-size:.84rem}
+.zip-resource-heading strong{font-size:.9rem}
+.zip-resource-heading span{font-size:.78rem}
+.zip-resource-list{list-style:none;padding:0;margin:8px 0 0;max-height:300px;overflow:auto;border-top:1px solid var(--bd)}
+.zip-resource-list li{display:flex;align-items:flex-start;gap:9px;padding:8px 2px;border-bottom:1px solid var(--bd);font-size:.78rem;min-width:0}
+.zip-resource-kind{flex:0 0 auto;min-width:56px;padding:2px 5px;border:1px solid var(--bd);border-radius:6px;color:var(--mut);font:700 .62rem/1.5 var(--mono);text-align:center}
+.zip-resource-path{min-width:0;overflow-wrap:anywhere;white-space:normal;font:.78rem/1.45 var(--mono);color:var(--tx)}
+.zip-resource-list li.empty{display:block;color:var(--mut);font-size:.8rem}
 .url-import{margin-top:16px;padding-top:16px;border-top:1px solid var(--bd)}
 .url-import-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
 .url-import-row input[type=url]{flex:1 1 280px;min-width:0;width:100%;min-height:48px;padding:11px 13px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2);color:var(--tx);font:inherit;font-size:.92rem}
@@ -144,7 +157,7 @@ ol.steps li[data-s=done]::before{background:var(--ok)}
 ol.steps li[data-s=err]{color:var(--err)}
 ol.steps li[data-s=err]::before{background:var(--err)}
 #st{font-weight:600;margin:0;font-variant-numeric:tabular-nums}
-#st.ok{color:var(--ok)}#st.err{color:var(--err)}
+#st.ok{color:var(--ok)}#st.err{color:var(--err)}#st.warn{color:var(--warn)}
 #hint{margin:6px 0 0;font-size:.86rem}
 #stl{margin:8px 0 0;font-size:.88rem}
 video{width:100%;max-height:70vh;border-radius:var(--rs);background:#000;margin-top:14px;display:block}
@@ -291,7 +304,7 @@ ul#list button{box-shadow:none}
       <p class="sub">Transforme tes animations HTML en vidéos MP4, avec un rendu image par image et le son synchronisé.</p>
       <div class="rdx-hero-actions">
         <a class="rdx-primary-link" href="#fileCard">Commencer une conversion <span aria-hidden="true">→</span></a>
-        <p>Fichiers HTML ou HTM · 50 Mo maximum</p>
+        <p>Fichiers HTML, HTM ou ZIP · 50 Mo maximum</p>
       </div>
       <div class="rdx-hero-meta" aria-label="Points clés">
         <span>HTML vers MP4</span>
@@ -329,13 +342,28 @@ ul#list button{box-shadow:none}
   </header>
 
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
-    <div class="head"><span class="num" aria-hidden="true">01</span><h2 id="h-file">Ton fichier HTML</h2></div>
+    <div class="head"><span class="num" aria-hidden="true">01</span><h2 id="h-file">Ton fichier HTML ou ZIP</h2></div>
     <label class="drop" id="drop">
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
-      <b>Dépose un fichier HTML</b>
+      <b>Dépose un fichier HTML ou ZIP</b>
       <span class="mut">ou touche pour le choisir · 50 Mo max</span>
-      <input id="file" type="file" accept=".html,.htm,text/html" aria-label="Choisir un fichier HTML">
+      <input id="file" type="file" accept=".html,.htm,.zip,text/html,application/zip,application/x-zip-compressed" aria-label="Choisir un fichier HTML ou ZIP">
     </label>
+    <div id="zipInspector" class="zip-inspector" hidden aria-live="polite">
+      <p id="zipSummary" class="zip-summary"></p>
+      <div id="zipMainPicker" class="zip-main-picker" hidden>
+        <label for="zipMainFile">Choisir le HTML principal</label>
+        <select id="zipMainFile" aria-describedby="zipMainHelp">
+          <option value="">Choisis un fichier HTML…</option>
+        </select>
+        <small id="zipMainHelp">Le ZIP contient plusieurs pages HTML et aucun index.html unique. Sélectionne celle à convertir.</small>
+      </div>
+      <div class="zip-resource-heading">
+        <strong>Fichiers et ressources détectés</strong>
+        <span id="zipResourceMeta" class="mut"></span>
+      </div>
+      <ul id="zipResourceList" class="zip-resource-list"></ul>
+    </div>
     <div class="url-import">
       <label for="importUrl">Ou coller un lien HTTPS</label>
       <div class="url-import-row">
@@ -426,6 +454,10 @@ const MODES = {
   test: { scale: '0.5', test: '10' }
 };
 const MAX_BYTES = 50e6;
+const MAX_ZIP_ENTRIES = 2000;
+const MAX_ZIP_UNCOMPRESSED_BYTES = 250e6;
+const MAX_ZIP_LIST_ITEMS = 500;
+const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
 const $ = s => document.querySelector(s);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const mmss = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -437,6 +469,7 @@ const store = {
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
 let importedSource = null, importingUrl = false;
+let zipSelection = null, zipLoading = false, zipInspectToken = 0, zipMainToken = 0;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
 async function api(path, opts = {}) {
@@ -612,12 +645,198 @@ function resetPreview() {
   const p = $('#prev'); p.hidden = true; p.removeAttribute('srcdoc');
   $('#prevBtn').textContent = 'Voir un aperçu';
 }
+async function loadJsZip() {
+  if (window.JSZip) return window.JSZip;
+  if (window.__rendraxJsZipPromise) return window.__rendraxJsZipPromise;
+  window.__rendraxJsZipPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = JSZIP_CDN;
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.onload = () => window.JSZip
+      ? resolve(window.JSZip)
+      : reject(new Error('La bibliothèque ZIP a été chargée, mais elle est indisponible.'));
+    script.onerror = () => reject(new Error('Impossible de charger JSZip depuis le CDN. Vérifie la connexion puis réessaie.'));
+    document.head.appendChild(script);
+  }).catch(error => {
+    window.__rendraxJsZipPromise = null;
+    throw error;
+  });
+  return window.__rendraxJsZipPromise;
+}
+function clearZipInspector() {
+  $('#zipInspector').hidden = true;
+  $('#zipSummary').textContent = '';
+  $('#zipMainPicker').hidden = true;
+  $('#zipMainFile').textContent = '';
+  $('#zipResourceMeta').textContent = '';
+  $('#zipResourceList').textContent = '';
+}
+function zipResourceType(path) {
+  const ext = (String(path).split('.').pop() || '').toLowerCase();
+  if (['html', 'htm'].includes(ext)) return 'html';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'bmp', 'ico', 'tif', 'tiff'].includes(ext)) return 'image';
+  if (ext === 'css') return 'css';
+  if (['js', 'mjs', 'cjs'].includes(ext)) return 'script';
+  if (['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus', 'weba'].includes(ext)) return 'audio';
+  if (['woff', 'woff2', 'ttf', 'otf', 'eot'].includes(ext)) return 'font';
+  return 'other';
+}
+function renderZipResources(entries) {
+  const labels = { html: 'HTML', image: 'IMAGE', css: 'CSS', script: 'SCRIPT', audio: 'AUDIO', font: 'POLICE', other: 'FICHIER' };
+  const counts = { html: 0, image: 0, css: 0, script: 0, audio: 0, font: 0, other: 0 };
+  for (const entry of entries) counts[zipResourceType(entry.path)]++;
+  $('#zipResourceMeta').textContent = entries.length + ' fichier(s) · ' +
+    counts.image + ' image(s) · ' + counts.css + ' CSS · ' + counts.script + ' script(s) · ' +
+    counts.audio + ' audio · ' + counts.font + ' police(s)';
+  const list = $('#zipResourceList');
+  list.textContent = '';
+  for (const entry of entries.slice(0, MAX_ZIP_LIST_ITEMS)) {
+    const item = document.createElement('li');
+    const kind = document.createElement('span');
+    kind.className = 'zip-resource-kind';
+    kind.textContent = labels[zipResourceType(entry.path)];
+    const path = document.createElement('code');
+    path.className = 'zip-resource-path';
+    path.textContent = entry.path;
+    item.append(kind, path);
+    list.append(item);
+  }
+  if (entries.length > MAX_ZIP_LIST_ITEMS) {
+    const more = document.createElement('li');
+    more.className = 'empty';
+    more.textContent = (entries.length - MAX_ZIP_LIST_ITEMS) + ' autre(s) fichier(s) non affiché(s) pour préserver la fluidité.';
+    list.append(more);
+  }
+}
+function configureZipMainPicker(htmlPaths, selectedPath) {
+  const select = $('#zipMainFile');
+  select.textContent = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Choisis un fichier HTML…';
+  select.append(placeholder);
+  for (const path of htmlPaths) {
+    const option = document.createElement('option');
+    option.value = path;
+    option.textContent = path;
+    select.append(option);
+  }
+  select.value = selectedPath || '';
+  $('#zipMainPicker').hidden = !(htmlPaths.length > 1 && !selectedPath);
+}
+async function chooseZipMain(path) {
+  const selection = zipSelection;
+  if (!selection) return;
+  const mainToken = ++zipMainToken;
+  selection.mainPath = path || '';
+  selection.mainText = '';
+  selection.analysis = { kind: 'invalid', label: 'Choisis le HTML principal du ZIP.' };
+  fileText = '';
+  $('#prevBtn').hidden = true;
+  if (!path) {
+    $('#zipSummary').textContent = 'ZIP chargé. Sélectionne le HTML principal pour analyser la page.';
+    return showVerdict(selection.analysis, 'warn', 'Choisis le HTML principal dans la liste avant de continuer.');
+  }
+  const entry = selection.entries.find(item => item.path === path);
+  if (!entry || !selection.archive.file(path)) {
+    selection.analysis = { kind: 'invalid', label: 'Le HTML sélectionné est introuvable dans le ZIP.' };
+    return showVerdict(selection.analysis, 'err', '✗ Le HTML sélectionné est introuvable dans le ZIP.');
+  }
+  if (entry.size > MAX_BYTES) {
+    selection.analysis = { kind: 'invalid', label: 'Le HTML principal dépasse 50 Mo une fois extrait.' };
+    return showVerdict(selection.analysis, 'err', '✗ Le HTML principal dépasse 50 Mo une fois extrait.');
+  }
+  $('#zipSummary').textContent = 'Lecture du HTML principal : ' + path + '…';
+  status('Lecture du HTML principal du ZIP…');
+  try {
+    const html = await selection.archive.file(path).async('string');
+    if (zipSelection !== selection || mainToken !== zipMainToken) return;
+    selection.mainText = html;
+    selection.analysis = analyze(html);
+    $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
+      ' · ' + size(entry.size) + ' décompressés. Les chemins des ressources seront conservés lors de l’extraction serveur.';
+    if (selection.analysis.kind === 'invalid') {
+      showVerdict(selection.analysis, 'err', '✗ ' + selection.analysis.label + ' Import bloqué.');
+    } else if (selection.analysis.kind === 'generic') {
+      showVerdict(selection.analysis, 'warn', '⚠ ' + selection.analysis.label + '. Rendu universel en temps réel ; durée, synchronisation et son non garantis.');
+    } else {
+      showVerdict(selection.analysis, 'ok', '✓ HTML principal reconnu : ' + selection.analysis.label + '.');
+    }
+  } catch (error) {
+    if (zipSelection !== selection || mainToken !== zipMainToken) return;
+    selection.analysis = { kind: 'invalid', label: 'Lecture du HTML principal impossible.' };
+    showVerdict(selection.analysis, 'err', '✗ Lecture du HTML principal impossible : ' + (error.message || 'archive illisible') + '.');
+  }
+}
+async function inspectZip(file, token) {
+  zipLoading = true;
+  zipSelection = null;
+  $('#zipInspector').hidden = false;
+  $('#zipSummary').textContent = 'Lecture du contenu ZIP…';
+  $('#zipMainPicker').hidden = true;
+  $('#zipResourceMeta').textContent = '';
+  $('#zipResourceList').textContent = '';
+  $('#prevBtn').hidden = true;
+  showVerdict(null, 'mut', 'Lecture de la structure ZIP…');
+  try {
+    const JSZip = await loadJsZip();
+    if (token !== zipInspectToken) return;
+    const archive = await JSZip.loadAsync(file, { checkCRC32: false });
+    if (token !== zipInspectToken) return;
+    const entries = Object.keys(archive.files)
+      .map(path => ({ path, file: archive.files[path], size: Number(archive.files[path]._data && archive.files[path]._data.uncompressedSize) || 0 }))
+      .filter(entry => !entry.file.dir)
+      .sort((a, b) => a.path.localeCompare(b.path));
+    if (entries.length > MAX_ZIP_ENTRIES) throw new Error('Le ZIP contient plus de ' + MAX_ZIP_ENTRIES + ' fichiers. Réduis le nombre de fichiers puis réessaie.');
+    const expandedBytes = entries.reduce((sum, entry) => sum + entry.size, 0);
+    if (expandedBytes > MAX_ZIP_UNCOMPRESSED_BYTES) throw new Error('Le contenu décompressé dépasse la limite de ' + size(MAX_ZIP_UNCOMPRESSED_BYTES) + '.');
+    const htmlPaths = entries.filter(entry => /\.html?$/i.test(entry.path)).map(entry => entry.path);
+    zipSelection = { file, archive, entries, htmlPaths, mainPath: '', mainText: '', analysis: null };
+    renderZipResources(entries);
+    if (!htmlPaths.length) {
+      zipSelection.analysis = { kind: 'invalid', label: 'Le ZIP ne contient aucun fichier .html ou .htm.' };
+      $('#zipSummary').textContent = 'Archive ouverte · ' + entries.length + ' fichier(s) trouvé(s), aucun HTML principal.';
+      configureZipMainPicker([], '');
+      return showVerdict(zipSelection.analysis, 'err', '✗ Le ZIP ne contient aucun fichier .html ou .htm.');
+    }
+    const rootIndex = htmlPaths.filter(path => path.toLowerCase() === 'index.html');
+    const indexFiles = htmlPaths.filter(path => path.split('/').pop().toLowerCase() === 'index.html');
+    let chosen = '';
+    if (rootIndex.length === 1) chosen = rootIndex[0];
+    else if (rootIndex.length === 0 && indexFiles.length === 1) chosen = indexFiles[0];
+    else if (indexFiles.length === 0 && htmlPaths.length === 1) chosen = htmlPaths[0];
+    configureZipMainPicker(htmlPaths, chosen);
+    if (!chosen) {
+      zipSelection.analysis = { kind: 'invalid', label: 'Le HTML principal doit être sélectionné.' };
+      $('#zipSummary').textContent = 'Archive ouverte · ' + entries.length + ' fichier(s) · ' + htmlPaths.length + ' pages HTML à départager.';
+      return showVerdict(zipSelection.analysis, 'warn', 'Choisis le HTML principal dans la liste. Un index.html unique est sélectionné automatiquement lorsqu’il existe.');
+    }
+    await chooseZipMain(chosen);
+  } catch (error) {
+    if (token !== zipInspectToken) return;
+    zipSelection = null;
+    $('#zipInspector').hidden = false;
+    $('#zipSummary').textContent = 'Le ZIP n’a pas pu être inspecté.';
+    $('#zipMainPicker').hidden = true;
+    $('#zipResourceMeta').textContent = '';
+    $('#zipResourceList').textContent = '';
+    showVerdict({ kind: 'invalid', label: error.message || 'Archive ZIP invalide.' }, 'err', '✗ ' + (error.message || 'Archive ZIP invalide.'));
+  } finally {
+    if (token === zipInspectToken) zipLoading = false;
+  }
+}
 async function checkFile() {
   resetPreview(); fileText = '';
   const f = $('#file').files[0];
+  const token = ++zipInspectToken;
+  zipLoading = false;
+  zipMainToken++;
   $('#prevBtn').hidden = true;
 
   if (!f && importedSource) {
+    zipSelection = null;
+    clearZipInspector();
     $('#fileinfo').hidden = false;
     $('#fileinfo').textContent = importedSource.name + ' · ' + size(importedSource.size) + ' · URL';
     const v = importedSource.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.' };
@@ -628,11 +847,27 @@ async function checkFile() {
     return showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
   }
 
-  if (!f) { $('#fileinfo').hidden = true; return showVerdict(null); }
+  if (!f) {
+    zipSelection = null;
+    clearZipInspector();
+    $('#fileinfo').hidden = true;
+    return showVerdict(null);
+  }
   importedSource = null;
-  $('#fileinfo').hidden = false; $('#fileinfo').textContent = f.name + ' · ' + size(f.size);
-  if (!/\.html?$/i.test(f.name)) return showVerdict({ kind: 'invalid' }, 'err', '✗ Seuls les fichiers .html ou .htm sont acceptés. Import bloqué.');
-  if (f.size > MAX_BYTES) return showVerdict({ kind: 'invalid' }, 'err', '✗ Fichier trop gros (50 Mo maximum). Import bloqué.');
+  $('#fileinfo').hidden = false;
+  $('#fileinfo').textContent = f.name + ' · ' + size(f.size);
+  if (!/\.(?:html?|zip)$/i.test(f.name)) {
+    zipSelection = null; clearZipInspector();
+    return showVerdict({ kind: 'invalid', label: 'Format de fichier non pris en charge.' }, 'err', '✗ Choisis un fichier .html, .htm ou .zip. Import bloqué.');
+  }
+  if (f.size > MAX_BYTES) {
+    zipSelection = null; clearZipInspector();
+    return showVerdict({ kind: 'invalid', label: 'Fichier trop volumineux.' }, 'err', '✗ Fichier trop gros (50 Mo maximum). Import bloqué.');
+  }
+  if (/\.zip$/i.test(f.name)) return inspectZip(f, token);
+
+  zipSelection = null;
+  clearZipInspector();
   showVerdict(null, 'mut', 'Vérification du fichier…');
   let v;
   try { fileText = await f.text(); v = analyze(fileText); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.' }; }
@@ -658,6 +893,10 @@ async function importFromUrl() {
 
   importingUrl = true;
   importedSource = null;
+  zipInspectToken++;
+  zipLoading = false;
+  zipSelection = null;
+  clearZipInspector();
   $('#file').value = '';
   $('#fileinfo').hidden = true;
   $('#go').disabled = true;
@@ -716,15 +955,16 @@ function setFile(files) {
   const dt = new DataTransfer(); dt.items.add(files[0]); $('#file').files = dt.files;
   checkFile();
 }
-function uploadPrivateBlob(url, file) {
+function uploadPrivateBlob(url, file, type_fichier = 'html') {
+  const contentType = type_fichier === 'zip' ? 'application/zip' : 'text/html';
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     currentUploadXhr = xhr;
     xhr.open('PUT', url, true);
-    xhr.setRequestHeader('Content-Type', 'text/html');
+    xhr.setRequestHeader('Content-Type', contentType);
     xhr.timeout = 480000;
     xhr.upload.onprogress = e => {
-      if (e.lengthComputable) status('Envoi sécurisé du HTML… ' + Math.round(e.loaded / e.total * 100) + '%');
+      if (e.lengthComputable) status('Envoi sécurisé du ' + (type_fichier === 'zip' ? 'ZIP' : 'HTML') + '… ' + Math.round(e.loaded / e.total * 100) + '%');
     };
     xhr.onload = () => {
       currentUploadXhr = null;
@@ -737,13 +977,13 @@ function uploadPrivateBlob(url, file) {
     xhr.send(file);
   });
 }
-async function uploadPrivateBlobWithRecovery(url, id, file) {
+async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html') {
   let activeUrl = url;
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     try {
-      await uploadPrivateBlob(activeUrl, file);
+      await uploadPrivateBlob(activeUrl, file, type_fichier);
       return;
     } catch (error) {
       if (error.cancelled || cancelled) {
@@ -757,7 +997,7 @@ async function uploadPrivateBlobWithRecovery(url, id, file) {
         if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
         const check = await api('/upload-check', {
           method: 'POST',
-          body: { id, captchaToken: checkCaptcha, size: file.size }
+          body: { id, captchaToken: checkCaptcha, size: file.size, type_fichier }
         });
         confirmed = check.uploaded === true;
       } catch (checkError) {
@@ -774,7 +1014,7 @@ async function uploadPrivateBlobWithRecovery(url, id, file) {
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
       const signed = await api('/upload-url', {
         method: 'POST',
-        body: { id, captchaToken: retryCaptcha }
+        body: { id, captchaToken: retryCaptcha, type_fichier }
       });
       activeUrl = signed.url;
     }
@@ -891,20 +1131,28 @@ function fail(e, step) {
   hint(''); store.set('kidas_job', null);
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
-async function cleanupUpload(id) {
-  try { await api('/cleanup', { method: 'POST', body: { id } }); } catch (e) {}
+async function cleanupUpload(id, type_fichier = 'html') {
+  try { await api('/cleanup', { method: 'POST', body: { id, type_fichier } }); } catch (e) {}
 }
 async function go() {
   if (busy) return;
   const f = $('#file').files[0];
   const source = importedSource;
+  if (zipLoading) return status('Inspection du ZIP en cours…', 'warn');
+  const isZip = !!(f && /\.zip$/i.test(f.name));
+  const type_fichier = isZip ? 'zip' : 'html';
+  if (isZip) {
+    if (!zipSelection || zipSelection.file !== f) return status('Le ZIP doit être inspecté avant de continuer.', 'err');
+    if (!zipSelection.mainPath) return status('Choisis le HTML principal dans la liste des fichiers ZIP.', 'err');
+    if (!zipSelection.analysis || zipSelection.analysis.kind === 'invalid') return status('Le HTML principal du ZIP n’a pas passé le diagnostic.', 'err');
+  }
   $('#progCard').hidden = false;
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
   if (!f && !source) { setSteps(-1); return status('Choisis un fichier HTML ou colle un lien.', 'err'); }
   if (!verdict) await checkFile();
   if (!verdict || verdict.kind === 'invalid') { setSteps(-1); return status('Fichier refusé : il n’a pas été importé.', 'err'); }
   const m = MODES[$('#mode').value];
-  const fileName = source ? source.name : f.name;
+  const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
   const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
@@ -918,8 +1166,8 @@ async function go() {
       status('Vérification de sécurité…');
       const uploadCaptcha = await captchaToken();
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-      const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha } });
-      await uploadPrivateBlobWithRecovery(signed.url, id, f);
+      const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha, type_fichier } });
+      await uploadPrivateBlobWithRecovery(signed.url, id, f, type_fichier);
       uploadComplete = true;
     }
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -927,8 +1175,8 @@ async function go() {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, scale: m.scale, test: m.test,
-      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: fileName.replace(/\.html?$/i, '')
+      id, captchaToken: renderCaptcha, type_fichier, html_principal: isZip ? zipSelection.mainPath : '', scale: m.scale, test: m.test,
+      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, name: fileName.replace(/\.(?:html?|zip)$/i, '')
     }});
     dispatchAccepted = true;
     if (source) importedSource = null;
@@ -936,7 +1184,7 @@ async function go() {
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (!source && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id);
+    if (!source && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id, type_fichier);
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
@@ -961,6 +1209,7 @@ async function resume() {
   setBusy(false);
 }
 $('#file').onchange = checkFile;
+$('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#importUrlBtn').onclick = importFromUrl;
 $('#importUrl').oninput = () => {
   if (importedSource && $('#importUrl').value.trim() !== importedSource.url) {

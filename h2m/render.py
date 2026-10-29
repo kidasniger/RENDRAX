@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from h2m.browser import CDP, launch_chrome, page_ws_url, stop_chrome
+from h2m.browser import CDP, launch_chrome, page_ws_url, start_local_http_server, stop_chrome
 from h2m.deps import IS_TERMUX, find_chrome
 from h2m.encode import (QUALITY, check_audio_level, output_path, start_encoder, unique_path, verify_sync,
                         write_wav, write_wav_payload)
@@ -42,6 +42,7 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
 def render(html_path, args):
     tmp = Path(tempfile.mkdtemp(prefix="html2mp4_"))
     chrome = proc = cdp = enc = None
+    http_server = None
     wake = IS_TERMUX and shutil.which("termux-wake-lock")
     try:
         if wake:
@@ -61,9 +62,17 @@ def render(html_path, args):
         precise_candidate = profile in PRECISE_PROFILES
         W, H = choose_frame_size(text, "auto" if precise_candidate else args.format)
         page = tmp / "page.html"
-        text = inject_base_url(text, html_path.parent.resolve().as_uri().rstrip("/") + "/")
         if not precise_candidate:
             text = inject_generic_audio_capture(text)
+        asset_root_arg = getattr(args, "asset_root", None)
+        asset_root = Path(asset_root_arg).expanduser().resolve() if asset_root_arg else html_path.parent.resolve()
+        try:
+            relative_html = html_path.resolve().relative_to(asset_root)
+        except ValueError:
+            die("Le HTML principal doit se trouver dans le dossier racine des ressources.")
+        relative_parent = "" if str(relative_html.parent) == "." else relative_html.parent.as_posix()
+        http_server = start_local_http_server(asset_root, entry_file=page)
+        text = inject_base_url(text, http_server.base_url_for(relative_parent))
         page.write_text(text, encoding="utf-8")
         audio = extract_audio(text, tmp, profile) if precise_candidate else {"voice": None, "music": None, "music_volume": 0.2}
         info(f"Fenêtre {W}×{H} · mode : {'image par image (synchronisé)' if precise_candidate else 'universel (temps réel, synchro non garantie)'}")
@@ -76,7 +85,7 @@ def render(html_path, args):
         cdp.call("Page.enable")
         cdp.call("Runtime.enable")
         cdp.call("Emulation.setDeviceMetricsOverride", width=W, height=viewport_height, deviceScaleFactor=1, mobile=False)
-        cdp.call("Page.navigate", url=page.as_uri())
+        cdp.call("Page.navigate", url=http_server.url_for("__h2m_entry__.html"))
 
         info("Chargement du document HTML…")
         t0 = time.time()
@@ -408,6 +417,8 @@ def render(html_path, args):
             cdp.close()
         if proc:
             stop_chrome(proc)
+        if http_server:
+            http_server.close()
         if enc and enc.poll() is None:
             try:
                 enc.kill()
