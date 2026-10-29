@@ -551,6 +551,76 @@ function setBusy(b) {
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
 }
+function detectSceneSizeFromText(t) {
+  const dimensions = (width, height, source) => {
+    width = Number(width); height = Number(height);
+    return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1
+      ? { width: Math.round(width), height: Math.round(height), source }
+      : null;
+  };
+  const declarations = (text) => {
+    const w = text.match(/\bwidth\s*:\s*([0-9]+(?:\.[0-9]+)?)px\b/i);
+    const h = text.match(/\bheight\s*:\s*([0-9]+(?:\.[0-9]+)?)px\b/i);
+    return w && h ? dimensions(w[1], h[1], 'CSS') : null;
+  };
+  const stageSelector = /(?:^|[\s,>+~])(?:[.#](?:stage|st|lottie[a-z0-9_-]*|animation[a-z0-9_-]*|anim[a-z0-9_-]*container)|\[data-animation-path\])(?=$|[\s,:>+~])/i;
+  for (const match of t.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (stageSelector.test(match[1])) {
+      const size = declarations(match[2]);
+      if (size) { size.source = 'conteneur de scène'; return size; }
+    }
+  }
+  for (const match of t.matchAll(/<(?:main\s*>\s*)?canvas\b[^>]*>/gi)) {
+    const tag = match[0];
+    const w = tag.match(/\bwidth\s*=\s*["']?([0-9]+)/i);
+    const h = tag.match(/\bheight\s*=\s*["']?([0-9]+)/i);
+    const size = w && h ? dimensions(w[1], h[1], 'canvas') : null;
+    if (size) return size;
+  }
+
+  const meta = t.match(/<meta\b[^>]*name\s*=\s*["']viewport["'][^>]*>/i);
+  let metaWidth = null, metaHeight = null;
+  if (meta) {
+    const content = (meta[0].match(/\bcontent\s*=\s*(["'])(.*?)\1/i) || [])[2] || '';
+    const w = content.match(/(?:^|[,;\s])width\s*=\s*([0-9]+(?:\.[0-9]+)?)(?=$|[,;\s])/i);
+    const h = content.match(/(?:^|[,;\s])height\s*=\s*([0-9]+(?:\.[0-9]+)?)(?=$|[,;\s])/i);
+    metaWidth = w ? Number(w[1]) : null;
+    metaHeight = h ? Number(h[1]) : null;
+    if (metaWidth && metaHeight) return dimensions(metaWidth, metaHeight, 'meta viewport');
+  }
+  for (const tagName of ['body', 'html']) {
+    const inline = t.match(new RegExp('<' + tagName + '\\b[^>]*\\bstyle\\s*=\\s*(["\\'])(.*?)\\1', 'i'));
+    if (inline) {
+      const size = declarations(inline[2]);
+      if (size) {
+        if (metaWidth) size.width = metaWidth;
+        if (metaHeight) size.height = metaHeight;
+        size.source = tagName;
+        return size;
+      }
+    }
+    for (const match of t.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (new RegExp('(?:^|[,\\s>])' + tagName + '(?:$|[,\\s:#>])', 'i').test(match[1].trim())) {
+        const size = declarations(match[2]);
+        if (size) {
+          if (metaWidth) size.width = metaWidth;
+          if (metaHeight) size.height = metaHeight;
+          size.source = tagName;
+          return size;
+        }
+      }
+    }
+  }
+  return dimensions(metaWidth || 1080, metaHeight || 1920,
+    metaWidth || metaHeight ? 'meta viewport partiel' : 'viewport par défaut');
+}
+function describeSceneFormat(size) {
+  const ratio = size.width / size.height;
+  if (ratio < 0.9) return 'portrait 9:16';
+  if (ratio <= 1.1) return 'carré 1:1';
+  return 'paysage 16:9';
+}
+
 function analyze(t) {
   const count = (s, sub) => s.split(sub).length - 1;
   if (t.trim().length < 20 || !/<(?:!doctype|html|head|body|script|svg|canvas|div|style)\b/i.test(t))
@@ -577,6 +647,9 @@ function analyze(t) {
     && /requestAnimationFrame\s*\(\s*lp\s*\)/.test(t)
     && /[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px/.test(t);
   if (gsapvideo) return { kind: 'gsapvideo', label: 'Vidéo GSAP synchronisée sur la piste audio' };
+  const lottieWeb = /(?:\b(?:window\s*\.\s*)?(?:lottie|bodymovin)\s*\.\s*loadAnimation\s*\(|\bimport\s+[A-Za-z_$][\w$]*\s+from\s*["'][^"']*lottie-web[^"']*["'][\s\S]*?\.\s*loadAnimation\s*\()/i.test(t);
+  const dotLottie = /@lottiefiles\/dotlottie|\bnew\s+(?:window\s*\.\s*)?DotLottie\s*\(/i.test(t);
+  if (lottieWeb || dotLottie) return { kind: 'lottie', label: 'Animation Lottie / dotLottie' };
   return { kind: 'generic', label: 'Page HTML générique' };
 }
 function showVerdict(v, cls, msg) {
@@ -600,8 +673,12 @@ async function checkFile() {
   try { fileText = await f.text(); v = analyze(fileText); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.' }; }
   if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
   $('#prevBtn').hidden = false;
-  if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
-  else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
+  const scene = detectSceneSizeFromText(fileText);
+  const sceneLabel = 'Format détecté : ' + describeSceneFormat(scene) + ' · scène ' + scene.width + '×' + scene.height +
+    (scene.source === 'viewport par défaut' ? ' (valeur de secours avant mesure dans Chromium)' : '');
+  if (v.kind === 'generic') showVerdict(v, 'warn',
+    '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis. ' + sceneLabel + '.');
+  else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. ' + sceneLabel + '. Rendu image par image quand le profil le permet.');
 }
 function setFile(files) {
   if (!files || !files.length) return;
