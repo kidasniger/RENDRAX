@@ -77,7 +77,11 @@ def detect_scene_size(cdp, default_viewport=(1080, 1920)):
       };
       const canvasPair = (el) => {
         if (!el) return null;
-        return pair(el.width, el.height) || cssPair(el);
+        if (el.hasAttribute('width') && el.hasAttribute('height')) {
+          const intrinsic = pair(el.width, el.height);
+          if (intrinsic) return intrinsic;
+        }
+        return cssPair(el);
       };
 
       const stage = document.querySelector('.stage, #stage, .st, #st');
