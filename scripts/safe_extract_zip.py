@@ -136,6 +136,7 @@ def extract_archive(archive_path, destination, selected_html):
         if not main_file.is_file() or main_file.is_symlink():
             raise UnsafeArchive("Le HTML principal sélectionné est absent du ZIP.")
         print(str(main_file))
+        return str(main_file)
     except Exception:
         shutil.rmtree(destination, ignore_errors=True)
         raise
