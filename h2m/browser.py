@@ -22,6 +22,7 @@ class LocalHTTPServer:
 
         class QuietHandler(SimpleHTTPRequestHandler):
             def __init__(handler_self, *args, **kwargs):
+                handler_self.entry_file = self.entry_file
                 super().__init__(*args, directory=self.directory, **kwargs)
 
             def do_GET(self):
