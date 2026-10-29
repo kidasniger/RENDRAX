@@ -266,8 +266,8 @@ def patch_html(text):
                     api_names.add(parts[-1].strip())
         for api_name in sorted(api_names, key=len, reverse=True):
             text = re.sub(
-                r"\b" + re.escape(api_name) + r"\s*\.\s*loadAnimation\s*\(",
-                lambda m, name=api_name: "window.__h2mCallLottieLoad(" + name + ", ",
+                r"\b((?:window\s*\.\s*)?)" + re.escape(api_name) + r"\s*\.\s*loadAnimation\s*\(",
+                lambda m, name=api_name: "window.__h2mCallLottieLoad(" + m.group(1) + name + ", ",
                 text
             )
         constructors = {"DotLottie", "dotLottie"}
