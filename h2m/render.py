@@ -59,7 +59,7 @@ def render(html_path, args):
         info(f"Qualité d’encodage automatique : {selected_quality}.")
         text, profile = patch_html(text)
         precise_candidate = profile in PRECISE_PROFILES
-        W, H = choose_frame_size(text, "auto" if precise_candidate else args.format)
+        W, H = choose_frame_size(text, "auto" if precise_candidate else args.format, profile=profile)
         page = tmp / "page.html"
         text = inject_base_url(text, html_path.parent.resolve().as_uri().rstrip("/") + "/")
         if not precise_candidate:
