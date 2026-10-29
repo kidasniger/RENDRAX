@@ -148,8 +148,8 @@ def detect_scene_rect(cdp, default_viewport=(1080, 1920)):
       if (meta) {
         const value = meta.getAttribute('content') || '';
         const read = (key) => {
-          const match = value.match(new RegExp('(?:^|[,;\\\\s])' + key +
-            '\\\\s*=\\\\s*(device-[a-z]+|[0-9]+(?:\\\\.[0-9]+)?)', 'i'));
+          const match = value.match(new RegExp('(?:^|[,;\\s])' + key +
+            '\\s*=\\s*(device-[a-z]+|[0-9]+(?:\\.[0-9]+)?)', 'i'));
           if (!match) return null;
           return /^device-/i.test(match[1])
             ? (key === 'width' ? window.innerWidth : window.innerHeight)
