@@ -18,6 +18,7 @@ from h2m.profiles import (PRECISE_PROFILES, choose_frame_size, detect_profile, e
                           inject_base_url, inject_generic_audio_capture, patch_html)
 from h2m.report import print_report
 from h2m.scripts_js import JS_HELPERS
+from h2m.sync import first_audio_onset, visual_change
 from h2m.ui import die, fmt_time, good, info, warn
 
 
@@ -294,6 +295,8 @@ def render(html_path, args):
         out_tmp = tmp / "out.mp4"
         err_path = tmp / "ffmpeg.log"
         frame_files = []
+        first_frame = None
+        visual_onset_ms = None
         if is_precise:
             enc = start_encoder(out_tmp, fps, n_frames / fps, audio_inputs, err_path,
                                 quality=selected_quality, loudnorm=args.loudnorm,
@@ -327,6 +330,11 @@ def render(html_path, args):
                 frame_ts.append(time.monotonic() - start)
             shot = cdp.call("Page.captureScreenshot", format="jpeg", quality=QUALITY[selected_quality]["jpeg"], clip=clip)
             jpeg = base64.b64decode(shot["data"])
+            if first_frame is None:
+                first_frame = jpeg
+            elif visual_onset_ms is None and visual_change(first_frame, jpeg):
+                visual_time = (i / fps) if is_precise else frame_ts[-1]
+                visual_onset_ms = int(round(visual_time * 1000))
             if is_precise:
                 try:
                     enc.stdin.write(jpeg)
@@ -392,6 +400,18 @@ def render(html_path, args):
                     sys.stdout.flush()
             print()
 
+        audio_onset = first_audio_onset(audio_inputs)
+        suggested_audio_offset_ms = None
+        if visual_onset_ms is not None and audio_onset is not None:
+            suggested_audio_offset_ms = max(-2000, min(2000, int(round(visual_onset_ms - audio_onset * 1000))))
+            info(
+                f"Détection automatique : visuel {visual_onset_ms} ms · "
+                f"audio {audio_onset * 1000:.0f} ms · "
+                f"correction conseillée {suggested_audio_offset_ms:+d} ms."
+            )
+        else:
+            warn("Décalage automatique non déterminé : début audio ou changement visuel non détecté.")
+
         try:
             enc.stdin.close()
         except Exception:
@@ -424,6 +444,8 @@ def render(html_path, args):
             "width": W, "height": H, "fps": fps, "duration": n_frames / fps,
             "quality": selected_quality, "loudnorm": args.loudnorm, "audio_offset_ms": audio_offset_ms,
             "audio_tracks": [item[0].stem for item in audio_inputs],
+            "visual_onset_ms": visual_onset_ms, "audio_onset_ms": None if audio_onset is None else int(round(audio_onset * 1000)),
+            "suggested_audio_offset_ms": suggested_audio_offset_ms,
             "peak_db": peak, "sync_gap_ms": gap_ms,
         })
         render_completed = True
