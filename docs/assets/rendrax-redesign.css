@@ -296,3 +296,10 @@ ul#list .video-history-player .rdx-player-video{display:block;width:100%;max-wid
   ul#list .video-history-player{margin:10px 0 2px}
   ul#list .video-history-player .rdx-player-video{max-height:55svh}
 }
+
+
+/* Repli lorsque le navigateur ne peut pas lire le MP4 */
+.video-load-error{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--surf2)}
+.video-load-error p{flex:1 1 220px;margin:0;color:var(--tx);font-size:.88rem}
+.video-load-error .btn{flex:0 0 auto}
+
