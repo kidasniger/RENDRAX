@@ -41,6 +41,8 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
 
 def render(html_path, args):
     tmp = Path(tempfile.mkdtemp(prefix="html2mp4_"))
+    out_final = None
+    render_completed = False
     chrome = proc = cdp = enc = None
     http_server = None
     wake = IS_TERMUX and shutil.which("termux-wake-lock")
@@ -411,6 +413,7 @@ def render(html_path, args):
             "audio_tracks": [item[0].stem for item in audio_inputs],
             "peak_db": peak, "sync_gap_ms": gap_ms,
         })
+        render_completed = True
         return out_final
     finally:
         if cdp:
@@ -426,6 +429,13 @@ def render(html_path, args):
                 pass
         if wake and shutil.which("termux-wake-unlock"):
             subprocess.call(["termux-wake-unlock"])
+        # unique_path() réserve un nom distinct : ne supprimer que la sortie
+        # créée par cette tentative, jamais un fichier préexistant.
+        if not render_completed and out_final is not None:
+            try:
+                out_final.unlink(missing_ok=True)
+            except OSError as cleanup_error:
+                warn(f"Impossible de supprimer la sortie incomplète : {cleanup_error}")
         shutil.rmtree(tmp, ignore_errors=True)
 
 
@@ -497,3 +507,4 @@ def render_with_retry(html_path, args, attempts=2):
             if attempt == attempts or not _is_browser_failure(e):
                 raise
             warn(f"Chromium s'est arrêté ({e}). Nouvelle tentative {attempt + 1}/{attempts}…")
+            time.sleep(2)
