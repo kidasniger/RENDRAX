@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exemple Canvas</title>
+<style>body{margin:0;background:#101827}canvas{display:block;margin:40px auto;background:#203b60}</style></head><body>
+<!-- Exemple Canvas générique : animation dessinée et audio Web Audio synthétisé. -->
+<canvas id="screen" width="320" height="180"></canvas>
+<script>
+const canvas=document.getElementById("screen"),c=canvas.getContext("2d"),start=performance.now();
+function frame(){const t=Math.min(7,(performance.now()-start)/1000);c.clearRect(0,0,320,180);c.fillStyle="#58d6bd";c.beginPath();c.arc(160+Math.sin(t*1.4)*105,90,24,0,Math.PI*2);c.fill();if(t<7)requestAnimationFrame(frame)}requestAnimationFrame(frame);
+const context=new AudioContext(),osc=context.createOscillator(),gain=context.createGain();osc.frequency.value=330;gain.gain.value=.035;osc.connect(gain).connect(context.destination);context.resume().then(()=>{osc.start();osc.stop(context.currentTime+7)});
+</script></body></html>
