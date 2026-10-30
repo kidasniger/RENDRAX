@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   const { id, captchaToken, scale, test, duration, format, name, watermark = true, loudnorm = true, audio_offset_ms = 0, type_fichier = 'html', html_principal = '' } = readBody(req);
   const audioOffsetMs = Number(audio_offset_ms);
   const audioOffsetValid = (typeof audio_offset_ms === 'number' ||
-    (typeof audio_offset_ms === 'string' && /^-?\\d+$/.test(audio_offset_ms))) &&
+    (typeof audio_offset_ms === 'string' && /^-?\d+$/.test(audio_offset_ms))) &&
     Number.isInteger(audioOffsetMs) && audioOffsetMs >= -2000 && audioOffsetMs <= 2000;
   if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
   if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Type de fichier invalide.' });
