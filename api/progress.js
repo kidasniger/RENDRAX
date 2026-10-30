@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
 
   const { id, run_id: runId, current, total, phase } = readBody(req);
-  if (!validJobId(id) || !/^\\d{1,20}$/.test(String(runId || ''))) {
+  if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) {
     return send(res, 400, { error: 'Identifiant de rendu invalide.' });
   }
 
