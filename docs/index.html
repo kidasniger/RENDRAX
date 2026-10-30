@@ -108,6 +108,9 @@ button.danger:hover{background:color-mix(in srgb,var(--err) 10%,transparent)}
 button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 button.go{min-height:54px;font-size:1.02rem;margin-top:16px}
 button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
+input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
+#audioOffsetValue{float:right;font-variant-numeric:tabular-nums;font-weight:700}
+
 
 /* zone de dépôt */
 .drop{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;border:1.5px dashed var(--bd);border-radius:var(--r);padding:28px 16px;text-align:center;background:var(--surf2);cursor:pointer;margin:0;color:var(--tx);font-size:inherit;font-weight:400;transition:border-color .15s,background-color .15s}
@@ -429,6 +432,11 @@ ul#list button{box-shadow:none}
         <p class="mut">Optionnel. Active cette option pour ajouter le filigrane animé RENDRAX au MP4.</p>
       </div>
       <div class="field field-wide">
+        <label for="audioOffset">Décalage du son <output id="audioOffsetValue" for="audioOffset">0 ms</output></label>
+        <input id="audioOffset" type="range" min="-2000" max="2000" step="50" value="0">
+        <p class="mut">Valeur positive : retarde le son. Valeur négative : avance le son. Plage : −2 000 à +2 000 ms.</p>
+      </div>
+      <div class="field field-wide">
         <label class="checkline" for="loudnorm">
           <input id="loudnorm" type="checkbox" checked>
           <span>Égaliser le volume</span>
@@ -440,6 +448,7 @@ ul#list button{box-shadow:none}
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
+    <button id="testRender" class="sec" type="button">Rendu test de 10 s</button>
     <button id="cancel" class="danger" type="button" hidden>Annuler le rendu</button>
   </section>
 
@@ -625,6 +634,8 @@ function setBusy(b) {
   busy = b;
   syncGoButton();
   $('#go').hidden = b;
+  $('#testRender').hidden = b;
+  $('#testRender').disabled = b || !securityReady || hasBlockingFinding(verdict);
   $('#file').disabled = b || importingUrl;
   $('#importUrl').disabled = b || importingUrl;
   $('#importUrlBtn').disabled = b || importingUrl || !securityReady;
@@ -1389,7 +1400,7 @@ function currentStepIndex() { return [...$('#steps').children].findIndex(li => l
 async function cleanupUpload(id, type_fichier = 'html') {
   try { await api('/cleanup', { method: 'POST', body: { id, type_fichier } }); } catch (e) {}
 }
-async function go() {
+async function go(testOnly = false) {
   if (busy) return;
   const f = $('#file').files[0];
   const source = importedSource;
@@ -1406,7 +1417,7 @@ async function go() {
   if (!f && !source) { setSteps(-1); return status('Choisis un fichier HTML ou colle un lien.', 'err'); }
   if (!verdict) await checkFile();
   if (!verdict || hasBlockingFinding(verdict)) { setSteps(-1); return status('Fichier refusé : le rapport contient un élément bloquant.', 'err'); }
-  const m = MODES[$('#mode').value];
+  const m = testOnly ? MODES.test : MODES[$('#mode').value];
   const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
   const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
@@ -1431,7 +1442,8 @@ async function go() {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
       id, captchaToken: renderCaptcha, type_fichier, html_principal: isZip ? zipSelection.mainPath : '', scale: m.scale, test: m.test,
-      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, loudnorm: $('#loudnorm').checked, name: fileName.replace(/\.(?:html?|zip)$/i, '')
+      duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, loudnorm: $('#loudnorm').checked,
+      audio_offset_ms: Number($('#audioOffset').value), name: fileName.replace(/\.(?:html?|zip)$/i, '')
     }});
     dispatchAccepted = true;
     if (source) importedSource = null;
@@ -1476,7 +1488,12 @@ $('#importUrl').oninput = () => {
     showVerdict(null);
   }
 };
-$('#go').onclick = go;
+$('#go').onclick = () => go(false);
+$('#testRender').onclick = () => go(true);
+$('#audioOffset').oninput = () => {
+  const value = Number($('#audioOffset').value);
+  $('#audioOffsetValue').textContent = (value > 0 ? '+' : '') + value + ' ms';
+};
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
 $('#prevBtn').onclick = () => {
