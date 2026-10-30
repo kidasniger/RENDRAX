@@ -18,7 +18,7 @@ from h2m.profiles import (PRECISE_PROFILES, choose_frame_size, detect_profile, e
                           inject_base_url, inject_generic_audio_capture, patch_html)
 from h2m.report import print_report
 from h2m.scripts_js import JS_HELPERS
-from h2m.sync import first_audio_onset, visual_change
+from h2m.sync import calculate_audio_offset_ms, first_audio_onset, visual_change
 from h2m.ui import die, fmt_time, good, info, warn
 
 
@@ -403,7 +403,7 @@ def render(html_path, args):
         audio_onset = first_audio_onset(audio_inputs)
         suggested_audio_offset_ms = None
         if visual_onset_ms is not None and audio_onset is not None:
-            suggested_audio_offset_ms = max(-2000, min(2000, int(round(visual_onset_ms - audio_onset * 1000))))
+            suggested_audio_offset_ms = calculate_audio_offset_ms(visual_onset_ms, audio_onset * 1000)
             info(
                 f"Détection automatique : visuel {visual_onset_ms} ms · "
                 f"audio {audio_onset * 1000:.0f} ms · "
