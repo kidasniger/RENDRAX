@@ -498,13 +498,26 @@ def _is_browser_failure(exc):
     return any(re.search(pattern, message, re.I) for pattern in temporary_patterns)
 
 
+def _short_retry_cause(exc, limit=140):
+    """Produit une cause lisible sur une seule ligne dans le journal."""
+    message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
+    message = re.sub(r"\\s+", " ", message)
+    if len(message) > limit:
+        message = message[:limit - 1].rstrip() + "…"
+    return message
+
+
 def render_with_retry(html_path, args, attempts=2):
-    """Relance le rendu une fois si Chromium plante, au lieu de perdre tout le travail."""
+    """Relance le rendu une fois si une panne transitoire est détectée."""
+    if attempts < 1:
+        raise ValueError("Le nombre de tentatives doit être au moins égal à 1.")
+
     for attempt in range(1, attempts + 1):
         try:
             return render(html_path, args)
-        except Exception as e:  # noqa: BLE001
-            if attempt == attempts or not _is_browser_failure(e):
+        except Exception as exc:  # noqa: BLE001
+            if attempt == attempts or not _is_browser_failure(exc):
                 raise
-            warn(f"Chromium s'est arrêté ({e}). Nouvelle tentative {attempt + 1}/{attempts}…")
+            cause = _short_retry_cause(exc)
+            warn(f"Nouvelle tentative {attempt + 1}/{attempts} après : {cause}")
             time.sleep(2)
