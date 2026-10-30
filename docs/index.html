@@ -169,6 +169,19 @@ ol.steps li[data-s=err]::before{background:var(--err)}
 #st{font-weight:600;margin:0;font-variant-numeric:tabular-nums}
 #st.ok{color:var(--ok)}#st.err{color:var(--err)}#st.warn{color:var(--warn)}
 #hint{margin:6px 0 0;font-size:.86rem}
+#renderProgress{margin-top:12px;padding:13px 14px;border:1px solid var(--bd);border-radius:14px;background:var(--surf2)}
+.render-progress-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px;font-size:.84rem}
+#renderProgressPhase{font-weight:650;color:var(--tx)}
+#renderProgressPercent{font:750 .9rem/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ac)}
+#renderProgressBar{display:block;width:100%;height:10px;overflow:hidden;border:0;border-radius:999px;background:var(--bd);accent-color:var(--ac)}
+#renderProgressBar::-webkit-progress-bar{background:var(--bd);border-radius:999px}
+#renderProgressBar::-webkit-progress-value{background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:999px}
+#renderProgressBar::-moz-progress-bar{background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:999px}
+#renderProgressEta{margin:8px 0 0;font-size:.8rem;color:var(--mut);font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce){
+  #renderProgressBar{animation:none;transition:none}
+  #renderProgressBar::-webkit-progress-value{transition:none}
+}
 #stl{margin:8px 0 0;font-size:.88rem}
 video{width:100%;max-height:70vh;border-radius:var(--rs);background:#000;margin-top:14px;display:block}
 #res small{display:block;margin-top:8px;font-family:var(--mono);font-size:.78rem}
@@ -478,6 +491,14 @@ ul#list button{box-shadow:none}
     </ol>
     <p id="st" class="mut" aria-live="polite">Prêt.</p>
     <p id="hint" class="mut" hidden></p>
+    <div id="renderProgress" hidden aria-live="off">
+      <div class="render-progress-head">
+        <span id="renderProgressPhase">Préparation du rendu</span>
+        <strong id="renderProgressPercent"></strong>
+      </div>
+      <progress id="renderProgressBar" max="100" aria-label="Progression du rendu"></progress>
+      <p id="renderProgressEta">Calcul…</p>
+    </div>
     <p id="stl" hidden><a id="stla" target="_blank" rel="noopener">Voir le journal du rendu</a></p>
     <div id="res"></div>
   </section>
@@ -635,6 +656,60 @@ function status(msg, cls, url) {
   if (url) $('#stla').href = url;
 }
 function hint(msg) { const h = $('#hint'); h.hidden = !msg; h.textContent = msg || ''; }
+function resetRenderProgress() {
+  $('#renderProgress').hidden = true;
+  $('#renderProgressPhase').textContent = 'Préparation du rendu';
+  $('#renderProgressPercent').textContent = '';
+  $('#renderProgressEta').textContent = 'Calcul…';
+  $('#renderProgressBar').removeAttribute('value');
+}
+function updateRenderProgress(progress, elapsedMs, samples, state, fallbackPhase) {
+  const panel = $('#renderProgress');
+  const bar = $('#renderProgressBar');
+  const phase = progress && progress.phase;
+  const labels = {
+    rendu: 'Rendu des images',
+    temps_reel: 'Rendu en temps réel',
+    assemblage: 'Assemblage'
+  };
+  panel.hidden = false;
+  $('#renderProgressPhase').textContent = labels[phase] || fallbackPhase || 'Préparation du rendu';
+  const percentValue = progress && phase === 'rendu' &&
+    Number.isFinite(Number(progress.percent)) ? Number(progress.percent) : null;
+  if (percentValue !== null) {
+    state.maxPercent = Math.max(state.maxPercent, Math.max(0, Math.min(100, percentValue)));
+    bar.value = state.maxPercent;
+    $('#renderProgressPercent').textContent = Math.round(state.maxPercent) + ' %';
+  } else {
+    bar.removeAttribute('value');
+    $('#renderProgressPercent').textContent = '';
+  }
+
+  let etaText = 'Calcul…';
+  if (phase === 'temps_reel' || phase === 'assemblage') {
+    etaText = 'Durée écoulée : ' + mmss(elapsedMs);
+  } else if (phase === 'rendu' && progress &&
+      Number.isSafeInteger(progress.current) && Number.isSafeInteger(progress.total) &&
+      progress.total > 0) {
+    const usable = samples.filter(sample => sample.current >= 0);
+    if (usable.length >= 2) {
+      const first = usable[0];
+      const last = usable[usable.length - 1];
+      const seconds = (last.at - first.at) / 1000;
+      const frames = last.current - first.current;
+      const fresh = Date.now() - last.at <= 18000;
+      if (seconds > 0 && frames > 0 && fresh) {
+        const framesPerSecond = frames / seconds;
+        const remaining = Math.max(0, progress.total - Math.max(progress.current, state.maxCurrent));
+        etaText = remaining === 0 ? 'Finalisation du rendu…' :
+          'Temps restant estimé : ' + mmss((remaining / framesPerSecond) * 1000);
+      }
+    }
+  } else if (fallbackPhase) {
+    etaText = 'Durée écoulée : ' + mmss(elapsedMs);
+  }
+  $('#renderProgressEta').textContent = etaText;
+}
 function workflowStepIndex(name) {
   if (/Publier le MP4|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
   if (/Rendre la vidéo/i.test(name || '')) return 2;
@@ -1382,17 +1457,35 @@ async function loadList() {
 }
 async function waitJob(id, t0) {
   let polls = 0, lastWorkflowStep = '';
+  const progressSamples = [];
+  const progressState = { maxPercent: 0, maxCurrent: 0 };
+  resetRenderProgress();
   while (Date.now() - t0 < 95 * 60000) {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
     const job = await api('/job?id=' + encodeURIComponent(id) + (showDetails ? '&details=1' : ''));
-    const elapsed = mmss(Date.now() - t0);
+    const elapsedMs = Date.now() - t0;
+    const elapsed = mmss(elapsedMs);
     if (!job.found) {
+      updateRenderProgress(null, elapsedMs, progressSamples, progressState, 'En attente du démarrage');
       setSteps(1); status('Démarrage du rendu… (' + elapsed + ')');
       continue;
     }
+    const progress = job.progress && typeof job.progress === 'object' ? job.progress : null;
+    if (progress && progress.phase === 'rendu' &&
+        Number.isSafeInteger(progress.current) && progress.current >= 0 &&
+        Number.isSafeInteger(progress.total) && progress.total > 0) {
+      progressState.maxCurrent = Math.max(progressState.maxCurrent, progress.current);
+      const previous = progressSamples[progressSamples.length - 1];
+      if (!previous || progress.current > previous.current) {
+        progressSamples.push({ at: Date.now(), current: progress.current });
+        if (progressSamples.length > 5) progressSamples.shift();
+      }
+    }
+    updateRenderProgress(progress, elapsedMs, progressSamples, progressState,
+      job.status === 'queued' ? 'En attente du démarrage' : 'Préparation du rendu');
     currentRunId = job.runId || currentRunId;
     if (job.currentStep) lastWorkflowStep = job.currentStep;
     if (job.status !== 'completed') {
@@ -1419,13 +1512,14 @@ async function waitJob(id, t0) {
 }
 async function finish(rel) {
   showResult(rel); setSteps(4); status('Terminé ✓', 'ok'); hint('');
+  resetRenderProgress();
   store.set('kidas_job', null); loadList();
 }
 function fail(e, step) {
   setSteps(0, step);
   [...$('#steps').children].forEach((li, i) => { if (i < step) li.dataset.s = 'done'; if (i > step) li.dataset.s = 'pending'; });
   status((e.cancelled ? '' : '✗ ') + explain(e), e.cancelled ? 'mut' : 'err', e.url);
-  hint(''); store.set('kidas_job', null);
+  hint(''); resetRenderProgress(); store.set('kidas_job', null);
 }
 function currentStepIndex() { return [...$('#steps').children].findIndex(li => li.dataset.s === 'active'); }
 async function cleanupUpload(id, type_fichier = 'html') {
@@ -1452,7 +1546,7 @@ async function go(testOnly = false) {
   const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
   const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
-  cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint('');
+  cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint(''); resetRenderProgress();
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
     setSteps(0);
