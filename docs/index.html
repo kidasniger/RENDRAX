@@ -554,6 +554,7 @@ const store = {
 };
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
+let openHistoryPlayer = null;
 let importedSource = null, importingUrl = false;
 let zipSelection = null, zipLoading = false, zipInspectToken = 0, zipMainToken = 0;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
@@ -1441,10 +1442,21 @@ function showResult(rel) {
   });
   box.append(v, info, bar);
 }
-async function loadList() {
+async function closeHistoryPlayer() {
+  if (!openHistoryPlayer) return;
+  const { video, panel, button } = openHistoryPlayer;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  panel.remove();
+  button.setAttribute('aria-expanded', 'false');
+  openHistoryPlayer = null;
+}
+function loadList() {
   const ul = $('#list');
   try {
     const data = await api('/videos');
+    closeHistoryPlayer();
     ul.textContent = '';
     const items = data.items || [];
     if (!items.length) { ul.innerHTML = '<li class="empty">Aucune vidéo générée.</li>'; return; }
@@ -1452,6 +1464,7 @@ async function loadList() {
       const a = mp4Of(r);
       if (!a) continue;
       const li = document.createElement('li');
+      const row = document.createElement('div'); row.className = 'video-list-row';
       const thumb = document.createElement('div'); thumb.className = 'video-thumb';
       thumb.setAttribute('aria-hidden', 'true');
       if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) {
@@ -1479,19 +1492,51 @@ async function loadList() {
       const d = document.createElement('small');
       d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
       meta.append(l, d);
+      const actions = document.createElement('div'); actions.className = 'video-list-actions';
+      const watch = document.createElement('button'); watch.type = 'button'; watch.className = 'sec'; watch.textContent = 'Regarder';
+      watch.setAttribute('aria-expanded', 'false');
+      watch.setAttribute('aria-label', 'Regarder la vidéo ' + a.name);
+      watch.onclick = () => {
+        if (openHistoryPlayer && openHistoryPlayer.button === watch) {
+          closeHistoryPlayer();
+          return;
+        }
+        closeHistoryPlayer();
+        const panel = document.createElement('div'); panel.className = 'video-history-player';
+        const video = document.createElement('video');
+        video.className = 'rdx-player-video';
+        video.controls = true;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
+        video.preload = 'metadata';
+        if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) video.poster = a.thumbnail_url;
+        video.src = a.browser_download_url;
+        panel.append(video);
+        li.append(panel);
+        watch.setAttribute('aria-expanded', 'true');
+        watch.textContent = 'Fermer';
+        openHistoryPlayer = { video, panel, button: watch };
+      };
       const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
       del.setAttribute('aria-label', 'Supprimer la vidéo ' + a.name);
       del.onclick = async () => {
         if (!confirm('Supprimer définitivement cette vidéo ?')) return;
         del.disabled = true;
         try {
+          if (openHistoryPlayer && openHistoryPlayer.panel.parentElement === li) closeHistoryPlayer();
           await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
           loadList();
         } catch (e) { del.disabled = false; alert(explain(e)); }
       };
-      li.append(thumb, meta, del); ul.append(li);
+      actions.append(watch, del);
+      row.append(thumb, meta, actions);
+      li.append(row);
+      ul.append(li);
     }
   } catch (e) {
+    closeHistoryPlayer();
     ul.textContent = '';
     const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
   }
