@@ -718,7 +718,7 @@ function analyze(t, sizeBytes = null) {
   const addExternalUrl = raw => {
     if (typeof raw !== 'string') return;
     const value = raw.trim().replace(/^['"]|['"]$/g, '');
-    if (!/^https?:\\/\\//i.test(value) && !/^\\/\\//.test(value)) return;
+    if (!/^https?:\/\//i.test(value) && !/^\/\//.test(value)) return;
     try {
       const parsed = new URL(value, window.location.href);
       if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
@@ -740,21 +740,20 @@ function analyze(t, sizeBytes = null) {
       for (const attribute of ['src', 'href', 'poster']) {
         if (element.hasAttribute(attribute)) addExternalUrl(element.getAttribute(attribute));
       }
-      for (const attribute of ['srcset']) {
-        if (!element.hasAttribute(attribute)) continue;
-        for (const candidate of element.getAttribute(attribute).split(',')) {
-          addExternalUrl(candidate.trim().split(/\\s+/)[0]);
+      if (element.hasAttribute('srcset')) {
+        for (const candidate of element.getAttribute('srcset').split(',')) {
+          addExternalUrl(candidate.trim().split(/\s+/)[0]);
         }
       }
     }
 
-    // CSS intégré dans <style> et dans les attributs style.
+    // CSS intégré : url(...) couvre aussi les sources de @font-face.
     const cssSources = [
       ...Array.from(parsedHtml.querySelectorAll('style'), element => element.textContent || ''),
       ...Array.from(parsedHtml.querySelectorAll('[style]'), element => element.getAttribute('style') || '')
     ];
-    const cssUrlPattern = /url\\(\\s*(?:(["'])(.*?)\\1|([^)'"]*?))\\s*\\)/gi;
-    const cssImportPattern = /@import\\s+(?:url\\(\\s*)?(?:(["'])(.*?)\\1|([^)'";\\s]+))\\s*\\)?/gi;
+    const cssUrlPattern = /url\(\s*(?:(["'])(.*?)\1|([^)'"]*?))\s*\)/gi;
+    const cssImportPattern = /@import\s+(?:url\(\s*)?(?:(["'])(.*?)\1|([^)'";\s]+))\s*\)?/gi;
     for (const css of cssSources) {
       let cssMatch;
       while ((cssMatch = cssUrlPattern.exec(css)) !== null) {
