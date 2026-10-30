@@ -324,6 +324,7 @@ def render(html_path, args):
         i = -1
         _write_render_progress(0, n_frames if is_precise else 0,
                                "rendu" if is_precise else "temps_reel")
+        last_progress_at = time.monotonic()
         while True:
             i += 1
             if is_precise:
