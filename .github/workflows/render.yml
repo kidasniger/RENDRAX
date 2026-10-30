@@ -249,6 +249,39 @@ jobs:
             python html2mp4.py "${args[@]}"
           fi
 
+      - name: Générer les miniatures JPEG
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          videos=( **/*.mp4 )
+          (("${#videos[@]}" > 0)) || { echo "::error::Aucun MP4 à illustrer."; exit 1; }
+
+          for video in "${videos[@]}"; do
+            duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")"
+            timestamp="$(awk -v d="$duration" 'BEGIN { if (d <= 2) printf "%.3f", d / 2; else print "1.000" }')"
+            thumbnail="${video%.*}.jpg"
+            generated=false
+
+            # Augmente progressivement la compression sans changer la largeur de 480 px.
+            for quality in 10 12 14 16 18 20 22 24; do
+              ffmpeg -hide_banner -loglevel error -y \
+                -ss "$timestamp" -i "$video" -frames:v 1 \
+                -vf "scale=480:-2:flags=lanczos" \
+                -q:v "$quality" -an -sn -dn "$thumbnail"
+              if [ -s "$thumbnail" ] && [ "$(stat -c '%s' "$thumbnail")" -lt 61440 ]; then
+                generated=true
+                break
+              fi
+            done
+
+            if [ "$generated" != true ]; then
+              echo "::error::Impossible de produire une miniature de moins de 60 Ko pour $video."
+              exit 1
+            fi
+            echo "Miniature créée : $thumbnail ($(stat -c '%s' "$thumbnail") octets, image à ${timestamp}s)"
+          done
+
       - name: Publier le MP4 (artefact)
         uses: actions/upload-artifact@v4
         with:
@@ -263,7 +296,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
         run: |
-          gh release create "$TAG" $(find . -name '*.mp4' -not -path './.git/*') \
+          set -euo pipefail
+          mapfile -d '' assets < <(find . -type f \\( -name '*.mp4' -o -name '*.jpg' \\) -not -path './.git/*' -print0 | sort -z)
+          (("${#assets[@]}" > 0)) || { echo "::error::Aucun fichier vidéo ou miniature à publier."; exit 1; }
+          gh release create "$TAG" "${assets[@]}" \
             --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
 
       - name: Supprimer les fichiers temporaires
