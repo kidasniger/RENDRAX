@@ -1406,6 +1406,21 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
   throw lastError || new Error('Le transfert du HTML a échoué.');
 }
 function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().endsWith('.mp4')); }
+function addVideoLoadFallback(container, url, name) {
+  if (container.querySelector('.video-load-error')) return;
+  const fallback = document.createElement('div');
+  fallback.className = 'video-load-error';
+  fallback.setAttribute('role', 'alert');
+  const message = document.createElement('p');
+  message.textContent = 'Impossible de lire cette vidéo. Tu peux essayer de la télécharger.';
+  const download = document.createElement('a');
+  download.className = 'btn';
+  download.href = url;
+  download.download = name;
+  download.textContent = 'Télécharger la vidéo';
+  fallback.append(message, download);
+  container.append(fallback);
+}
 function showResult(rel) {
   const a = mp4Of(rel);
   const box = $('#res'); box.textContent = '';
@@ -1419,6 +1434,7 @@ function showResult(rel) {
   v.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
   v.preload = 'metadata';
   if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) v.poster = a.thumbnail_url;
+  v.addEventListener('error', () => addVideoLoadFallback(box, a.browser_download_url, a.name), { once: true });
   v.src = a.browser_download_url;
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
@@ -1513,6 +1529,7 @@ function loadList() {
         video.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
         video.preload = 'metadata';
         if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) video.poster = a.thumbnail_url;
+        video.addEventListener('error', () => addVideoLoadFallback(panel, a.browser_download_url, a.name), { once: true });
         video.src = a.browser_download_url;
         panel.append(video);
         li.append(panel);
