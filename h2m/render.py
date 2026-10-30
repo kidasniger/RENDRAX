@@ -61,6 +61,11 @@ def render(html_path, args):
         )
         info(f"Fichier vérifié : {label}")
         info(f"Qualité d’encodage automatique : {selected_quality}.")
+        audio_offset_ms = getattr(args, "audio_offset", 0)
+        if isinstance(audio_offset_ms, bool) or not isinstance(audio_offset_ms, int) or not -2000 <= audio_offset_ms <= 2000:
+            raise ValueError("Le décalage audio doit être un entier compris entre -2000 et 2000 ms.")
+        if audio_offset_ms:
+            info(f"Décalage audio manuel appliqué au mixage final : {audio_offset_ms:+d} ms.")
         text, profile = patch_html(text)
         precise_candidate = profile in PRECISE_PROFILES
         W, H = choose_frame_size(text, "auto" if precise_candidate else args.format)
@@ -291,7 +296,8 @@ def render(html_path, args):
         frame_files = []
         if is_precise:
             enc = start_encoder(out_tmp, fps, n_frames / fps, audio_inputs, err_path,
-                                quality=selected_quality, loudnorm=args.loudnorm)
+                                quality=selected_quality, loudnorm=args.loudnorm,
+                                audio_offset_ms=audio_offset_ms)
 
         if not is_precise:
             # Référence de temps commune navigateur/FFmpeg pour aligner l'audio WebAudio.
@@ -365,7 +371,8 @@ def render(html_path, args):
         if not is_precise:
             info("Assemblage des images et de l'audio…")
             enc = start_encoder(out_tmp, fps, n_frames / fps, audio_inputs, err_path,
-                                quality=selected_quality, loudnorm=args.loudnorm)
+                                quality=selected_quality, loudnorm=args.loudnorm,
+                                audio_offset_ms=audio_offset_ms)
             # Remise à cadence constante : pour chaque instant k/fps on écrit la dernière image
             # réellement capturée avant cet instant. Image et audio restent ainsi sur la même horloge.
             j = 0
