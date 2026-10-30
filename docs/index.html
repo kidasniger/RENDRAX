@@ -216,6 +216,9 @@ video{width:100%;max-height:70vh;border-radius:var(--rs);background:#000;margin-
 ul#list{list-style:none;padding:0;margin:4px 0 0}
 ul#list li{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--bd)}
 ul#list li:first-child{border-top:0}
+ul#list .video-thumb{display:flex;flex:0 0 88px;width:88px;height:56px;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--bd);border-radius:9px;background:var(--surf2);color:var(--mut);font:700 .65rem/1.2 var(--mono);text-align:center}
+ul#list .video-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+ul#list .video-thumb-fallback{padding:4px}
 ul#list .meta{min-width:0;flex:1}
 ul#list .meta a{font:600 .88rem/1.35 var(--mono);word-break:break-all;color:var(--tx);text-decoration:none}
 ul#list .meta a:hover{color:var(--ac);text-decoration:underline}
@@ -1441,6 +1444,28 @@ async function loadList() {
       const a = mp4Of(r);
       if (!a) continue;
       const li = document.createElement('li');
+      const thumb = document.createElement('div'); thumb.className = 'video-thumb';
+      thumb.setAttribute('aria-hidden', 'true');
+      if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) {
+        const image = document.createElement('img');
+        image.src = a.thumbnail_url;
+        image.alt = 'Miniature de ' + a.name;
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        image.onerror = () => {
+          image.remove();
+          const fallback = document.createElement('span');
+          fallback.className = 'video-thumb-fallback';
+          fallback.textContent = 'Aperçu indisponible';
+          thumb.append(fallback);
+        };
+        thumb.append(image);
+      } else {
+        const fallback = document.createElement('span');
+        fallback.className = 'video-thumb-fallback';
+        fallback.textContent = 'Aperçu indisponible';
+        thumb.append(fallback);
+      }
       const meta = document.createElement('div'); meta.className = 'meta';
       const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
       const d = document.createElement('small');
@@ -1456,7 +1481,7 @@ async function loadList() {
           loadList();
         } catch (e) { del.disabled = false; alert(explain(e)); }
       };
-      li.append(meta, del); ul.append(li);
+      li.append(thumb, meta, del); ul.append(li);
     }
   } catch (e) {
     ul.textContent = '';
