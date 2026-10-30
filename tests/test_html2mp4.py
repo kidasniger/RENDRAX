@@ -52,6 +52,11 @@ class Html2Mp4Tests(unittest.TestCase):
         error = BrowserStartupError("Chromium n'a pas démarré.")
         self.assertTrue(renderer.render_with_retry.__globals__["_is_browser_failure"](error))
 
+    def test_retry_cause_collapses_whitespace(self):
+        error = RuntimeError("WebSocket   connection\n closed")
+        cause = renderer.render_with_retry.__globals__["_short_retry_cause"](error)
+        self.assertEqual(cause, "WebSocket connection")
+
     def test_render_does_not_retry_non_transient_errors(self):
         failure = RuntimeError("Fichier HTML invalide")
 
