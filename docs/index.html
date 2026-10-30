@@ -715,15 +715,69 @@ function analyze(t, sizeBytes = null) {
     '');
 
   const external = new Set();
-  const externalPattern = /(?:src|href)\s*=\s*["'](https?:\/\/[^"'#\s]+)|url\(\s*["']?(https?:\/\/[^)'"\s]+)|@import\s+["'](https?:\/\/[^"']+)/gi;
-  let match;
-  while ((match = externalPattern.exec(t)) !== null) external.add(match[1] || match[2] || match[3]);
+  const addExternalUrl = raw => {
+    if (typeof raw !== 'string') return;
+    const value = raw.trim().replace(/^['"]|['"]$/g, '');
+    if (!value || /^(?:data|blob|javascript):/i.test(value)) return;
+    try {
+      const parsed = new URL(value, window.location.href);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        parsed.hash = '';
+        external.add(parsed.href);
+      }
+    } catch (_) {}
+  };
+
+  // Ressources déclarées dans les balises HTML concernées.
+  try {
+    const parsedHtml = new DOMParser().parseFromString(t, 'text/html');
+    const resourceSelectors = [
+      'script[src]', 'link[href]', 'img[src]', 'img[srcset]',
+      'source[src]', 'source[srcset]', 'audio[src]',
+      'video[src]', 'video[poster]'
+    ].join(',');
+    for (const element of parsedHtml.querySelectorAll(resourceSelectors)) {
+      for (const attribute of ['src', 'href', 'poster']) {
+        if (element.hasAttribute(attribute)) addExternalUrl(element.getAttribute(attribute));
+      }
+      for (const attribute of ['srcset']) {
+        if (!element.hasAttribute(attribute)) continue;
+        for (const candidate of element.getAttribute(attribute).split(',')) {
+          addExternalUrl(candidate.trim().split(/\\s+/)[0]);
+        }
+      }
+    }
+
+    // CSS intégré dans <style> et dans les attributs style.
+    const cssSources = [
+      ...Array.from(parsedHtml.querySelectorAll('style'), element => element.textContent || ''),
+      ...Array.from(parsedHtml.querySelectorAll('[style]'), element => element.getAttribute('style') || '')
+    ];
+    const cssUrlPattern = /url\\(\\s*(?:(["'])(.*?)\\1|([^)'"]*?))\\s*\\)/gi;
+    const cssImportPattern = /@import\\s+(?:url\\(\\s*)?(?:(["'])(.*?)\\1|([^)'";\\s]+))\\s*\\)?/gi;
+    for (const css of cssSources) {
+      let cssMatch;
+      while ((cssMatch = cssUrlPattern.exec(css)) !== null) {
+        addExternalUrl(cssMatch[2] || cssMatch[3] || '');
+      }
+      while ((cssMatch = cssImportPattern.exec(css)) !== null) {
+        addExternalUrl(cssMatch[2] || cssMatch[3] || '');
+      }
+    }
+  } catch (_) {
+    // Le diagnostic principal reste disponible même si le parseur HTML échoue.
+  }
+
   add(external.size ? 'warn' : 'good',
     external.size ? 'Ressources externes détectées' : 'Aucune ressource externe détectée',
     external.size
-      ? external.size + ' adresse(s) distante(s) détectée(s) ; leur disponibilité pendant le rendu n’est pas garantie.'
+      ? external.size + ' adresse(s) HTTP(S) distante(s) détectée(s).'
       : 'Aucune URL HTTP(S) externe courante détectée.',
-    external.size ? 'Intègre les ressources dans le ZIP ou vérifie que les URL restent accessibles.' : '');
+    external.size ? 'La disponibilité de chaque ressource sera vérifiée avant le rendu.' : '');
+  for (const url of external) {
+    add('warn', 'Ressource externe à vérifier', url,
+      'Si cette ressource est inaccessible, télécharge-la et intègre-la dans ton HTML ou ton ZIP.');
+  }
 
   if (Number.isFinite(sizeBytes) && sizeBytes >= 0) {
     if (sizeBytes > MAX_BYTES) {
