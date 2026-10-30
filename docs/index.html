@@ -628,7 +628,9 @@ function hasBlockingFinding(v) {
     (Array.isArray(v.findings) && v.findings.some(item => item.level === 'blocking'))));
 }
 function syncGoButton() {
-  $('#go').disabled = busy || !securityReady || hasBlockingFinding(verdict);
+  const disabled = busy || !securityReady || hasBlockingFinding(verdict);
+  $('#go').disabled = disabled;
+  $('#testRender').disabled = disabled;
 }
 function setBusy(b) {
   busy = b;
