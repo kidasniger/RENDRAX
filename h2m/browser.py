@@ -10,7 +10,8 @@ import subprocess
 import time
 import urllib.request
 
-from h2m.ui import die
+class BrowserStartupError(RuntimeError):
+    """Erreur de démarrage Chromium pouvant être retentée."""
 
 
 class LocalHTTPServer:
@@ -200,7 +201,7 @@ def launch_chrome(exe, tmp, width, height):
             lines = []
         reports.append(f"  {mode} : {'arrêté (code ' + str(code) + ')' if code is not None else 'ne répond pas'}\n    "
                        + "\n    ".join(lines[-5:]))
-    die("Chromium n'a pas démarré.\n" + "\n".join(reports))
+    raise BrowserStartupError("Chromium n'a pas démarré.\n" + "\n".join(reports))
 
 
 def page_ws_url(port):
@@ -212,4 +213,4 @@ def page_ws_url(port):
         except Exception:
             pass
         time.sleep(0.25)
-    die("Impossible de se connecter à Chromium (DevTools).")
+    raise BrowserStartupError("Impossible de se connecter à Chromium (DevTools).")
