@@ -178,6 +178,22 @@ video{width:100%;max-height:70vh;border-radius:var(--rs);background:#000;margin-
 .actions a.btn:hover{background:var(--ac2)}
 .actions button{margin:0;min-height:48px}
 
+/* exemples téléchargeables */
+.examples-card{padding:16px}
+.examples-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}
+.examples-toggle::-webkit-details-marker{display:none}
+.examples-toggle::after{content:"＋";font:700 1.15rem/1 var(--mono);color:var(--ac)}
+.examples-card[open] .examples-toggle::after{content:"−"}
+.examples-intro{margin:9px 0 12px;color:var(--mut);font-size:.86rem}
+.example-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.example-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--bd)}
+.example-copy{min-width:0;display:grid;gap:2px}
+.example-copy strong{font-size:.9rem}
+.example-copy span{font-size:.78rem;color:var(--mut)}
+.example-download{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:7px 13px;border:1px solid var(--bd);border-radius:999px;background:var(--surf2);color:var(--tx);font-size:.82rem;font-weight:700;text-decoration:none}
+.example-download:hover{border-color:var(--ac);color:var(--ac)}
+@media(max-width:420px){.example-row{align-items:flex-start}.example-download{min-height:36px;padding:6px 10px;font-size:.76rem}}
+
 /* historique */
 ul#list{list-style:none;padding:0;margin:4px 0 0}
 ul#list li{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--bd)}
@@ -465,6 +481,21 @@ ul#list button{box-shadow:none}
     <p id="stl" hidden><a id="stla" target="_blank" rel="noopener">Voir le journal du rendu</a></p>
     <div id="res"></div>
   </section>
+
+  <details class="card examples-card" aria-labelledby="h-examples">
+    <summary class="examples-toggle"><span class="head" style="margin:0"><span class="num" aria-hidden="true">05</span><span><h2 id="h-examples">Exemples</h2></span></span></summary>
+    <p class="examples-intro">Télécharge un fichier HTML autonome pour tester un profil de rendu. Chaque exemple dure environ 7 secondes et ne dépend d’aucun CDN.</p>
+    <ul class="example-list">
+      <li class="example-row"><span class="example-copy"><strong>GSAPVideo</strong><span>Timeline GSAP et piste audio intégrée.</span></span><a class="example-download" href="exemples/gsapvideo.html" download="gsapvideo.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>KIDAS</strong><span>Animation pilotée par un état et audio embarqué.</span></span><a class="example-download" href="exemples/kidas.html" download="kidas.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>EditPro</strong><span>Rendu temporel et voix intégrée aux données.</span></span><a class="example-download" href="exemples/editpro.html" download="editpro.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>MusicPro</strong><span>Canvas et audio Web Audio synthétisé.</span></span><a class="example-download" href="exemples/musicpro.html" download="musicpro.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>VoiceVideo</strong><span>Lecture audio synchronisée et fonction seek.</span></span><a class="example-download" href="exemples/voicevideo.html" download="voicevideo.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>CSS générique</strong><span>Animation CSS avec son Web Audio.</span></span><a class="example-download" href="exemples/css.html" download="css.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>Canvas générique</strong><span>Dessin animé image par image avec son Web Audio.</span></span><a class="example-download" href="exemples/canvas.html" download="canvas.html">Télécharger</a></li>
+    </ul>
+    <p class="examples-intro">Les exemples CSS et Canvas sont détectés sous le profil générique : ils illustrent deux structures différentes, pas deux profils spécialisés.</p>
+  </details>
 
   <section class="card" aria-labelledby="h-hist">
     <div class="row"><h2 id="h-hist">Vidéos générées</h2><button class="sec" id="refresh" type="button">Actualiser</button></div>
