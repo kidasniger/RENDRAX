@@ -124,6 +124,33 @@ class Html2Mp4Tests(unittest.TestCase):
     def test_plain_html_is_generic(self):
         self.assertEqual(renderer.detect_profile("<html><body><p>x</p></body></html>")[0], "generic")
 
+    def test_downloadable_examples_are_detected_as_their_expected_profiles(self):
+        examples = ROOT / "docs" / "exemples"
+        expected = {
+            "gsapvideo.html": "gsapvideo",
+            "kidas.html": "kidas",
+            "editpro.html": "editpro",
+            "musicpro.html": "musicpro",
+            "voicevideo.html": "voicevideo",
+            "css.html": "generic",
+            "canvas.html": "generic",
+        }
+        for filename, profile in expected.items():
+            with self.subTest(example=filename):
+                path = examples / filename
+                self.assertTrue(path.is_file(), f"Exemple absent : {path}")
+                html = path.read_text(encoding="utf-8")
+                self.assertEqual(renderer.detect_profile(html)[0], profile, filename)
+
+    def test_downloadable_generic_examples_are_distinct_css_and_canvas_templates(self):
+        examples = ROOT / "docs" / "exemples"
+        css = (examples / "css.html").read_text(encoding="utf-8")
+        canvas = (examples / "canvas.html").read_text(encoding="utf-8")
+        self.assertIn("@keyframes", css)
+        self.assertIn("<canvas", canvas)
+        self.assertEqual(renderer.detect_profile(css)[0], "generic")
+        self.assertEqual(renderer.detect_profile(canvas)[0], "generic")
+
     def test_kidas_file_is_recognised(self):
         text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
         self.assertEqual(renderer.detect_profile(text)[0], "kidas")
