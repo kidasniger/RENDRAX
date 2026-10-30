@@ -66,7 +66,7 @@ class AudioOffsetFfmpegTests(unittest.TestCase):
              "-af", "silencedetect=noise=-35dB:d=0.02", "-f", "null", "-"],
             capture_output=True, text=True, check=False,
         )
-        match = re.search(r"silence_end:\\s*([0-9]+(?:\\.[0-9]+)?)", result.stderr)
+        match = re.search(r"silence_end:\s*([0-9]+(?:\.[0-9]+)?)", result.stderr)
         if not match:
             raise AssertionError("Impossible de mesurer le début audio : " + result.stderr[-1000:])
         return float(match.group(1))
