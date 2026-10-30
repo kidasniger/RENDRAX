@@ -124,32 +124,64 @@ class Html2Mp4Tests(unittest.TestCase):
     def test_plain_html_is_generic(self):
         self.assertEqual(renderer.detect_profile("<html><body><p>x</p></body></html>")[0], "generic")
 
-    def test_downloadable_examples_are_detected_as_their_expected_profiles(self):
+    def test_downloadable_examples_are_detected_and_patchable_as_their_real_profiles(self):
         examples = ROOT / "docs" / "exemples"
         expected = {
-            "gsapvideo.html": "gsapvideo",
+            "10-technologies-motion.html": "gsapvideo",
+            "bak-power-services-rendrax-paysage-v4-musique-v2.html": "gsapvideo",
             "kidas.html": "kidas",
+            "rendrax-promo.html": "gsapvideo",
             "editpro.html": "editpro",
-            "musicpro.html": "musicpro",
-            "voicevideo.html": "voicevideo",
-            "css.html": "generic",
-            "canvas.html": "generic",
         }
         for filename, profile in expected.items():
             with self.subTest(example=filename):
                 path = examples / filename
                 self.assertTrue(path.is_file(), f"Exemple absent : {path}")
                 html = path.read_text(encoding="utf-8")
+                self.assertGreater(len(html), 100_000, "L'exemple doit rester un HTML complet, pas un extrait.")
                 self.assertEqual(renderer.detect_profile(html)[0], profile, filename)
+                patched, patched_profile = renderer.patch_html(html)
+                self.assertEqual(patched_profile, profile, filename)
+                self.assertIn("<html", patched.lower(), filename)
 
-    def test_downloadable_generic_examples_are_distinct_css_and_canvas_templates(self):
+    def test_public_examples_are_exact_copies_of_existing_repository_html(self):
         examples = ROOT / "docs" / "exemples"
-        css = (examples / "css.html").read_text(encoding="utf-8")
-        canvas = (examples / "canvas.html").read_text(encoding="utf-8")
-        self.assertIn("@keyframes", css)
-        self.assertIn("<canvas", canvas)
-        self.assertEqual(renderer.detect_profile(css)[0], "generic")
-        self.assertEqual(renderer.detect_profile(canvas)[0], "generic")
+        originals = {
+            "kidas.html": ROOT / "kidas.html",
+            "rendrax-promo.html": ROOT / "rendrax-promo.html",
+            "editpro.html": ROOT / "uploads" / "vmv7j3erf.html",
+        }
+        for filename, original in originals.items():
+            with self.subTest(example=filename):
+                self.assertTrue(original.is_file(), f"Source d'origine absent : {original}")
+                self.assertEqual((examples / filename).read_bytes(), original.read_bytes())
+
+    def test_public_examples_extract_real_embedded_mp3_voice_tracks(self):
+        examples = ROOT / "docs" / "exemples"
+        expected = {
+            "10-technologies-motion.html": "gsapvideo",
+            "bak-power-services-rendrax-paysage-v4-musique-v2.html": "gsapvideo",
+            "kidas.html": "kidas",
+            "rendrax-promo.html": "gsapvideo",
+            "editpro.html": "editpro",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for filename, profile in expected.items():
+                with self.subTest(example=filename):
+                    html = (examples / filename).read_text(encoding="utf-8")
+                    output_dir = root / Path(filename).stem
+                    output_dir.mkdir()
+                    audio = renderer.extract_audio(html, output_dir, profile)
+                    voice = audio["voice"]
+                    self.assertIsNotNone(voice, f"Piste voix absente : {filename}")
+                    self.assertTrue(voice.is_file(), filename)
+                    self.assertGreater(voice.stat().st_size, 10_000, filename)
+                    self.assertEqual(voice.read_bytes()[:3], b"ID3", f"La piste n'est pas un MP3 ID3 : {filename}")
+                    if profile == "kidas":
+                        self.assertIsNotNone(audio["music"])
+                        self.assertTrue(audio["music"].is_file())
+                        self.assertEqual(audio["music"].read_bytes()[:3], b"ID3")
 
     def test_kidas_file_is_recognised(self):
         text = (ROOT / "kidas.html").read_text(encoding="utf-8", errors="ignore")
