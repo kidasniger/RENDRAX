@@ -54,3 +54,16 @@ def first_audio_onset(audio_inputs, threshold_db=-45.0):
         onset = max(0.0, onset - internal_offset)
         onsets.append(onset)
     return min(onsets) if onsets else None
+
+def calculate_audio_offset_ms(visual_onset_ms, audio_onset_ms, limit_ms=2000):
+    """Calcule la correction signée : visuel moins audio, bornée à ±limit_ms."""
+    if visual_onset_ms is None or audio_onset_ms is None:
+        return None
+    visual = float(visual_onset_ms)
+    audio = float(audio_onset_ms)
+    limit = int(limit_ms)
+    if not all(map(lambda value: value == value and abs(value) != float("inf"), (visual, audio))):
+        raise ValueError("Les instants audio et visuel doivent être finis.")
+    if limit < 0:
+        raise ValueError("La limite doit être positive ou nulle.")
+    return max(-limit, min(limit, int(round(visual - audio))))
