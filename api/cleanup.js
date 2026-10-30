@@ -13,7 +13,12 @@ export default async function handler(req, res) {
     if (!sameOrigin(req)) {
       await verifyGitHubActionsRequest(req, runId);
     }
-    await del(`incoming/${id}.${type_fichier}`);
+    await Promise.all([
+      del(`incoming/${id}.${type_fichier}`),
+      del(`progress/${id}.json`).catch(error => {
+        if (error?.status !== 404) throw error;
+      })
+    ]);
     return send(res, 200, { success: true });
   } catch (error) {
     const result = publicError(error);
