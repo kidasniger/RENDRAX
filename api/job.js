@@ -1,3 +1,4 @@
+import { get } from '@vercel/blob';
 import { githubRequest, send, validJobId, publicError } from '../lib/kidas-server.js';
 
 function releaseSummary(release) {
@@ -17,6 +18,32 @@ function releaseSummary(release) {
   };
 }
 
+async function readProgress(id) {
+  try {
+    const result = await get(`progress/${id}.json`, { access: 'private' });
+    if (!result || result.statusCode !== 200) return null;
+    const progress = await new Response(result.stream).json();
+    const current = Number(progress.current);
+    const total = Number(progress.total);
+    const phase = ['rendu', 'temps_reel', 'assemblage'].includes(progress.phase)
+      ? progress.phase
+      : null;
+    if (!Number.isSafeInteger(current) || current < 0 ||
+        !Number.isSafeInteger(total) || total < 0 || !phase ||
+        (total > 0 && current > total)) return null;
+    return {
+      current,
+      total,
+      phase,
+      percent: total > 0 ? Math.min(100, Math.floor((current / total) * 100)) : null,
+      updatedAt: Number.isFinite(Number(progress.updatedAt)) ? Number(progress.updatedAt) : null
+    };
+  } catch (error) {
+    console.warn('[RENDRAX progress]', error?.status || error?.name || 'error');
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
   const id = String(req.query?.id || '');
@@ -31,8 +58,14 @@ export default async function handler(req, res) {
       status: run.status,
       conclusion: run.conclusion,
       html_url: run.html_url,
+      progress: null,
       release: null
     };
+
+    if (run.status === 'in_progress' || run.status === 'queued') {
+      result.progress = await readProgress(id);
+    }
+
     if (req.query?.details === '1' || (run.status === 'completed' && run.conclusion !== 'success')) {
       try {
         const response = await githubRequest(`/repos/kidasniger/RENDRAX/actions/runs/${run.id}/jobs?per_page=20`);
