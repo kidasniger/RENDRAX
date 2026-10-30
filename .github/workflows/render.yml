@@ -225,8 +225,8 @@ jobs:
             # Relaye les logs sans bloquer le rendu si le suivi Vercel est temporairement indisponible.
             set -o pipefail
             python html2mp4.py "${args[@]}" 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do
-              printf '%s\\n' "$line"
-              if [[ "$line" =~ ^PROGRES_RENDRAX:\\ ([0-9]+)/([0-9]+)\\ ([a-zA-Z0-9_-]+)$ ]]; then
+              printf '%s\n' "$line"
+              if [[ "$line" =~ ^PROGRES_RENDRAX:\ ([0-9]+)/([0-9]+)\ ([a-zA-Z0-9_-]+)$ ]]; then
                 current="${BASH_REMATCH[1]}"
                 total="${BASH_REMATCH[2]}"
                 phase="${BASH_REMATCH[3]}"
