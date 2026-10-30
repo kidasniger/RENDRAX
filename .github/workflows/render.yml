@@ -45,6 +45,11 @@ on:
         type: boolean
         required: false
         default: false
+      loudnorm:
+        description: "Égaliser le volume audio à environ -16 LUFS"
+        type: boolean
+        required: false
+        default: true
       nom:
         description: "Nom du MP4 (défaut : nom du fichier HTML)"
         required: false
@@ -178,6 +183,7 @@ jobs:
           NOM: ${{ inputs.nom }}
           QUALITE: "auto"
           WATERMARK: ${{ inputs.watermark }}
+          LOUDNORM: ${{ inputs.loudnorm }}
         run: |
           args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE")
           if [[ "${{ inputs.type_fichier }}" == "zip" ]]; then
@@ -188,6 +194,12 @@ jobs:
             echo "Filigrane animé désactivé pour ce rendu."
           else
             echo "Filigrane animé RENDRAX activé."
+          fi
+          if [[ "${LOUDNORM,,}" == "true" ]]; then
+            args+=(--loudnorm)
+            echo "Égalisation du volume activée (-16 LUFS)."
+          else
+            echo "Égalisation du volume désactivée."
           fi
           python html2mp4.py "${args[@]}"
 

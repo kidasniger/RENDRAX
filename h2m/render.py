@@ -9,7 +9,8 @@ import tempfile
 import time
 from pathlib import Path
 
-from h2m.browser import CDP, launch_chrome, page_ws_url, start_local_http_server, stop_chrome
+from h2m.browser import (BrowserStartupError, CDP, launch_chrome, page_ws_url,
+                        start_local_http_server, stop_chrome)
 from h2m.deps import IS_TERMUX, find_chrome
 from h2m.encode import (QUALITY, check_audio_level, output_path, start_encoder, unique_path, verify_sync,
                         write_wav, write_wav_payload)
@@ -41,6 +42,8 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
 
 def render(html_path, args):
     tmp = Path(tempfile.mkdtemp(prefix="html2mp4_"))
+    out_final = None
+    render_completed = False
     chrome = proc = cdp = enc = None
     http_server = None
     wake = IS_TERMUX and shutil.which("termux-wake-lock")
@@ -99,11 +102,12 @@ def render(html_path, args):
                 if last_state.get("body") and time.time() - t0 > 15:
                     warn("La page n'a pas fini de charger toutes ses ressources ; essai de rendu avec le contenu disponible.")
                     break
-            except RuntimeError:
-                pass
+            except RuntimeError as exc:
+                if _is_browser_failure(exc):
+                    raise
             time.sleep(0.25)
         else:
-            die("Chromium n'a pas réussi à créer le document HTML.")
+            raise BrowserStartupError("Chromium n'a pas réussi à créer le document HTML.")
         time.sleep(0.2)
 
         is_precise = False
@@ -122,13 +126,17 @@ def render(html_path, args):
             while time.time() - t1 < 30 and not is_precise:
                 try:
                     is_precise = bool(cdp.ev(check, await_promise=False))
-                except RuntimeError:
+                except RuntimeError as exc:
+                    if _is_browser_failure(exc):
+                        raise
                     is_precise = False
                 if not is_precise:
                     time.sleep(0.5)
             if not is_precise:
-                die(f"Fichier reconnu ({label}) mais la page ne s'est pas initialisée : "
-                    "Internet est-il disponible pour charger React et les polices ?")
+                raise BrowserStartupError(
+                    f"Fichier reconnu ({label}) mais la page ne s'est pas initialisée : "
+                    "Internet est-il disponible pour charger React et les polices ?"
+                )
 
         if is_precise:
             cdp.ev(f"window.__profile = {json.dumps(profile)}; 0", await_promise=False)
@@ -411,6 +419,7 @@ def render(html_path, args):
             "audio_tracks": [item[0].stem for item in audio_inputs],
             "peak_db": peak, "sync_gap_ms": gap_ms,
         })
+        render_completed = True
         return out_final
     finally:
         if cdp:
@@ -426,27 +435,95 @@ def render(html_path, args):
                 pass
         if wake and shutil.which("termux-wake-unlock"):
             subprocess.call(["termux-wake-unlock"])
+        # unique_path() réserve un nom distinct : ne supprimer que la sortie
+        # créée par cette tentative, jamais un fichier préexistant.
+        if not render_completed and out_final is not None:
+            try:
+                out_final.unlink(missing_ok=True)
+            except OSError as cleanup_error:
+                warn(f"Impossible de supprimer la sortie incomplète : {cleanup_error}")
         shutil.rmtree(tmp, ignore_errors=True)
 
 
 def _is_browser_failure(exc):
-    """Vrai pour une panne de Chromium ou de sa connexion (et non une erreur de la page)."""
+    """Détecte les pannes transitoires du navigateur, de DevTools et du réseau."""
+    import errno
+    import socket
+
     try:
         from websocket import WebSocketException
     except ImportError:
         WebSocketException = ()
-    if isinstance(exc, (OSError, WebSocketException)):
+
+    # Les erreurs de transport sont temporaires ; les OSError de fichiers locaux
+    # (HTML absent, permissions, sortie impossible) ne doivent pas déclencher
+    # une nouvelle tentative.
+    if isinstance(exc, (ConnectionError, TimeoutError, socket.timeout, WebSocketException)):
         return True
-    return isinstance(exc, RuntimeError) and bool(
-        re.search(r"closed|crash|disconnect|Target|Inspected target", str(exc), re.I))
+    if isinstance(exc, OSError):
+        transient_errnos = {
+            errno.ECONNABORTED,
+            errno.ECONNREFUSED,
+            errno.ECONNRESET,
+            errno.EHOSTUNREACH,
+            errno.ENETDOWN,
+            errno.ENETUNREACH,
+            errno.ETIMEDOUT,
+            errno.EPIPE,
+            errno.EADDRINUSE,
+        }
+        if getattr(exc, "errno", None) in transient_errnos:
+            return True
+
+    if not isinstance(exc, RuntimeError):
+        return False
+
+    message = str(exc)
+    temporary_patterns = (
+        # WebSocket / connexion DevTools interrompue.
+        r"websocket.*(?:closed|close|disconnect)",
+        r"(?:connection|socket).*(?:closed|reset|aborted|broken pipe)",
+        r"connection is already closed",
+        r"websocketconnectionclosed",
+        r"inspected target.*(?:closed|crash|disappear)",
+        r"target.*(?:closed|crash|disappear|detached)",
+        r"(?:browser|chromium).*(?:crash|crashed|terminated|exited)",
+        r"(?:crash|crashed|terminated|exited).*(?:browser|chromium)",
+        # Démarrage Chromium / endpoint DevTools indisponible.
+        r"chromium n'a pas démarré",
+        r"chromium.*(?:timeout|timed out|ne répond pas)",
+        r"(?:devtools|debugging port|remote debugging).*(?:timeout|timed out|unavailable|occup|in use)",
+        r"(?:address already in use|only one usage of each socket address)",
+        r"impossible de se connecter à chromium",
+        r"impossible de récupérer.*(?:devtools|websocket)",
+        # Erreurs réseau Chromium lors du chargement d'une ressource.
+        r"net::err_(?:name_not_resolved|connection|timed_out|internet_disconnected|address_unreachable|network_changed|ssl_protocol_error|http2_protocol_error)",
+        r"(?:network|réseau).*(?:timeout|timed out|temporarily unavailable|connection reset|connection refused)",
+        r"(?:download|téléchargement|resource|ressource).*(?:failed|failure|timeout|timed out|network|réseau)",
+    )
+    return any(re.search(pattern, message, re.I) for pattern in temporary_patterns)
+
+
+def _short_retry_cause(exc, limit=140):
+    """Produit une cause lisible sur une seule ligne dans le journal."""
+    message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
+    message = re.sub(r"\s+", " ", message)
+    if len(message) > limit:
+        message = message[:limit - 1].rstrip() + "…"
+    return message
 
 
 def render_with_retry(html_path, args, attempts=2):
-    """Relance le rendu une fois si Chromium plante, au lieu de perdre tout le travail."""
+    """Relance le rendu une fois si une panne transitoire est détectée."""
+    if attempts < 1:
+        raise ValueError("Le nombre de tentatives doit être au moins égal à 1.")
+
     for attempt in range(1, attempts + 1):
         try:
             return render(html_path, args)
-        except Exception as e:  # noqa: BLE001
-            if attempt == attempts or not _is_browser_failure(e):
+        except Exception as exc:  # noqa: BLE001
+            if attempt == attempts or not _is_browser_failure(exc):
                 raise
-            warn(f"Chromium s'est arrêté ({e}). Nouvelle tentative {attempt + 1}/{attempts}…")
+            cause = _short_retry_cause(exc)
+            warn(f"Nouvelle tentative {attempt + 1}/{attempts} après : {cause}")
+            time.sleep(2)

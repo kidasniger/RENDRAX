@@ -10,7 +10,8 @@ import subprocess
 import time
 import urllib.request
 
-from h2m.ui import die
+class BrowserStartupError(RuntimeError):
+    """Erreur de démarrage Chromium pouvant être retentée."""
 
 
 class LocalHTTPServer:
@@ -124,7 +125,26 @@ def http_json(url, timeout=2):
 
 
 def stop_chrome(proc):
-    """Arrête Chromium et tous ses processus enfants."""
+    """Arrête Chromium proprement, puis force l'arrêt si nécessaire."""
+    if proc.poll() is not None:
+        return
+
+    # Demande d'abord un arrêt normal à tout le groupe Chromium.
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    except Exception:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+
+    try:
+        proc.wait(timeout=3)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+
+    # Dernier recours si Chromium ou l'un de ses enfants reste actif.
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
     except Exception:
@@ -181,7 +201,7 @@ def launch_chrome(exe, tmp, width, height):
             lines = []
         reports.append(f"  {mode} : {'arrêté (code ' + str(code) + ')' if code is not None else 'ne répond pas'}\n    "
                        + "\n    ".join(lines[-5:]))
-    die("Chromium n'a pas démarré.\n" + "\n".join(reports))
+    raise BrowserStartupError("Chromium n'a pas démarré.\n" + "\n".join(reports))
 
 
 def page_ws_url(port):
@@ -193,4 +213,4 @@ def page_ws_url(port):
         except Exception:
             pass
         time.sleep(0.25)
-    die("Impossible de se connecter à Chromium (DevTools).")
+    raise BrowserStartupError("Impossible de se connecter à Chromium (DevTools).")
