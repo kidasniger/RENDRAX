@@ -1450,6 +1450,7 @@ async function closeHistoryPlayer() {
   video.load();
   panel.remove();
   button.setAttribute('aria-expanded', 'false');
+  button.textContent = 'Regarder';
   openHistoryPlayer = null;
 }
 function loadList() {
