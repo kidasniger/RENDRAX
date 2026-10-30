@@ -791,7 +791,53 @@ function analyze(t, sizeBytes = null) {
   }
 
   const blocking = findings.some(item => item.level === 'blocking');
-  return { kind, label, findings, blocking };
+  return { kind, label, findings, blocking, resources: Array.from(external) };
+}
+async function verifyExternalResources(v) {
+  if (!v || v.resourceCheckStarted || !Array.isArray(v.resources) || !v.resources.length) return;
+  v.resourceCheckStarted = true;
+  const previousClass = $('#verdict').className;
+  const previousMessage = $('#verdict').textContent;
+
+  try {
+    const data = await api('/check-resources', {
+      method: 'POST',
+      body: { urls: v.resources }
+    });
+    if (verdict !== v) return;
+
+    const results = Array.isArray(data.results) ? data.results : [];
+    const byUrl = new Map(results.map(result => [result.url, result]));
+    v.findings = (Array.isArray(v.findings) ? v.findings : [])
+      .filter(item => item.title !== 'Ressource externe à vérifier');
+
+    for (const url of v.resources) {
+      const result = byUrl.get(url);
+      const accessible = !!(result && result.ok === true &&
+        Number(result.status) >= 200 && Number(result.status) < 400);
+      v.findings.push({
+        level: accessible ? 'good' : 'warn',
+        title: accessible ? 'Ressource accessible' : 'Ressource inaccessible',
+        detail: url + (result && result.status ? ' — HTTP ' + result.status
+          : result && result.error ? ' — ' + result.error : ' — aucune réponse valide'),
+        action: accessible ? '' : 'Télécharge ce fichier et intègre-le dans ton HTML.'
+      });
+    }
+  } catch (error) {
+    if (verdict !== v) return;
+    v.findings = (Array.isArray(v.findings) ? v.findings : [])
+      .filter(item => item.title !== 'Ressource externe à vérifier');
+    for (const url of v.resources) {
+      v.findings.push({
+        level: 'warn',
+        title: 'Vérification de la ressource impossible',
+        detail: url + ' — ' + (error.message || 'Le serveur de vérification ne répond pas.'),
+        action: 'Télécharge ce fichier et intègre-le dans ton HTML.'
+      });
+    }
+  }
+
+  if (verdict === v) showVerdict(v, previousClass, previousMessage);
 }
 function showVerdict(v, cls, msg) {
   verdict = v;
@@ -845,6 +891,9 @@ function showVerdict(v, cls, msg) {
   }
   report.hidden = findings.length === 0;
   syncGoButton();
+  if (v && Array.isArray(v.resources) && v.resources.length && !v.resourceCheckStarted) {
+    verifyExternalResources(v);
+  }
 }
 function resetPreview() {
   const p = $('#prev'); p.hidden = true; p.removeAttribute('srcdoc');
