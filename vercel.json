@@ -9,5 +9,11 @@
       "path": "/api/cleanup-stale",
       "schedule": "17 3 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/check-resources",
+      "destination": "/api/import-url?mode=check-resources"
+    }
   ]
 }

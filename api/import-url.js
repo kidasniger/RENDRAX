@@ -1,3 +1,4 @@
+import checkResourcesHandler from '../lib/check-resources.js';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import https from 'node:https';
@@ -532,6 +533,11 @@ function sourceFileName(rawUrl) {
 }
 
 export default async function handler(req, res) {
+  const requestUrl = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
+  if (requestUrl.searchParams.get('mode') === 'check-resources') {
+    return checkResourcesHandler(req, res);
+  }
+
   if (req.method !== 'POST') {
     return send(res, 405, { error: 'Méthode non autorisée.' });
   }
