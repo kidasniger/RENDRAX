@@ -124,7 +124,26 @@ def http_json(url, timeout=2):
 
 
 def stop_chrome(proc):
-    """Arrête Chromium et tous ses processus enfants."""
+    """Arrête Chromium proprement, puis force l'arrêt si nécessaire."""
+    if proc.poll() is not None:
+        return
+
+    # Demande d'abord un arrêt normal à tout le groupe Chromium.
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    except Exception:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+
+    try:
+        proc.wait(timeout=3)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+
+    # Dernier recours si Chromium ou l'un de ses enfants reste actif.
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
     except Exception:
