@@ -718,7 +718,7 @@ function analyze(t, sizeBytes = null) {
   const addExternalUrl = raw => {
     if (typeof raw !== 'string') return;
     const value = raw.trim().replace(/^['"]|['"]$/g, '');
-    if (!value || /^(?:data|blob|javascript):/i.test(value)) return;
+    if (!/^https?:\\/\\//i.test(value) && !/^\\/\\//.test(value)) return;
     try {
       const parsed = new URL(value, window.location.href);
       if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
