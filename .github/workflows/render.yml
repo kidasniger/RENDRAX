@@ -45,6 +45,11 @@ on:
         type: boolean
         required: false
         default: false
+      audio_offset_ms:
+        description: "Décalage audio en millisecondes (-2000 à 2000)"
+        type: number
+        required: false
+        default: 0
       loudnorm:
         description: "Égaliser le volume audio à environ -16 LUFS"
         type: boolean
@@ -184,8 +189,13 @@ jobs:
           QUALITE: "auto"
           WATERMARK: ${{ inputs.watermark }}
           LOUDNORM: ${{ inputs.loudnorm }}
+          AUDIO_OFFSET_MS: ${{ inputs.audio_offset_ms }}
         run: |
-          args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE")
+          if ! [[ "$AUDIO_OFFSET_MS" =~ ^-?(0|[1-9][0-9]{0,3})$ ]] || (( AUDIO_OFFSET_MS < -2000 || AUDIO_OFFSET_MS > 2000 )); then
+            echo "::error::Décalage audio invalide : la valeur doit être un entier entre -2000 et 2000 ms."
+            exit 1
+          fi
+          args=(--file "$FICHIER" --fps "$FPS" --scale "$SCALE" --test "$TEST" --duration "$DURATION" --format "$FORMAT" --name "$NOM" --quality "$QUALITE" --audio-offset "$AUDIO_OFFSET_MS")
           if [[ "${{ inputs.type_fichier }}" == "zip" ]]; then
             args+=(--asset-root "kidas-tmp/extracted")
           fi
