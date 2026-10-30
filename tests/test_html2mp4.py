@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from h2m.profiles import PRECISE_PROFILES
 from h2m.render import select_fps, select_quality
@@ -18,6 +19,52 @@ SPEC.loader.exec_module(renderer)
 
 
 class Html2Mp4Tests(unittest.TestCase):
+    def test_render_retries_transient_browser_failure_then_succeeds(self):
+        expected = Path("/tmp/recovered.mp4")
+        failure = RuntimeError("Chromium n'a pas démarré. délai dépassé")
+
+        with patch("h2m.render.render", side_effect=[failure, expected]) as render_mock, \
+             patch("h2m.render.warn") as warn_mock, \
+             patch("h2m.render.time.sleep") as sleep_mock:
+            result = renderer.render_with_retry(Path("/tmp/source.html"), object())
+
+        self.assertEqual(result, expected)
+        self.assertEqual(render_mock.call_count, 2)
+        sleep_mock.assert_called_once_with(2)
+        warn_mock.assert_called_once()
+        self.assertIn("Nouvelle tentative 2/2 après : Chromium n'a pas démarré.", warn_mock.call_args.args[0])
+
+    def test_render_reports_error_after_two_transient_failures(self):
+        failure = RuntimeError("WebSocket connection closed")
+
+        with patch("h2m.render.render", side_effect=[failure, failure]) as render_mock, \
+             patch("h2m.render.warn") as warn_mock, \
+             patch("h2m.render.time.sleep") as sleep_mock:
+            with self.assertRaisesRegex(RuntimeError, "WebSocket connection closed"):
+                renderer.render_with_retry(Path("/tmp/source.html"), object())
+
+        self.assertEqual(render_mock.call_count, 2)
+        sleep_mock.assert_called_once_with(2)
+        warn_mock.assert_called_once()
+
+    def test_browser_startup_error_is_retryable(self):
+        from h2m.browser import BrowserStartupError
+        error = BrowserStartupError("Chromium n'a pas démarré.")
+        self.assertTrue(renderer.render_with_retry.__globals__["_is_browser_failure"](error))
+
+    def test_render_does_not_retry_non_transient_errors(self):
+        failure = RuntimeError("Fichier HTML invalide")
+
+        with patch("h2m.render.render", side_effect=failure) as render_mock, \
+             patch("h2m.render.warn") as warn_mock, \
+             patch("h2m.render.time.sleep") as sleep_mock:
+            with self.assertRaisesRegex(RuntimeError, "Fichier HTML invalide"):
+                renderer.render_with_retry(Path("/tmp/source.html"), object())
+
+        render_mock.assert_called_once()
+        warn_mock.assert_not_called()
+        sleep_mock.assert_not_called()
+
     def test_default_stage_size(self):
         self.assertEqual(renderer.detect_stage_size("<style>.stage{width:1080px;height:1920px}</style>"), (1080, 1920))
 
