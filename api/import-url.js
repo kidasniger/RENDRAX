@@ -463,6 +463,46 @@ function analyzeHtml(t) {
   return { kind: 'generic', label: 'Page HTML générique' };
 }
 
+function extractExternalResources(html) {
+  const resources = new Set();
+  const add = raw => {
+    if (typeof raw !== 'string') return;
+    const value = raw.trim().replace(/^['"]|['"]$/g, '');
+    if (!/^https?:\/\//i.test(value) && !/^\/\//.test(value)) return;
+    try {
+      const url = new URL(value.startsWith('//') ? 'https:' + value : value);
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        url.hash = '';
+        resources.add(url.href);
+      }
+    } catch {}
+  };
+
+  const tagPattern = /<(script|link|img|source|audio|video)\b[^>]*>/gi;
+  let tagMatch;
+  while ((tagMatch = tagPattern.exec(html)) !== null) {
+    const tag = tagMatch[0];
+    const attributePattern = /\b(src|href|poster|srcset)\s*=\s*(["'])(.*?)\2/gi;
+    let attributeMatch;
+    while ((attributeMatch = attributePattern.exec(tag)) !== null) {
+      if (attributeMatch[1].toLowerCase() === 'srcset') {
+        for (const candidate of attributeMatch[3].split(',')) {
+          add(candidate.trim().split(/\s+/)[0]);
+        }
+      } else {
+        add(attributeMatch[3]);
+      }
+    }
+  }
+
+  const cssUrlPattern = /url\(\s*(?:(["'])(.*?)\1|([^)'"]*?))\s*\)/gi;
+  const cssImportPattern = /@import\s+(?:url\(\s*)?(?:(["'])(.*?)\1|([^)'";\s]+))\s*\)?/gi;
+  let match;
+  while ((match = cssUrlPattern.exec(html)) !== null) add(match[2] || match[3] || '');
+  while ((match = cssImportPattern.exec(html)) !== null) add(match[2] || match[3] || '');
+  return Array.from(resources);
+}
+
 function sourceFileName(rawUrl) {
   let url;
   try {
@@ -521,7 +561,9 @@ export default async function handler(req, res) {
 
     stage = 'validation et téléchargement de l’URL';
     const downloaded = await downloadHtml(url);
-    const analysis = analyzeHtml(downloaded.buffer.toString('utf8'));
+    const html = downloaded.buffer.toString('utf8');
+    const analysis = analyzeHtml(html);
+    analysis.resources = extractExternalResources(html);
     const name = sourceFileName(url);
 
     // Match the local-file check before persisting anything to private Blob.
