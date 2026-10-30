@@ -211,7 +211,43 @@ jobs:
           else
             echo "Égalisation du volume désactivée."
           fi
-          python html2mp4.py "${args[@]}"
+          # Le suivi est activé uniquement pour les rendus identifiés par un tag RENDRAX.
+          PROGRESS_ID="${{ inputs.tag }}"
+          if [[ "$PROGRESS_ID" =~ ^v[a-z0-9]{12,40}$ ]]; then
+            : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible; vérifie id-token: write}"
+            : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible; vérifie id-token: write}"
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
+            PROGRESS_TOKEN="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "$OIDC_REQUEST_URL" | jq -er '.value')"
+            echo "::add-mask::${PROGRESS_TOKEN}"
+
+            # Relaye les logs sans bloquer le rendu si le suivi Vercel est temporairement indisponible.
+            set -o pipefail
+            python html2mp4.py "${args[@]}" 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do
+              printf '%s\\n' "$line"
+              if [[ "$line" =~ ^PROGRES_RENDRAX:\\ ([0-9]+)/([0-9]+)\\ ([a-zA-Z0-9_-]+)$ ]]; then
+                current="${BASH_REMATCH[1]}"
+                total="${BASH_REMATCH[2]}"
+                phase="${BASH_REMATCH[3]}"
+                payload="$(jq -cn \
+                  --arg id "$PROGRESS_ID" \
+                  --arg run_id "$GITHUB_RUN_ID" \
+                  --arg phase "$phase" \
+                  --argjson current "$current" \
+                  --argjson total "$total" \
+                  '{id:$id,run_id:$run_id,current:$current,total:$total,phase:$phase}')"
+                curl --fail --silent --show-error --max-time 8 \
+                  -X POST "https://rendrax.vercel.app/api/progress" \
+                  -H "Authorization: Bearer ${PROGRESS_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  --data "$payload" >/dev/null \
+                  || echo "::warning::La progression n’a pas pu être transmise à RENDRAX."
+              fi
+            done
+          else
+            python html2mp4.py "${args[@]}"
+          fi
 
       - name: Publier le MP4 (artefact)
         uses: actions/upload-artifact@v4
