@@ -711,22 +711,24 @@ function updateRenderProgress(progress, elapsedMs, samples, state, fallbackPhase
   }
   $('#renderProgressEta').textContent = etaText;
 }
-function workflowStepIndex(name) {
-  if (/Publier le MP4|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
+function workflowStepIndex(name, progressPhase) {
+  if (progressPhase === 'assemblage' ||
+      /Publier le MP4|Supprimer les fichiers temporaires/i.test(name || '')) return 3;
   if (/Rendre la vidéo/i.test(name || '')) return 2;
   if (/Préparer le HTML source|Installer FFmpeg|Vérifier les outils média|Installer websocket-client|Set up job|actions\/checkout|setup-python/i.test(name || '')) return 1;
-  return 2;
+  return 1;
 }
-function workflowStepLabel(name) {
+function workflowStepLabel(name, progressPhase) {
+  if (progressPhase === 'assemblage') return 'Encodage et assemblage de la vidéo…';
   if (/Préparer le HTML source/i.test(name || '')) return 'Préparation du HTML temporaire…';
   if (/Installer FFmpeg/i.test(name || '')) return 'Préparation du moteur vidéo…';
   if (/Vérifier les outils média/i.test(name || '')) return 'Vérification des outils de rendu…';
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
   if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
-  if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification du MP4…';
+  if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Encodage final et vérification du MP4…';
   if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
-  if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage sécurisé des fichiers temporaires…';
-  return 'Préparation du rendu…';
+  if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage final…';
+  return 'En attente du démarrage du rendu…';
 }
 function hasBlockingFinding(v) {
   return !!(v && (v.blocking === true || v.kind === 'invalid' ||
@@ -1491,8 +1493,8 @@ async function waitJob(id, t0) {
     if (job.currentStep) lastWorkflowStep = job.currentStep;
     if (job.status !== 'completed') {
       if (lastWorkflowStep) {
-        setSteps(workflowStepIndex(lastWorkflowStep));
-        status(workflowStepLabel(lastWorkflowStep) + ' (' + elapsed + ')', null, job.html_url);
+        setSteps(workflowStepIndex(lastWorkflowStep, progress && progress.phase));
+        status(workflowStepLabel(lastWorkflowStep, progress && progress.phase) + ' (' + elapsed + ')', null, job.html_url);
       } else {
         setSteps(job.status === 'queued' ? 1 : 2);
         status((job.status === 'queued' ? 'En file d’attente… ' : 'Rendu en cours… ') + '(' + elapsed + ')', null, job.html_url);
