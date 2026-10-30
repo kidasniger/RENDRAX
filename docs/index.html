@@ -141,6 +141,13 @@ button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
 #verdict.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:color-mix(in srgb,var(--ok) 8%,transparent)}
 #verdict.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
 #verdict.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent)}
+#compatReport{margin-top:12px;padding:12px;border:1px solid var(--bd);border-radius:var(--rs)}
+#compatReport h3{margin:0 0 8px;font-size:.95rem}
+#compatFindings{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#compatFindings li{padding:8px 10px;border:1px solid var(--bd);border-radius:var(--rs);font-size:.86rem}
+#compatFindings li strong{display:block;margin-bottom:2px}
+#compatFindings li p{margin:2px 0 0}
+#compatFindings li .compat-action{font-weight:600}
 #prevBtn{margin-top:10px}
 iframe#prev{width:100%;height:420px;border:1px solid var(--bd);border-radius:var(--rs);margin-top:10px;background:#000;display:block}
 
@@ -375,6 +382,10 @@ ul#list button{box-shadow:none}
     </div>
     <p id="fileinfo" hidden></p>
     <p id="verdict" role="status" hidden></p>
+    <section id="compatReport" aria-labelledby="compatReportTitle" hidden>
+      <h3 id="compatReportTitle">Rapport de compatibilité</h3>
+      <ul id="compatFindings" role="list" aria-label="Constats de compatibilité"></ul>
+    </section>
     <button class="sec" id="prevBtn" type="button" hidden>Voir un aperçu</button>
     <iframe id="prev" title="Aperçu du fichier HTML" sandbox="allow-scripts" allow="autoplay" hidden></iframe>
   </section>
@@ -559,7 +570,7 @@ async function initSecurity() {
     statusEl.className = 'mut';
     statusEl.hidden = false;
   }
-  $('#go').disabled = !securityReady || busy;
+  syncGoButton();
   $('#importUrlBtn').disabled = !securityReady || importingUrl || busy;
 }
 function captchaToken() {
@@ -603,9 +614,16 @@ function workflowStepLabel(name) {
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage sécurisé des fichiers temporaires…';
   return 'Préparation du rendu…';
 }
+function hasBlockingFinding(v) {
+  return !!(v && (v.blocking === true || v.kind === 'invalid' ||
+    (Array.isArray(v.findings) && v.findings.some(item => item.level === 'blocking'))));
+}
+function syncGoButton() {
+  $('#go').disabled = busy || !securityReady || hasBlockingFinding(verdict);
+}
 function setBusy(b) {
   busy = b;
-  $('#go').disabled = b || !securityReady;
+  syncGoButton();
   $('#go').hidden = b;
   $('#file').disabled = b || importingUrl;
   $('#importUrl').disabled = b || importingUrl;
@@ -724,7 +742,56 @@ function analyze(t, sizeBytes = null) {
 }
 function showVerdict(v, cls, msg) {
   verdict = v;
-  const e = $('#verdict'); e.hidden = !msg; e.textContent = msg || ''; e.className = cls || 'mut';
+  const e = $('#verdict');
+  e.hidden = !msg;
+  e.textContent = msg || '';
+  e.className = cls || 'mut';
+
+  const report = $('#compatReport');
+  const list = $('#compatFindings');
+  list.textContent = '';
+  let findings = v && Array.isArray(v.findings) ? v.findings : [];
+  if (v && !findings.length && v.kind !== 'invalid') {
+    findings = [{
+      level: 'warn',
+      title: 'Diagnostic détaillé indisponible',
+      detail: 'Le serveur a fourni un verdict général, mais pas les informations nécessaires pour vérifier chaque élément HTML.',
+      action: 'Pour obtenir le rapport complet, importe directement le fichier HTML ou un ZIP.'
+    }];
+    if (Number.isFinite(v.sizeBytes) && v.sizeBytes >= 0) {
+      findings.push({
+        level: v.sizeBytes >= 20 * 1024 * 1024 ? 'warn' : 'good',
+        title: 'Taille du fichier',
+        detail: size(v.sizeBytes)
+      });
+    }
+  }
+  if (v && v.kind === 'invalid' && !findings.length) {
+    findings = [{ level: 'blocking', title: 'Import bloqué', detail: v.label || 'Le fichier ne peut pas être traité.' }];
+  }
+  const states = {
+    good: { symbol: '✓', label: 'Bon' },
+    warn: { symbol: '⚠', label: 'Attention' },
+    blocking: { symbol: '✖', label: 'Bloquant' }
+  };
+  for (const finding of findings) {
+    const state = states[finding.level] || states.warn;
+    const item = document.createElement('li');
+    const heading = document.createElement('strong');
+    heading.textContent = state.symbol + ' ' + state.label + ' — ' + (finding.title || 'Constat');
+    const detail = document.createElement('p');
+    detail.textContent = finding.detail || '';
+    item.append(heading, detail);
+    if (finding.action) {
+      const action = document.createElement('p');
+      action.className = 'compat-action';
+      action.textContent = 'Action recommandée : ' + finding.action;
+      item.append(action);
+    }
+    list.append(item);
+  }
+  report.hidden = findings.length === 0;
+  syncGoButton();
 }
 function resetPreview() {
   const p = $('#prev'); p.hidden = true; p.removeAttribute('srcdoc');
@@ -838,7 +905,7 @@ async function chooseZipMain(path) {
     const html = await selection.archive.file(path).async('string');
     if (zipSelection !== selection || mainToken !== zipMainToken) return;
     selection.mainText = html;
-    selection.analysis = analyze(html);
+    selection.analysis = analyze(html, entry.size);
     $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
       ' · ' + size(entry.size) + ' décompressés. Les chemins des ressources seront conservés lors de l’extraction serveur.';
     if (selection.analysis.kind === 'invalid') {
@@ -924,7 +991,8 @@ async function checkFile() {
     clearZipInspector();
     $('#fileinfo').hidden = false;
     $('#fileinfo').textContent = importedSource.name + ' · ' + size(importedSource.size) + ' · URL';
-    const v = importedSource.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.' };
+    const v = importedSource.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.', blocking: true };
+    v.sizeBytes = importedSource.size;
     if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
     if (v.kind === 'generic') {
       return showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
@@ -955,7 +1023,7 @@ async function checkFile() {
   clearZipInspector();
   showVerdict(null, 'mut', 'Vérification du fichier…');
   let v;
-  try { fileText = await f.text(); v = analyze(fileText); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.' }; }
+  try { fileText = await f.text(); v = analyze(fileText, f.size); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.', blocking: true }; }
   if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
   $('#prevBtn').hidden = false;
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
@@ -1032,7 +1100,7 @@ async function importFromUrl() {
     $('#file').disabled = busy;
     $('#importUrl').disabled = busy;
     $('#importUrlBtn').disabled = !securityReady || busy;
-    $('#go').disabled = !securityReady || busy;
+    syncGoButton();
   }
 }
 function setFile(files) {
@@ -1235,7 +1303,7 @@ async function go() {
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
   if (!f && !source) { setSteps(-1); return status('Choisis un fichier HTML ou colle un lien.', 'err'); }
   if (!verdict) await checkFile();
-  if (!verdict || verdict.kind === 'invalid') { setSteps(-1); return status('Fichier refusé : il n’a pas été importé.', 'err'); }
+  if (!verdict || hasBlockingFinding(verdict)) { setSteps(-1); return status('Fichier refusé : le rapport contient un élément bloquant.', 'err'); }
   const m = MODES[$('#mode').value];
   const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
   const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
