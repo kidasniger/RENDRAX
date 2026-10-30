@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exemple MusicPro</title>
+<style>body{margin:0;background:#101827;color:white;font:20px Arial}canvas{display:block;margin:40px auto;background:#203b60}</style></head><body>
+<!-- Exemple MusicPro autonome : canvas, rendu temporel et buffers audio synthétisés. -->
+<canvas id="screen" width="320" height="180"></canvas>
+<script>
+const D=7, VOICE="UklGRg=="; const decoded=atob(VOICE);
+const ctx=new AudioContext(), vP=ctx.createBuffer(1,ctx.sampleRate*D,ctx.sampleRate), mP=ctx.createBuffer(1,ctx.sampleRate*D,ctx.sampleRate);
+for(const buffer of [vP,mP]){const channel=buffer.getChannelData(0);for(let i=0;i<channel.length;i++)channel[i]=Math.sin(2*Math.PI*440*i/ctx.sampleRate)*.12}
+function render(t){const c=document.getElementById("screen").getContext("2d");c.clearRect(0,0,320,180);c.fillStyle="#58d6bd";c.beginPath();c.arc(160+Math.sin(t)*90,90,24,0,Math.PI*2);c.fill()}
+function music(){const source=ctx.createBufferSource();source.buffer=vP;source.connect(ctx.destination);source.start()}
+function go(){if(!ctx) return;music()}
+let started=performance.now();(function lp(){let t=Math.min(D,(performance.now()-started)/1000);render(t);if(t<D)requestAnimationFrame(lp)})();go();
+window.__wavOf=key=>{const b=key==="mP"?mP:vP;return b};
+</script></body></html>
