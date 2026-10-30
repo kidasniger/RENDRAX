@@ -238,7 +238,7 @@ jobs:
                   --argjson total "$total" \
                   '{id:$id,run_id:$run_id,current:$current,total:$total,phase:$phase}')"
                 curl --fail --silent --show-error --max-time 8 \
-                  -X POST "https://rendrax.vercel.app/api/progress" \
+                  -X POST "https://rendrax.vercel.app/api/job" \
                   -H "Authorization: Bearer ${PROGRESS_TOKEN}" \
                   -H "Content-Type: application/json" \
                   --data "$payload" >/dev/null \
