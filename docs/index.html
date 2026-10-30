@@ -1410,7 +1410,15 @@ function showResult(rel) {
   const box = $('#res'); box.textContent = '';
   if (!a) { box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.'; return; }
   const v = document.createElement('video');
-  v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = a.browser_download_url;
+  v.className = 'rdx-player-video';
+  v.controls = true;
+  v.playsInline = true;
+  v.setAttribute('playsinline', '');
+  v.setAttribute('webkit-playsinline', '');
+  v.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
+  v.preload = 'metadata';
+  if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) v.poster = a.thumbnail_url;
+  v.src = a.browser_download_url;
   const bar = document.createElement('div'); bar.className = 'actions';
   const dl = document.createElement('a');
   dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
