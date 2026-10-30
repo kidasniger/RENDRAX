@@ -297,7 +297,7 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          mapfile -d '' assets < <(find . -type f \\( -name '*.mp4' -o -name '*.jpg' \\) -not -path './.git/*' -print0 | sort -z)
+          mapfile -d '' assets < <(find . -type f \( -name '*.mp4' -o -name '*.jpg' \) -not -path './.git/*' -print0 | sort -z)
           (("${#assets[@]}" > 0)) || { echo "::error::Aucun fichier vidéo ou miniature à publier."; exit 1; }
           gh release create "$TAG" "${assets[@]}" \
             --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
