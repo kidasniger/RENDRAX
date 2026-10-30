@@ -1470,7 +1470,7 @@ async function waitJob(id, t0) {
   resetRenderProgress();
   while (Date.now() - t0 < 95 * 60000) {
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-    await sleep(6000);
+    if (polls > 0) await sleep(6000);
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     const showDetails = polls++ % 3 === 0;
     const job = await api('/job?id=' + encodeURIComponent(id) + (showDetails ? '&details=1' : ''));
@@ -1602,10 +1602,13 @@ async function cancel() {
 async function resume() {
   const raw = store.get('kidas_job'); if (!raw) return;
   let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
-  if (!job.id || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
-  cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(2); status('Reprise du suivi du rendu…');
+  if (!job.id || !Number.isFinite(job.t0) || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
+  cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(-1); status('Récupération de l’état du rendu…');
   try { await finish(await waitJob(job.id, job.t0)); }
-  catch (e) { fail(e, Math.max(currentStepIndex(), 2)); }
+  catch (e) {
+    const activeStep = currentStepIndex();
+    fail(e, activeStep >= 0 ? activeStep : 1);
+  }
   setBusy(false);
 }
 $('#file').onchange = checkFile;
