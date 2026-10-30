@@ -30,6 +30,9 @@ def print_report(report):
         ("Audio", audio_text + (" · " + ", ".join(report["audio_tracks"]) if report.get("audio_tracks") else "")),
         ("Synchro", sync_text),
         ("Décalage audio", f"{report.get('audio_offset_ms', 0):+d} ms"),
+        ("Début visuel", "non détecté" if report.get("visual_onset_ms") is None else f"{report['visual_onset_ms']} ms"),
+        ("Début audio", "non détecté" if report.get("audio_onset_ms") is None else f"{report['audio_onset_ms']} ms"),
+        ("Correction conseillée", "non déterminée" if report.get("suggested_audio_offset_ms") is None else f"{report['suggested_audio_offset_ms']:+d} ms"),
     ]
     print("\n\x1b[1mRésumé du rendu\x1b[0m")
     for key, value in lines:
