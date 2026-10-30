@@ -613,24 +613,28 @@ function setBusy(b) {
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
 }
-function analyze(t) {
+function analyze(t, sizeBytes = null) {
   const count = (s, sub) => s.split(sub).length - 1;
-  if (t.trim().length < 20 || !/<(?:!doctype|html|head|body|script|svg|canvas|div|style)\b/i.test(t))
-    return { kind: 'invalid', label: 'Ce fichier ne ressemble pas à une page HTML.' };
+  const findings = [];
+  const add = (level, title, detail, action = '') => findings.push({ level, title, detail, action });
+
+  if (typeof t !== 'string' || t.trim().length < 20 ||
+      !/<(?:!doctype|html|head|body|script|svg|canvas|div|style)\b/i.test(t)) {
+    const label = 'Ce fichier ne ressemble pas à une page HTML.';
+    add('blocking', 'Format HTML invalide', label, 'Sélectionne un fichier HTML ou HTM valide.');
+    return { kind: 'invalid', label, findings, blocking: true };
+  }
+
   const kidas = count(t, 'const [t,setT]=useState(0),') === 1 && /[.#]stage\s*\{/.test(t)
     && /\bAUD\s*=\s*'data:audio\//.test(t) && /\bD\s*=\s*\d/.test(t);
-  if (kidas) return { kind: 'kidas', label: 'KIDAS (React + audio intégré)' };
   const editpro = t.includes('function render(t)') && count(t, '(function loop(){let t=') === 1
     && t.includes('const IM=') && /"voice"\s*:\s*"[A-Za-z0-9+\/=]{1000,}"/.test(t);
-  if (editpro) return { kind: 'editpro', label: 'EditPro (canvas + voix intégrée)' };
   const voicevideo = t.includes('window.__video') && /\bseek\s*\(/.test(t)
     && /<audio\b[^>]*\ssrc=["']data:audio\//i.test(t) && /\bDUR\s*=/.test(t);
-  if (voicevideo) return { kind: 'voicevideo', label: 'Vidéo React (audio intégré + window.__video)' };
   const musicpro = t.includes('function render(t)') && /atob\(\s*VOICE\s*\)/.test(t)
     && /function\s+music\s*\(/.test(t) && /function\s+go\s*\(/.test(t)
     && /\(function\s+lp\s*\(\)\s*\{/.test(t) && /\bconst\s+D\s*=\s*\d/.test(t)
     && /\bvP\s*=/.test(t) && /\bmP\s*=/.test(t);
-  if (musicpro) return { kind: 'musicpro', label: 'MusicPro (canvas + voix et musique synchronisées)' };
   const gsapvideo = /<audio\b[^>]*\bsrc=["']data:audio\/[a-z0-9.+-]+;base64,/i.test(t)
     && /\b(?:const\s+T\s*=\s*\[\s*\d|const\s+D\s*=\s*\d)/.test(t) && /\bSUB\s*=/.test(t)
     && /\btl\s*=\s*gsap\.timeline\(\s*\{\s*paused\s*:\s*true\s*\}\s*\)/.test(t)
@@ -641,8 +645,82 @@ function analyze(t) {
     )
     && /requestAnimationFrame\s*\(\s*lp\s*\)/.test(t)
     && /[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px/.test(t);
-  if (gsapvideo) return { kind: 'gsapvideo', label: 'Vidéo GSAP synchronisée sur la piste audio' };
-  return { kind: 'generic', label: 'Page HTML générique' };
+
+  let kind = 'generic';
+  let label = 'Page HTML générique';
+  if (kidas) [kind, label] = ['kidas', 'KIDAS (React + audio intégré)'];
+  else if (editpro) [kind, label] = ['editpro', 'EditPro (canvas + voix intégrée)'];
+  else if (voicevideo) [kind, label] = ['voicevideo', 'Vidéo React (audio intégré + window.__video)'];
+  else if (musicpro) [kind, label] = ['musicpro', 'MusicPro (canvas + voix et musique synchronisées)'];
+  else if (gsapvideo) [kind, label] = ['gsapvideo', 'Vidéo GSAP synchronisée sur la piste audio'];
+
+  add('good', 'Format HTML reconnu', 'Le fichier contient une structure HTML exploitable.');
+  if (kind === 'generic') {
+    add('warn', 'Animation non identifiée', 'Aucun format vidéo pris en charge n’a été reconnu.',
+      'Vérifie que les animations sont pilotées par CSS, Canvas ou GSAP.');
+  } else {
+    add('good', 'Type d’animation reconnu', label);
+  }
+
+  const hasAudio = /<audio\b/i.test(t) || /\bdata:audio\//i.test(t)
+    || /\b(?:webkit)?AudioContext\b/.test(t);
+  add(hasAudio ? 'good' : 'warn',
+    hasAudio ? 'Audio détecté' : 'Aucun audio intégré détecté',
+    hasAudio ? 'Une balise audio, une source audio intégrée ou Web Audio a été détecté.'
+      : 'Aucune balise audio, source data:audio ou API Web Audio détectée.',
+    hasAudio ? '' : 'Ajoute une balise <audio> ou utilise Web Audio pour intégrer du son.');
+
+  const hasDuration = /\b(?:const|let|var)\s+(?:D|DUR|duration|TOTAL_DURATION)\s*=\s*(?:\d+(?:\.\d+)?|['"][^'"]+['"])/i.test(t)
+    || /\bduration\s*:\s*\d+(?:\.\d+)?/i.test(t)
+    || /\b(?:duration|durée)\s*=\s*["']?\d+(?:\.\d+)?/i.test(t);
+  add(hasDuration ? 'good' : 'warn',
+    hasDuration ? 'Durée détectée' : 'Durée non identifiée',
+    hasDuration ? 'Une variable ou configuration de durée a été repérée.'
+      : 'Aucune configuration de durée courante n’a été repérée.',
+    hasDuration ? '' : 'Vérifie et définis explicitement la durée de l’animation.');
+
+  const hasGsap = /\b(?:gsap\.|TweenMax\b|TimelineMax\b)/.test(t);
+  const hasCanvas = /<canvas\b/i.test(t) || /\.getContext\s*\(\s*['"](?:2d|webgl2?|bitmaprenderer)['"]/.test(t);
+  const hasCss = /<style\b/i.test(t) || /<link\b[^>]*rel=["']stylesheet["']/i.test(t)
+    || /\bstyle\s*=/.test(t) || /@(?:keyframes|media|supports)\b/.test(t);
+  add(hasCss ? 'good' : 'warn', hasCss ? 'CSS détecté' : 'CSS non détecté',
+    hasCss ? 'Des styles intégrés ou une feuille de style sont présents.'
+      : 'Aucun style CSS courant n’a été repéré.',
+    hasCss ? '' : 'Ajoute des styles CSS si la page en dépend.');
+  add(hasCanvas ? 'good' : 'warn', hasCanvas ? 'Canvas détecté' : 'Canvas non détecté',
+    hasCanvas ? 'Un élément ou contexte Canvas a été repéré.'
+      : 'Aucun élément ou contexte Canvas détecté.',
+    hasCanvas ? '' : 'Si ton animation utilise Canvas, vérifie sa création et son initialisation.');
+  add(hasGsap ? 'good' : 'warn', hasGsap ? 'GSAP détecté' : 'GSAP non détecté',
+    hasGsap ? 'La bibliothèque GSAP ou une API historique a été repérée.'
+      : 'Aucune référence GSAP détectée.',
+    '');
+
+  const external = new Set();
+  const externalPattern = /(?:src|href)\s*=\s*["'](https?:\/\/[^"'#\s]+)|url\(\s*["']?(https?:\/\/[^)'"\s]+)|@import\s+["'](https?:\/\/[^"']+)/gi;
+  let match;
+  while ((match = externalPattern.exec(t)) !== null) external.add(match[1] || match[2] || match[3]);
+  add(external.size ? 'warn' : 'good',
+    external.size ? 'Ressources externes détectées' : 'Aucune ressource externe détectée',
+    external.size
+      ? external.size + ' adresse(s) distante(s) détectée(s) ; leur disponibilité pendant le rendu n’est pas garantie.'
+      : 'Aucune URL HTTP(S) externe courante détectée.',
+    external.size ? 'Intègre les ressources dans le ZIP ou vérifie que les URL restent accessibles.' : '');
+
+  if (Number.isFinite(sizeBytes) && sizeBytes >= 0) {
+    if (sizeBytes > MAX_BYTES) {
+      add('blocking', 'Fichier trop volumineux', 'Le fichier dépasse la limite actuelle de 50 Mo.',
+        'Réduis la taille du fichier avant de recommencer.');
+    } else if (sizeBytes >= 20 * 1024 * 1024) {
+      add('warn', 'Fichier volumineux', 'Le fichier atteint au moins 20 Mo.',
+        'Réduis sa taille si le chargement ou le rendu est lent.');
+    } else {
+      add('good', 'Taille du fichier acceptable', 'Le fichier reste sous le seuil d’avertissement de 20 Mo.');
+    }
+  }
+
+  const blocking = findings.some(item => item.level === 'blocking');
+  return { kind, label, findings, blocking };
 }
 function showVerdict(v, cls, msg) {
   verdict = v;
