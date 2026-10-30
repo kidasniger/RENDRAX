@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exemple CSS</title>
+<style>body{margin:0;background:#101827;color:white;font:20px Arial}.stage{width:320px;height:180px;margin:40px auto;background:#203b60;display:grid;place-items:center}.box{width:48px;height:48px;background:#f6c85f;animation:move 7s linear both}@keyframes move{0%{transform:translateX(-110px)}100%{transform:translateX(110px)}}</style></head><body>
+<!-- Exemple CSS générique : animation CSS et audio Web Audio sans dépendance externe. -->
+<div class="stage"><div class="box"></div></div>
+<script>
+const context=new AudioContext(), oscillator=context.createOscillator(), gain=context.createGain();oscillator.frequency.value=440;gain.gain.value=.035;oscillator.connect(gain).connect(context.destination);context.resume().then(()=>{oscillator.start();oscillator.stop(context.currentTime+7)});
+</script></body></html>
