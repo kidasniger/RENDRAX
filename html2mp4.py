@@ -12,6 +12,7 @@ Utilisation (Termux ou Linux) :
     python html2mp4.py --test 10       # rendu rapide des 10 premières secondes
     python html2mp4.py --file kidas.html   # sans menu (utilisé par GitHub Actions)
     python html2mp4.py --fps 24 --scale 0.5
+    python html2mp4.py --audio-offset 300
 
 Menu : ↑/↓ naviguer · Espace choisir · Entrée confirmer · q quitter
 La vidéo est enregistrée dans le même dossier que le fichier HTML.
@@ -54,6 +55,16 @@ def parse_fps(value):
     return fps
 
 
+def parse_audio_offset_ms(value):
+    try:
+        offset = int(value)
+    except (TypeError, ValueError) as error:
+        raise argparse.ArgumentTypeError("Le décalage audio doit être un entier en millisecondes.") from error
+    if not -2000 <= offset <= 2000:
+        raise argparse.ArgumentTypeError("Le décalage audio doit être compris entre -2000 et 2000 ms.")
+    return offset
+
+
 def main():
     ap = argparse.ArgumentParser(description="HTML animé → MP4")
     ap.add_argument("dossier", nargs="?", help="dossier à scanner (défaut : dossier du script)")
@@ -63,6 +74,8 @@ def main():
                     help="auto (60 i/s pour profils synchronisés, 30 pour HTML générique), ou 1–120")
     ap.add_argument("--scale", type=float, default=1.0, help="échelle de sortie, ex. 0.5 = 540×960 (défaut 1)")
     ap.add_argument("--test", type=float, default=0, help="ne rendre que les N premières secondes")
+    ap.add_argument("--audio-offset", type=parse_audio_offset_ms, default=0,
+                    help="décalage audio en millisecondes, de -2000 à 2000 (défaut 0)")
     ap.add_argument("--duration", type=float, default=0, help="durée maximale en secondes ; 0 = durée détectée ou 60 s en mode universel")
     ap.add_argument("--format", choices=("auto", "portrait", "landscape", "square"), default="auto", help="format de sortie : auto, portrait, paysage ou carré")
     ap.add_argument("--quality", choices=("auto", "fast", "standard", "high"), default="auto",
