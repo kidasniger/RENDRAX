@@ -173,6 +173,10 @@ main.rdx-main .mut,main.rdx-main small{line-height:1.55}
 #progCard .steps li{font-size:.77rem}
 #progCard #st{padding:12px 14px;border:1px solid var(--bd);border-radius:13px;background:var(--surf2)}
 #res video{border-radius:17px;box-shadow:0 12px 30px rgba(0,0,0,.12)}
+#res .rdx-player-video{display:block;width:100%;max-width:100%;max-height:72svh;height:auto;aspect-ratio:auto;object-fit:contain;background:#080b12}
+#res .rdx-player-video:fullscreen{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;border-radius:0;background:#000}
+#res .rdx-player-video::-webkit-media-controls{max-width:100%}
+@media(max-width:520px){#res .rdx-player-video{max-height:68svh;border-radius:12px}}
 #res .actions{gap:10px}
 #list li{padding:15px 0!important}
 #list .meta a{font-weight:700!important}
