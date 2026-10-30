@@ -9,7 +9,8 @@ import tempfile
 import time
 from pathlib import Path
 
-from h2m.browser import CDP, launch_chrome, page_ws_url, start_local_http_server, stop_chrome
+from h2m.browser import (BrowserStartupError, CDP, launch_chrome, page_ws_url,
+                        start_local_http_server, stop_chrome)
 from h2m.deps import IS_TERMUX, find_chrome
 from h2m.encode import (QUALITY, check_audio_level, output_path, start_encoder, unique_path, verify_sync,
                         write_wav, write_wav_payload)
@@ -101,11 +102,12 @@ def render(html_path, args):
                 if last_state.get("body") and time.time() - t0 > 15:
                     warn("La page n'a pas fini de charger toutes ses ressources ; essai de rendu avec le contenu disponible.")
                     break
-            except RuntimeError:
-                pass
+            except RuntimeError as exc:
+                if _is_browser_failure(exc):
+                    raise
             time.sleep(0.25)
         else:
-            die("Chromium n'a pas réussi à créer le document HTML.")
+            raise BrowserStartupError("Chromium n'a pas réussi à créer le document HTML.")
         time.sleep(0.2)
 
         is_precise = False
@@ -124,13 +126,17 @@ def render(html_path, args):
             while time.time() - t1 < 30 and not is_precise:
                 try:
                     is_precise = bool(cdp.ev(check, await_promise=False))
-                except RuntimeError:
+                except RuntimeError as exc:
+                    if _is_browser_failure(exc):
+                        raise
                     is_precise = False
                 if not is_precise:
                     time.sleep(0.5)
             if not is_precise:
-                die(f"Fichier reconnu ({label}) mais la page ne s'est pas initialisée : "
-                    "Internet est-il disponible pour charger React et les polices ?")
+                raise BrowserStartupError(
+                    f"Fichier reconnu ({label}) mais la page ne s'est pas initialisée : "
+                    "Internet est-il disponible pour charger React et les polices ?"
+                )
 
         if is_precise:
             cdp.ev(f"window.__profile = {json.dumps(profile)}; 0", await_promise=False)
