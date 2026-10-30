@@ -507,7 +507,7 @@ def _is_browser_failure(exc):
 def _short_retry_cause(exc, limit=140):
     """Produit une cause lisible sur une seule ligne dans le journal."""
     message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
-    message = re.sub(r"\\s+", " ", message)
+    message = re.sub(r"\s+", " ", message)
     if len(message) > limit:
         message = message[:limit - 1].rstrip() + "…"
     return message
