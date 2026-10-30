@@ -29,6 +29,7 @@ def print_report(report):
         ("Qualité", report["quality"] + (" · volume normalisé" if report.get("loudnorm") else "")),
         ("Audio", audio_text + (" · " + ", ".join(report["audio_tracks"]) if report.get("audio_tracks") else "")),
         ("Synchro", sync_text),
+        ("Décalage audio", f"{report.get('audio_offset_ms', 0):+d} ms"),
     ]
     print("\n\x1b[1mRésumé du rendu\x1b[0m")
     for key, value in lines:
