@@ -52,8 +52,17 @@ def output_path(html_path, args):
     return html_path.with_name(base + ".mp4")
 
 
-def start_encoder(out_path, fps, dur, audio_inputs, err_path, quality="standard", loudnorm=False):
-    """audio_inputs : (Path, volume[, offset]) ; offset aligne la piste sur la première image."""
+def start_encoder(out_path, fps, dur, audio_inputs, err_path, quality="standard", loudnorm=False,
+                  audio_offset_ms=0):
+    """Encode les images et applique le décalage audio final sans modifier la vidéo.
+
+    audio_inputs : (Path, volume[, offset]) ; offset interne aligne une capture sur la première image.
+    audio_offset_ms positif retarde le mixage ; négatif le fait commencer plus tôt.
+    """
+    if isinstance(audio_offset_ms, bool) or not isinstance(audio_offset_ms, int):
+        raise ValueError("Le décalage audio doit être un entier en millisecondes.")
+    if not -2000 <= audio_offset_ms <= 2000:
+        raise ValueError("Le décalage audio doit être compris entre -2000 et 2000 ms.")
     q = QUALITY[quality]
     mix_tail = ("loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,alimiter=limit=0.95"
                 if loudnorm else "alimiter=limit=0.95")
@@ -82,7 +91,16 @@ def start_encoder(out_path, fps, dur, audio_inputs, err_path, quality="standard"
         else:
             labels = "".join(f"[a{i}]" for i in range(n))
             parts.append(f"{labels}amix=inputs={n}:duration=first:dropout_transition=0,volume={n},{mix_tail}[a]")
-        cmd += ["-filter_complex", ";".join(parts), "-map", "0:v", "-map", "[a]"]
+        if audio_offset_ms > 0:
+            parts.append(f"[a]adelay={audio_offset_ms}:all=1,apad,atrim=duration={dur:.3f}[aout]")
+            audio_label = "[aout]"
+        elif audio_offset_ms < 0:
+            advance = abs(audio_offset_ms) / 1000.0
+            parts.append(f"[a]atrim=start={advance:.3f},asetpts=PTS-STARTPTS,apad,atrim=duration={dur:.3f}[aout]")
+            audio_label = "[aout]"
+        else:
+            audio_label = "[a]"
+        cmd += ["-filter_complex", ";".join(parts), "-map", "0:v", "-map", audio_label]
     else:
         cmd += ["-map", "0:v"]
 
