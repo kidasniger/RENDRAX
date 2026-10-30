@@ -41,6 +41,14 @@ def select_quality(requested="auto", scale=1.0, test=0, preview=False):
     return "standard"
 
 
+def _write_render_progress(current, total, phase):
+    """Écrit une ligne de progression exploitable par le suivi GitHub Actions."""
+    current = max(0, int(current))
+    total = max(0, int(total))
+    phase = re.sub(r"[^a-zA-Z0-9_-]", "_", str(phase or "rendu"))[:40]
+    print(f"PROGRES_RENDRAX: {current}/{total} {phase}", flush=True)
+
+
 def render(html_path, args):
     tmp = Path(tempfile.mkdtemp(prefix="html2mp4_"))
     out_final = None
@@ -312,7 +320,10 @@ def render(html_path, args):
         start = time.monotonic()
         slow_frames = 0
         frame_ts = []  # mode universel : instant réel (s) de chaque capture
+        last_progress_at = 0.0
         i = -1
+        _write_render_progress(0, n_frames if is_precise else 0,
+                               "rendu" if is_precise else "temps_reel")
         while True:
             i += 1
             if is_precise:
@@ -346,6 +357,12 @@ def render(html_path, args):
                 frame_files.append(frame_path)
             if not is_precise and time.monotonic() > start + (i + 1) / fps:
                 slow_frames += 1
+            progress_now = time.monotonic()
+            if progress_now - last_progress_at >= 2.0:
+                _write_render_progress(i + 1 if is_precise else 0,
+                                       n_frames if is_precise else 0,
+                                       "rendu" if is_precise else "temps_reel")
+                last_progress_at = progress_now
             if i % max(1, fps // 2) == 0 or i == n_frames - 1:
                 elapsed = time.monotonic() - start
                 if is_precise:
@@ -395,6 +412,10 @@ def render(html_path, args):
                         enc.stdin.write(last_data)
                     except BrokenPipeError:
                         break
+                progress_now = time.monotonic()
+                if progress_now - last_progress_at >= 2.0 or k == n_frames - 1:
+                    _write_render_progress(0, 0, "assemblage")
+                    last_progress_at = progress_now
                 if k % max(1, fps * 5) == 0 or k == n_frames - 1:
                     sys.stdout.write(f"\r  Assemblage {k + 1}/{n_frames}")
                     sys.stdout.flush()
