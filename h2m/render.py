@@ -422,7 +422,7 @@ def render(html_path, args):
         print_report({
             "source": html_path.name, "output": out_final.name, "mode": mode, "label": label,
             "width": W, "height": H, "fps": fps, "duration": n_frames / fps,
-            "quality": selected_quality, "loudnorm": args.loudnorm,
+            "quality": selected_quality, "loudnorm": args.loudnorm, "audio_offset_ms": audio_offset_ms,
             "audio_tracks": [item[0].stem for item in audio_inputs],
             "peak_db": peak, "sync_gap_ms": gap_ms,
         })
