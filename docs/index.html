@@ -762,9 +762,9 @@ function workflowStepLabel(name, progressPhase) {
   if (/Installer FFmpeg/i.test(name || '')) return 'Préparation de l’outil de création vidéo…';
   if (/Vérifier les outils média/i.test(name || '')) return 'Vérification des outils de rendu…';
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
-  if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
+  if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation du son…';
   if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification de la vidéo…';
-  if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
+  if (/Publier le MP4 \(Release/i.test(name || '')) return 'Préparation de la vidéo finale…';
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage final…';
   return 'En attente du démarrage du rendu…';
 }
@@ -929,7 +929,7 @@ function analyze(t, sizeBytes = null) {
     external.size ? 'Fichiers chargés depuis Internet' : 'Aucun fichier externe',
     external.size
       ? external.size + ' fichier(s) chargé(s) depuis Internet seront vérifiés automatiquement.'
-      : 'Aucune URL HTTP(S) externe courante détectée.');
+      : 'Aucun lien externe courant n’a été trouvé.');
   if (Number.isFinite(sizeBytes) && sizeBytes >= 0) {
     if (sizeBytes > MAX_BYTES) {
       add('blocking', 'Fichier trop volumineux', 'Le fichier dépasse la limite actuelle de 50 Mo.',
@@ -1289,7 +1289,7 @@ async function checkFile() {
     clearZipInspector();
     $('#fileinfo').hidden = false;
     $('#fileinfo').textContent = importedSource.name + ' · ' + size(importedSource.size) + ' · URL';
-    const v = importedSource.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.', blocking: true };
+    const v = importedSource.analysis || { kind: 'invalid', label: 'La vérification du fichier est indisponible.', blocking: true };
     v.sizeBytes = importedSource.size;
     if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
     if (v.kind === 'generic') {
@@ -1368,7 +1368,7 @@ async function importFromUrl() {
       body: { id, url: rawUrl, captchaToken: token }
     });
 
-    let analysis = data.analysis || { kind: 'invalid', label: 'Le diagnostic du fichier est indisponible.' };
+    let analysis = data.analysis || { kind: 'invalid', label: 'La vérification du fichier est indisponible.' };
     if (data.stored !== true && analysis.kind !== 'invalid') {
       analysis = { kind: 'invalid', label: 'Le HTML n’a pas été enregistré dans le stockage privé.' };
     }
@@ -1386,7 +1386,7 @@ async function importFromUrl() {
     if (importedSource.analysis && importedSource.analysis.kind === 'invalid') {
       status('Le lien a été téléchargé, mais le contenu a été refusé.', 'err');
     } else {
-      status('Lien importé. Vérifie le diagnostic puis appuie sur « Générer MP4 ».', 'ok');
+      status('Lien importé. Vérifie le fichier puis appuie sur « Générer MP4 ».', 'ok');
     }
   } catch (e) {
     importedSource = null;
@@ -1493,7 +1493,7 @@ function showResult(rel) {
   const box = $('#res'); box.textContent = '';
   resetTransition(box);
   if (!a) {
-    box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.';
+    box.textContent = 'La création est terminée, mais le fichier MP4 est introuvable.';
     revealTransition(box);
     return;
   }
@@ -1780,7 +1780,7 @@ async function waitJob(id, t0) {
       e.url = job.html_url; throw e;
     }
     if (job.release) return job.release;
-    setSteps(3); status('Publication du MP4… (' + elapsed + ')');
+    setSteps(3); status('Préparation de la vidéo finale… (' + elapsed + ')');
   }
   throw new Error('Délai dépassé (plus de 95 minutes).');
 }
