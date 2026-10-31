@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261025-rendrax4">
   <link rel="icon" type="image/png" sizes="any" href="/favicon.png?v=20261025-rendrax4">
 <meta name="theme-color" content="#f3f6ff">
+<link rel="manifest" href="/manifest.webmanifest">
 <noscript><style>.rdx-splash{display:none!important}</style></noscript>
 <!-- Vercel Web Analytics -->
 <script>
@@ -2227,5 +2228,14 @@ resume().then(resumed => {
 });
 </script>
 <script type="module" src="/assets/rendrax-motion.js?v=20261025-fix3"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(error => {
+      console.warn('Enregistrement du service worker impossible :', error);
+    });
+  });
+}
+</script>
 </body>
 </html>
