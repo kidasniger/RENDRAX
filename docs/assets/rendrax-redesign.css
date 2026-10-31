@@ -332,3 +332,36 @@ main.rdx-main .example-list {
 }
 main.rdx-main .checkline { min-height: 48px; }
 
+/* Mise à jour 28 — cases à cocher faciles à toucher */
+main.rdx-main label.checkline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+main.rdx-main label.checkline input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  flex: 0 0 24px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  margin: 0;
+  accent-color: var(--ac);
+  cursor: pointer;
+}
+main.rdx-main label.checkline span {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.4;
+}
+main.rdx-main label.checkline:focus-within {
+  outline: 3px solid var(--ac);
+  outline-offset: 2px;
+}
+
