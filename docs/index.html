@@ -1939,6 +1939,18 @@ async function go(testOnly = false) {
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
+    if (e.status === 410 && source) {
+      importedSource = null;
+      localSource = null;
+      lastSourceForRetry = null;
+      $('#file').value = '';
+      $('#fileinfo').hidden = true;
+      zipSelection = null;
+      clearZipInspector();
+      resetPreview();
+      verdict = null;
+      syncGoButton();
+    }
     if (needsUpload && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) {
       await cleanupUpload(sourceId, type_fichier);
       if (localSource && localSource.id === sourceId) localSource = null;
