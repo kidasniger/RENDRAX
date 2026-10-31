@@ -408,7 +408,7 @@ ul#list button{box-shadow:none}
         <small id="zipMainHelp">Le ZIP contient plusieurs pages HTML et aucun index.html unique. Sélectionne celle à convertir.</small>
       </div>
       <div class="zip-resource-heading">
-        <strong>Fichiers et ressources détectés</strong>
+        <strong>Fichiers associés détectés</strong>
         <span id="zipResourceMeta" class="mut"></span>
       </div>
       <ul id="zipResourceList" class="zip-resource-list"></ul>
@@ -490,7 +490,7 @@ ul#list button{box-shadow:none}
         <p class="mut">Activé par défaut. Normalise le volume audio pour obtenir un niveau sonore plus régulier.</p>
       </div>
     </div>
-    <p class="mut" role="note">RENDRAX détecte automatiquement le type d’animation, la fréquence d’images et la qualité d’encodage. Il active aussi l’écran de démarrage lorsqu’il est présent. Le HTML source reste intact.</p>
+    <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
@@ -504,7 +504,7 @@ ul#list button{box-shadow:none}
       <li data-s="pending">Envoi</li>
       <li data-s="pending">File d’attente</li>
       <li data-s="pending">Rendu</li>
-      <li data-s="pending">Encodage</li>
+      <li data-s="pending">Création de la vidéo</li>
       <li data-s="pending">Terminé</li>
     </ol>
     <p id="st" class="mut" aria-live="polite">Prêt.</p>
@@ -517,7 +517,7 @@ ul#list button{box-shadow:none}
       <progress id="renderProgressBar" max="100" aria-label="Progression du rendu"></progress>
       <p id="renderProgressEta">Calcul…</p>
     </div>
-    <p id="stl" hidden><a id="stla" target="_blank" rel="noopener">Voir le journal du rendu</a></p>
+    <p id="stl" hidden><a id="stla" target="_blank" rel="noopener">Voir les détails techniques du rendu</a></p>
     <div id="res"></div>
   </section>
 
@@ -531,7 +531,7 @@ ul#list button{box-shadow:none}
       <li class="example-row"><span class="example-copy"><strong>RENDRAX — Présentation</strong><span>Portrait 1080 × 1920 · 67,63 s · GSAP · audio MP3 intégré.</span></span><a class="example-download" href="exemples/rendrax-promo.html" download="rendrax-promo.html">Télécharger</a></li>
       <li class="example-row"><span class="example-copy"><strong>EditPro — Vidéo 60 s</strong><span>Canvas · images intégrées · voix MP3 encodée dans les données HTML.</span></span><a class="example-download" href="exemples/editpro.html" download="editpro.html">Télécharger</a></li>
     </ul>
-    <p class="examples-intro">Ces fichiers peuvent charger certaines bibliothèques ou polices depuis des CDN. Une connexion internet peut donc être nécessaire pendant l’import et le rendu.</p>
+    <p class="examples-intro">Ces fichiers peuvent charger des bibliothèques ou des polices depuis des services externes. Une connexion Internet peut donc être nécessaire pendant l’import et la création de la vidéo.</p>
   </details>
 
   <details class="card rdx-history-card" aria-labelledby="h-hist">
@@ -757,13 +757,13 @@ function workflowStepIndex(name, progressPhase) {
   return 1;
 }
 function workflowStepLabel(name, progressPhase) {
-  if (progressPhase === 'assemblage') return 'Encodage et assemblage de la vidéo…';
+  if (progressPhase === 'assemblage') return 'Création et assemblage de la vidéo…';
   if (/Préparer le HTML source/i.test(name || '')) return 'Préparation du HTML temporaire…';
-  if (/Installer FFmpeg/i.test(name || '')) return 'Préparation du moteur vidéo…';
+  if (/Installer FFmpeg/i.test(name || '')) return 'Préparation de l’outil de création vidéo…';
   if (/Vérifier les outils média/i.test(name || '')) return 'Vérification des outils de rendu…';
   if (/Installer websocket-client/i.test(name || '')) return 'Préparation des dépendances…';
   if (/Rendre la vidéo/i.test(name || '')) return 'Génération des images et synchronisation audio…';
-  if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Encodage final et vérification du MP4…';
+  if (/Publier le MP4 \(artefact\)/i.test(name || '')) return 'Finalisation et vérification de la vidéo…';
   if (/Publier le MP4 \(Release/i.test(name || '')) return 'Publication du MP4…';
   if (/Supprimer les fichiers temporaires/i.test(name || '')) return 'Nettoyage final…';
   return 'En attente du démarrage du rendu…';
@@ -926,9 +926,9 @@ function analyze(t, sizeBytes = null) {
   }
 
   add(external.size ? 'info' : 'good',
-    external.size ? 'Ressources externes' : 'Aucune ressource externe',
+    external.size ? 'Fichiers chargés depuis Internet' : 'Aucun fichier externe',
     external.size
-      ? external.size + ' ressource(s) distante(s) seront vérifiées automatiquement.'
+      ? external.size + ' fichier(s) chargé(s) depuis Internet seront vérifiés automatiquement.'
       : 'Aucune URL HTTP(S) externe courante détectée.');
   if (Number.isFinite(sizeBytes) && sizeBytes >= 0) {
     if (sizeBytes > MAX_BYTES) {
@@ -969,8 +969,8 @@ async function verifyExternalResources(v) {
         Number(result.status) >= 200 && Number(result.status) < 400);
       v.findings.push({
         level: accessible ? 'good' : 'warn',
-        title: accessible ? 'Ressource accessible' : 'Ressource inaccessible',
-        detail: url + (result && result.status ? ' — HTTP ' + result.status
+        title: accessible ? 'Fichier accessible' : 'Fichier inaccessible',
+        detail: url + (result && result.status ? ' — réponse du serveur : ' + result.status
           : result && result.error ? ' — ' + result.error : ' — aucune réponse valide'),
         action: accessible ? '' : 'Télécharge ce fichier et intègre-le dans ton HTML.'
       });
@@ -982,7 +982,7 @@ async function verifyExternalResources(v) {
     for (const url of v.resources) {
       v.findings.push({
         level: 'warn',
-        title: 'Vérification de la ressource impossible',
+        title: 'Vérification du fichier impossible',
         detail: url + ' — ' + (error.message || 'Le serveur de vérification ne répond pas.'),
         action: 'Télécharge ce fichier et intègre-le dans ton HTML.'
       });
@@ -1011,9 +1011,9 @@ function showVerdict(v, cls, msg) {
   if (v && !findings.length && v.kind !== 'invalid') {
     findings = [{
       level: 'warn',
-      title: 'Diagnostic détaillé indisponible',
+      title: 'Vérifications détaillées indisponibles',
       detail: 'Le serveur a fourni un verdict général, sans assez d’informations pour contrôler le HTML.',
-      action: 'Importe directement le fichier HTML ou un ZIP pour obtenir le diagnostic complet.'
+      action: 'Importe directement le fichier HTML ou un ZIP pour obtenir toutes les vérifications.'
     }];
     if (Number.isFinite(v.sizeBytes) && v.sizeBytes >= 0) {
       findings.push({
@@ -1106,7 +1106,7 @@ async function loadJsZip() {
     script.onload = () => window.JSZip
       ? resolve(window.JSZip)
       : reject(new Error('La bibliothèque ZIP a été chargée, mais elle est indisponible.'));
-    script.onerror = () => reject(new Error('Impossible de charger JSZip depuis le CDN. Vérifie la connexion puis réessaie.'));
+    script.onerror = () => reject(new Error('Impossible de charger l’outil de lecture des fichiers ZIP. Vérifie la connexion puis réessaie.'));
     document.head.appendChild(script);
   }).catch(error => {
     window.__rendraxJsZipPromise = null;
@@ -1197,15 +1197,15 @@ async function chooseZipMain(path) {
     selection.analysis = { kind: 'invalid', label: 'Le HTML principal dépasse 50 Mo une fois extrait.' };
     return showVerdict(selection.analysis, 'err', '✗ Le HTML principal dépasse 50 Mo une fois extrait.');
   }
-  $('#zipSummary').textContent = 'Lecture du HTML principal : ' + path + '…';
-  status('Lecture du HTML principal du ZIP…');
+  $('#zipSummary').textContent = 'Lecture de la page principale : ' + path + '…';
+  status('Lecture de la page principale du fichier ZIP…');
   try {
     const html = await selection.archive.file(path).async('string');
     if (zipSelection !== selection || mainToken !== zipMainToken) return;
     selection.mainText = html;
     selection.analysis = analyze(html, entry.size);
     $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
-      ' · ' + size(entry.size) + ' décompressés. Les chemins des ressources seront conservés lors de l’extraction serveur.';
+      ' · taille extraite : ' + size(entry.size) + '. Les chemins des fichiers associés seront conservés lors de leur extraction.';
     if (selection.analysis.kind === 'invalid') {
       showVerdict(selection.analysis, 'err', '✗ ' + selection.analysis.label + ' Import bloqué.');
     } else if (selection.analysis.kind === 'generic') {
@@ -1240,7 +1240,7 @@ async function inspectZip(file, token) {
       .sort((a, b) => a.path.localeCompare(b.path));
     if (entries.length > MAX_ZIP_ENTRIES) throw new Error('Le ZIP contient plus de ' + MAX_ZIP_ENTRIES + ' fichiers. Réduis le nombre de fichiers puis réessaie.');
     const expandedBytes = entries.reduce((sum, entry) => sum + entry.size, 0);
-    if (expandedBytes > MAX_ZIP_UNCOMPRESSED_BYTES) throw new Error('Le contenu décompressé dépasse la limite de ' + size(MAX_ZIP_UNCOMPRESSED_BYTES) + '.');
+    if (expandedBytes > MAX_ZIP_UNCOMPRESSED_BYTES) throw new Error('Le contenu extrait dépasse la limite de ' + size(MAX_ZIP_UNCOMPRESSED_BYTES) + '.');
     const htmlPaths = entries.filter(entry => /\.html?$/i.test(entry.path)).map(entry => entry.path);
     zipSelection = { file, archive, entries, htmlPaths, mainPath: '', mainText: '', analysis: null };
     renderZipResources(entries);
@@ -1392,7 +1392,7 @@ async function importFromUrl() {
     importedSource = null;
     showVerdict(null, 'err', '✗ ' + explain(e));
     setSteps(-1);
-    status('Import par lien impossible.', 'err');
+    status('Impossible d’importer le fichier depuis ce lien.', 'err');
   } finally {
     importingUrl = false;
     $('#file').disabled = busy;
@@ -1422,8 +1422,8 @@ function uploadPrivateBlob(url, file, type_fichier = 'html') {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
       else reject(new Error('Le stockage privé a refusé le fichier (' + xhr.status + ').'));
     };
-    xhr.onerror = () => { currentUploadXhr = null; reject(new Error('Le transfert a été interrompu par le réseau ou le serveur Blob.')); };
-    xhr.ontimeout = () => { currentUploadXhr = null; reject(new Error('Le transfert a dépassé 8 minutes sans réponse.')); };
+    xhr.onerror = () => { currentUploadXhr = null; reject(new Error('Le transfert a été interrompu par le réseau ou l’espace de stockage.')); };
+    xhr.ontimeout = () => { currentUploadXhr = null; reject(new Error('Le transfert a pris plus de 8 minutes sans réponse.')); };
     xhr.onabort = () => { currentUploadXhr = null; const e = new Error('annulé'); e.cancelled = true; reject(e); };
     xhr.send(file);
   });
@@ -1776,7 +1776,7 @@ async function waitJob(id, t0) {
     if (job.conclusion !== 'success') {
       const failedStep = job.currentStep || lastWorkflowStep;
       const where = failedStep ? workflowStepLabel(failedStep).replace(/…$/, '') : '';
-      const e = new Error(where ? 'Échec : ' + where + '. Consulte le journal pour le détail.' : 'Le rendu a échoué. Consulte le journal pour connaître la cause.');
+      const e = new Error(where ? 'La création a échoué : ' + where + '. Consulte les détails techniques pour en connaître la cause.' : 'La création de la vidéo a échoué. Consulte les détails techniques pour connaître la cause.');
       e.url = job.html_url; throw e;
     }
     if (job.release) return job.release;
@@ -1809,7 +1809,7 @@ async function go(testOnly = false) {
   if (isZip) {
     if (!zipSelection || zipSelection.file !== f) return status('Le ZIP doit être inspecté avant de continuer.', 'err');
     if (!zipSelection.mainPath) return status('Choisis le HTML principal dans la liste des fichiers ZIP.', 'err');
-    if (!zipSelection.analysis || zipSelection.analysis.kind === 'invalid') return status('Le HTML principal du ZIP n’a pas passé le diagnostic.', 'err');
+    if (!zipSelection.analysis || zipSelection.analysis.kind === 'invalid') return status('La page principale du fichier ZIP n’a pas passé les vérifications.', 'err');
   }
   revealTransition($('#progCard'));
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
