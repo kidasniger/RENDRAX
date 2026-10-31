@@ -136,7 +136,7 @@ html.rdx-motion-ready .rdx-visual-fallback{display:none}
 
 .rdx-file-card{grid-column:1;grid-row:auto}
 .rdx-settings-card{grid-column:2;grid-row:auto}
-#progCard,main.rdx-main>section[aria-labelledby="h-hist"]{grid-column:1/-1;width:100%;min-width:0}
+#progCard,.rdx-history-card{grid-column:1/-1;width:100%;min-width:0}
 main.rdx-main .card{
   border-radius:24px;padding:clamp(19px,3vw,28px);
   border-color:color-mix(in srgb,var(--bd) 86%,transparent);
@@ -181,7 +181,7 @@ main.rdx-main .mut,main.rdx-main small{line-height:1.55}
 #list li{padding:15px 0!important}
 #list .meta a{font-weight:700!important}
 #list button{border-radius:10px}
-main.rdx-main>section[aria-labelledby="h-hist"] .row{margin-bottom:8px}
+.rdx-history-card .row{margin-bottom:8px}
 .rdx-history-label{display:flex;align-items:center;gap:8px;font-size:.73rem;color:var(--mut);font-weight:650}
 .rdx-history-label::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .rdx-splash{
@@ -218,7 +218,7 @@ html.rdx-ready .rdx-splash{opacity:0;visibility:hidden;pointer-events:none}
   .rdx-hero h1{font-size:clamp(2.6rem,9vw,4.15rem);max-width:14ch}
   .rdx-hero .sub{max-width:58ch}
   .rdx-hero-visual{min-height:270px;max-height:320px}
-  .rdx-file-card,.rdx-settings-card,#progCard,main.rdx-main>section[aria-labelledby="h-hist"]{grid-column:1}
+  .rdx-file-card,.rdx-settings-card,#progCard,.rdx-history-card{grid-column:1}
 }
 @media(max-width:520px){
   main.rdx-main{width:min(100% - 22px,480px);gap:12px;padding-top:15px}
