@@ -2,10 +2,10 @@ import { del } from '@vercel/blob';
 import { readBody, sameOrigin, send, validJobId, verifyGitHubActionsRequest, publicError } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   const { id, run_id: runId, type_fichier = 'html' } = readBody(req);
-  if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
-  if (!['html', 'zip'].includes(type_fichier)) return send(res, 400, { error: 'Type de fichier invalide.' });
+  if (!validJobId(id)) return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
+  if (!['html', 'zip'].includes(type_fichier)) return send(res, 400, { error: 'Format de fichier non accepté.' });
 
   try {
     // The website can clean up a failed upload from the same origin.
