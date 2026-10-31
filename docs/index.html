@@ -587,6 +587,7 @@ function readRenderPrefs() {
   }
   if (typeof prefs.watermark === 'boolean') $('#watermark').checked = prefs.watermark;
   if (typeof prefs.loudnorm === 'boolean') $('#loudnorm').checked = prefs.loudnorm;
+  setAdvancedSettings(prefs.advanced === true, false);
 }
 function saveRenderPrefs() {
   store.set(PREFS_KEY, JSON.stringify({
@@ -594,17 +595,22 @@ function saveRenderPrefs() {
     format: $('#format').value,
     duration: $('#duration').value,
     watermark: $('#watermark').checked,
-    loudnorm: $('#loudnorm').checked
+    loudnorm: $('#loudnorm').checked,
+    advanced: $('#advancedSettingsToggle').getAttribute('aria-expanded') === 'true'
   }));
 }
-function initAdvancedSettings() {
+function setAdvancedSettings(expanded, persist = true) {
   const toggle = $('#advancedSettingsToggle');
   const panel = $('#advancedSettings');
-  toggle.addEventListener('click', () => {
-    const expanded = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!expanded));
-    panel.hidden = expanded;
-    toggle.textContent = expanded ? 'Réglages avancés' : 'Masquer les réglages avancés';
+  toggle.setAttribute('aria-expanded', String(expanded));
+  panel.hidden = !expanded;
+  toggle.textContent = expanded ? 'Masquer les réglages avancés' : 'Réglages avancés';
+  if (persist) saveRenderPrefs();
+}
+function initAdvancedSettings() {
+  $('#advancedSettingsToggle').addEventListener('click', () => {
+    const expanded = $('#advancedSettingsToggle').getAttribute('aria-expanded') === 'true';
+    setAdvancedSettings(!expanded);
   });
 }
 function initRenderPrefs() {
@@ -618,6 +624,7 @@ function initRenderPrefs() {
     $('#duration').value = '0';
     $('#watermark').checked = false;
     $('#loudnorm').checked = true;
+    setAdvancedSettings(false, false);
     store.set(PREFS_KEY, null);
   });
 }
