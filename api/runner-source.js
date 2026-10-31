@@ -3,15 +3,15 @@ import { Readable } from 'node:stream';
 import { publicError, send, validJobId, verifyGitHubActionsRequest } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (req.method !== 'GET') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   const id = String(req.query?.id || '');
   const runId = String(req.query?.run_id || '');
   const type = String(req.query?.type_fichier || 'html');
   if (!['html', 'zip'].includes(type)) {
-    return send(res, 400, { error: 'Type de fichier invalide.' });
+    return send(res, 400, { error: 'Format de fichier non accepté.' });
   }
   if (!validJobId(id) || !/^\d{1,20}$/.test(runId)) {
-    return send(res, 400, { error: 'Identifiant temporaire invalide.' });
+    return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
   }
 
   try {
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const extension = type === 'zip' ? 'zip' : 'html';
     const result = await get(`incoming/${id}.${extension}`, { access: 'private' });
     if (!result || result.statusCode !== 200) {
-      return send(res, 404, { error: 'Le fichier temporaire est introuvable ou déjà supprimé.' });
+      return send(res, 404, { error: 'Le fichier temporaire est introuvable ou a déjà été supprimé.' });
     }
 
     res.statusCode = 200;
