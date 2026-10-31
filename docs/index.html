@@ -934,7 +934,7 @@ function updateRenderEstimate() {
     : RENDER_ESTIMATE.fallbackDurationSeconds + RENDER_ESTIMATE.preparationSeconds;
   const roundedEstimate = Math.max(
     RENDER_ESTIMATE.minimumSeconds,
-    Math.ceil(safeEstimate / RENDER_ESTIMATE.roundingSeconds) * RENDER_ESTIMATE.roundingSeconds
+    Math.round(safeEstimate / RENDER_ESTIMATE.roundingSeconds) * RENDER_ESTIMATE.roundingSeconds
   );
 
   output.textContent = 'Estimation : environ ' + formatEstimateDuration(roundedEstimate) + '.';
