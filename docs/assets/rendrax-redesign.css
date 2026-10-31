@@ -588,10 +588,14 @@ main.rdx-main label.checkline:focus-within {
 .rdx-tutorial-actions button[hidden] { display: none !important; }
 .rdx-tutorial-actions #rdxTutorialNext {
   color: var(--on);
-  background: var(--ac);
+  background: linear-gradient(115deg, var(--ac), var(--ac2));
   border: 1px solid var(--ac);
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--ac) 20%, transparent);
 }
-.rdx-tutorial-actions #rdxTutorialNext:hover { background: var(--ac2); }
+.rdx-tutorial-actions #rdxTutorialNext:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--ac) 26%, transparent);
+}
 .rdx-tutorial-actions #rdxTutorialPrev {
   color: var(--tx);
   background: var(--surf2);
@@ -604,6 +608,7 @@ main.rdx-main label.checkline:focus-within {
 }
 .rdx-tutorial-skip {
   align-self: center;
+  width: auto;
   margin: 7px 0 0;
   padding: 5px 12px;
   color: var(--mut);
