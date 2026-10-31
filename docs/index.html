@@ -875,9 +875,9 @@ function extractAnimationDurationSeconds(source) {
   if (typeof source !== 'string' || !source) return null;
 
   const patterns = [
-    /\\b(?:const|let|var)\\s+(?:DUR|TOTAL_DURATION|AUDIO_DURATION|audioDuration|D|duration)\\s*=\\s*([0-9]+(?:\\.[0-9]+)?)/i,
-    /\\bduration\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)/i,
-    /\\bdata-duration\\s*=\\s*["']([0-9]+(?:\\.[0-9]+)?)["']/i
+    /\b(?:const|let|var)\s+(?:DUR|TOTAL_DURATION|AUDIO_DURATION|audioDuration|D|duration)\s*=\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /\bduration\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /\bdata-duration\s*=\s*["']([0-9]+(?:\.[0-9]+)?)["']/i
   ];
   for (const pattern of patterns) {
     const match = source.match(pattern);
@@ -887,9 +887,9 @@ function extractAnimationDurationSeconds(source) {
   }
 
   // Certains modèles GSAP stockent les repères temporels dans un tableau T.
-  const timeline = source.match(/\\b(?:const|let|var)\\s+T\\s*=\\s*\\[([^\\]]+)\\]/i);
+  const timeline = source.match(/\b(?:const|let|var)\s+T\s*=\s*\[([^\]]+)\]/i);
   if (timeline) {
-    const values = timeline[1].match(/[0-9]+(?:\\.[0-9]+)?/g) || [];
+    const values = timeline[1].match(/[0-9]+(?:\.[0-9]+)?/g) || [];
     const max = values.reduce((highest, item) => Math.max(highest, Number(item)), 0);
     if (Number.isFinite(max) && max > 0) return max;
   }
