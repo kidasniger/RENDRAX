@@ -460,7 +460,7 @@ ul#list button{box-shadow:none}
         </label>
         <p class="mut">Optionnel. Active cette option pour ajouter le filigrane animé RENDRAX au MP4.</p>
       </div>
-      <div id="advancedSettings" class="advanced-settings">
+      <div id="advancedSettings" class="advanced-settings" hidden>
       <div class="field">
         <label for="format">Format</label>
         <select id="format">
@@ -495,6 +495,7 @@ ul#list button{box-shadow:none}
       </div>
       </div>
     </div>
+    <button id="advancedSettingsToggle" class="sec advanced-settings-toggle" type="button" aria-expanded="false" aria-controls="advancedSettings">Réglages avancés</button>
     <button id="resetRenderPrefs" class="prefs-reset" type="button">Remettre les réglages par défaut</button>
     <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
@@ -595,6 +596,16 @@ function saveRenderPrefs() {
     watermark: $('#watermark').checked,
     loudnorm: $('#loudnorm').checked
   }));
+}
+function initAdvancedSettings() {
+  const toggle = $('#advancedSettingsToggle');
+  const panel = $('#advancedSettings');
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!expanded));
+    panel.hidden = expanded;
+    toggle.textContent = expanded ? 'Réglages avancés' : 'Masquer les réglages avancés';
+  });
 }
 function initRenderPrefs() {
   readRenderPrefs();
@@ -1972,6 +1983,7 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => setFile(e.dataTransfer && e.dataTransfer.files));
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
+initAdvancedSettings();
 initRenderPrefs();
 loadList();
 initSecurity();
