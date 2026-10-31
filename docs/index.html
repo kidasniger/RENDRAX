@@ -563,6 +563,40 @@ const store = {
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 };
 
+const PREFS_KEY = 'rendrax_prefs';
+const PREFS_ALLOWED = {
+  mode: ['full', 'half', 'test'],
+  format: ['auto', 'portrait', 'landscape', 'square'],
+  duration: ['0', '10', '30', '60', '120', '300']
+};
+function readRenderPrefs() {
+  const raw = store.get(PREFS_KEY);
+  if (!raw) return;
+  let prefs;
+  try { prefs = JSON.parse(raw); } catch (e) { return; }
+  if (!prefs || typeof prefs !== 'object' || Array.isArray(prefs)) return;
+  for (const key of Object.keys(PREFS_ALLOWED)) {
+    if (PREFS_ALLOWED[key].includes(prefs[key])) $('#' + key).value = prefs[key];
+  }
+  if (typeof prefs.watermark === 'boolean') $('#watermark').checked = prefs.watermark;
+  if (typeof prefs.loudnorm === 'boolean') $('#loudnorm').checked = prefs.loudnorm;
+}
+function saveRenderPrefs() {
+  store.set(PREFS_KEY, JSON.stringify({
+    mode: $('#mode').value,
+    format: $('#format').value,
+    duration: $('#duration').value,
+    watermark: $('#watermark').checked,
+    loudnorm: $('#loudnorm').checked
+  }));
+}
+function initRenderPrefs() {
+  readRenderPrefs();
+  ['mode', 'format', 'duration', 'watermark', 'loudnorm'].forEach(id => {
+    $('#' + id).addEventListener('change', saveRenderPrefs);
+  });
+}
+
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
 let openHistoryPlayer = null;
 let importedSource = null, importingUrl = false;
@@ -1924,6 +1958,7 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => setFile(e.dataTransfer && e.dataTransfer.files));
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
+initRenderPrefs();
 loadList();
 initSecurity();
 resume();
