@@ -1570,6 +1570,47 @@ function showResult(rel) {
     videoPanel.append(videoTitle, v);
     compareView.append(sourcePanel, videoPanel);
 
+    const compareActions = document.createElement('div');
+    compareActions.className = 'actions rdx-compare-actions';
+    const playBothBtn = document.createElement('button');
+    playBothBtn.type = 'button';
+    playBothBtn.className = 'btn';
+    playBothBtn.textContent = 'Lancer les deux';
+    const muteVideoBtn = document.createElement('button');
+    muteVideoBtn.type = 'button';
+    muteVideoBtn.className = 'sec';
+    muteVideoBtn.textContent = 'Couper le son de la vidéo';
+    const compareStatus = document.createElement('small');
+    compareStatus.setAttribute('role', 'status');
+    compareActions.append(playBothBtn, muteVideoBtn, compareStatus);
+    compareView.prepend(compareActions);
+
+    playBothBtn.addEventListener('click', () => {
+      if (compareView.hidden) return;
+      playBothBtn.disabled = true;
+      compareStatus.textContent = 'Redémarrage des deux lectures…';
+      sourceFrame.hidden = false;
+      sourceFrame.srcdoc = fileText;
+      try { v.currentTime = 0; } catch (_) {}
+      const playback = v.play();
+      if (playback && typeof playback.then === 'function') {
+        playback.then(() => {
+          compareStatus.textContent = 'HTML et vidéo lancés. Le démarrage de l’HTML dépend du chargement de son aperçu.';
+        }).catch(() => {
+          compareStatus.textContent = 'La vidéo n’a pas pu démarrer automatiquement. Appuie sur Lecture dans le panneau vidéo.';
+        }).finally(() => { playBothBtn.disabled = false; });
+      } else {
+        compareStatus.textContent = 'HTML rechargé ; lecture vidéo demandée.';
+        playBothBtn.disabled = false;
+      }
+    });
+
+    muteVideoBtn.addEventListener('click', () => {
+      v.muted = !v.muted;
+      muteVideoBtn.textContent = v.muted ? 'Réactiver le son de la vidéo' : 'Couper le son de la vidéo';
+      muteVideoBtn.setAttribute('aria-pressed', String(v.muted));
+    });
+
     compareBtn.addEventListener('click', () => {
       const opening = compareView.hidden;
       compareView.hidden = !opening;
