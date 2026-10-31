@@ -1889,7 +1889,6 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => setFile(e.dataTransfer && e.dataTransfer.files));
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
-revealTransition($('#settingsCard'));
 loadList();
 initSecurity();
 resume();
