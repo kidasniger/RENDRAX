@@ -83,6 +83,9 @@ h2{font-size:1.02rem;margin:0;font-weight:700;letter-spacing:-.01em}
 .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 /* formulaires */
+.prefs-reset{display:inline-block;width:auto;min-height:0;margin:8px 0 0;padding:2px 0;border:0;border-radius:0;background:transparent;color:var(--mut);font-size:.78rem;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.prefs-reset:hover{background:transparent;color:var(--ac)}
+
 label{display:block;font-weight:600;margin:0 0 6px;font-size:.82rem;color:var(--mut)}
 .field{display:flex;flex-direction:column;min-width:0}
 .field-wide{grid-column:1/-1}
@@ -490,6 +493,7 @@ ul#list button{box-shadow:none}
         <p class="mut">Activé par défaut. Normalise le volume audio pour obtenir un niveau sonore plus régulier.</p>
       </div>
     </div>
+    <button id="resetRenderPrefs" class="prefs-reset" type="button">Remettre les réglages par défaut</button>
     <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
@@ -594,6 +598,14 @@ function initRenderPrefs() {
   readRenderPrefs();
   ['mode', 'format', 'duration', 'watermark', 'loudnorm'].forEach(id => {
     $('#' + id).addEventListener('change', saveRenderPrefs);
+  });
+  $('#resetRenderPrefs').addEventListener('click', () => {
+    $('#mode').value = 'full';
+    $('#format').value = 'auto';
+    $('#duration').value = '0';
+    $('#watermark').checked = false;
+    $('#loudnorm').checked = true;
+    store.set(PREFS_KEY, null);
   });
 }
 
