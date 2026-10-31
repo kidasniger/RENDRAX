@@ -303,7 +303,7 @@ jobs:
             --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
 
       - name: Supprimer les fichiers temporaires
-        if: always()
+        if: ${{ always() && (failure() || cancelled()) }}
         env:
           BLOB_ID: ${{ inputs.blob_id }}
           TYPE_FICHIER: ${{ inputs.type_fichier }}
