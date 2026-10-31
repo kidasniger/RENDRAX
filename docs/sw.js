@@ -74,8 +74,8 @@ self.addEventListener('activate', event => {
 function withOfflineNotice(response) {
   return response.text().then(html => {
     const notice = '<div role="alert" style="position:sticky;top:0;z-index:2147483647;padding:12px 16px;background:#fff0d8;color:#6b4300;border-bottom:1px solid #e6c58f;text-align:center;font:600 14px/1.4 system-ui,sans-serif">Connexion requise pour convertir. Reconnecte-toi à Internet pour lancer ou suivre une conversion.</div>';
-    const updated = /<body\\b[^>]*>/i.test(html)
-      ? html.replace(/<body\\b[^>]*>/i, match => match + notice)
+    const updated = /<body\b[^>]*>/i.test(html)
+      ? html.replace(/<body\b[^>]*>/i, match => match + notice)
       : notice + html;
     const headers = new Headers(response.headers);
     headers.delete('content-length');
