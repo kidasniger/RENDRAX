@@ -20,13 +20,13 @@ async function findRenderRun(tag) {
 
     if (match) return match;
     if (runs.length < RUNS_PAGE_SIZE) {
-      const error = new Error('Impossible de retrouver le rendu associé à cette vidéo. Aucune suppression n’a été effectuée.');
+      const error = new Error('Impossible de retrouver la création associée à cette vidéo. Aucun élément n’a été supprimé.');
       error.status = 503;
       throw error;
     }
   }
 
-  const error = new Error('Le rendu associé à cette vidéo est trop ancien pour être localisé automatiquement. Aucune suppression n’a été effectuée.');
+  const error = new Error('Cette vidéo est trop ancienne pour retrouver automatiquement sa création. Aucun élément n’a été supprimé.');
   error.status = 503;
   throw error;
 }
@@ -56,12 +56,12 @@ async function deleteVideoArtifact(runId) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
-  if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
+  if (!sameOrigin(req)) return send(res, 403, { error: 'Cette demande a été refusée pour des raisons de sécurité.' });
 
   const { releaseId, tag } = readBody(req);
   if (!/^\d+$/.test(String(releaseId || '')) || !/^[A-Za-z0-9._-]{1,100}$/.test(String(tag || ''))) {
-    return send(res, 400, { error: 'Vidéo ou identifiant invalide.' });
+    return send(res, 400, { error: 'La vidéo ou son identifiant n’est pas reconnu.' });
   }
 
   try {
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       `/repos/${REPOSITORY}/releases/${releaseId}`
     );
     if (release?.tag_name !== tag) {
-      return send(res, 400, { error: 'La vidéo et le tag ne correspondent pas.' });
+      return send(res, 400, { error: 'Les informations de cette vidéo ne correspondent pas.' });
     }
 
     // Delete the Actions artifact first. If the token lacks Actions write
