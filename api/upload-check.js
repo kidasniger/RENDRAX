@@ -5,15 +5,15 @@ const MAX_BYTES = 50 * 1000 * 1000;
 const FILE_TYPES = Object.freeze({ html: 'html', zip: 'zip' });
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
-  if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
+  if (!sameOrigin(req)) return send(res, 403, { error: 'Cette demande a été refusée pour des raisons de sécurité.' });
 
   const { id, captchaToken, size, type_fichier = 'html' } = readBody(req);
   const expectedSize = Number(size);
-  if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
-  if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Type de fichier invalide.' });
+  if (!validJobId(id)) return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
+  if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Format de fichier non accepté.' });
   if (!Number.isSafeInteger(expectedSize) || expectedSize < 1 || expectedSize > MAX_BYTES) {
-    return send(res, 400, { error: 'Taille de fichier invalide.' });
+    return send(res, 400, { error: 'La taille du fichier n’est pas valide.' });
   }
 
   try {
