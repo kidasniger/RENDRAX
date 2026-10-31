@@ -398,3 +398,64 @@ main.rdx-main label.checkline:focus-within {
     animation: none !important;
   }
 }
+
+
+/* Mise à jour 30 — comparaison HTML / vidéo */
+#res .rdx-compare-view {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  margin-top: 14px;
+  align-items: start;
+}
+#res .rdx-compare-panel {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  background: var(--surf2);
+}
+#res .rdx-compare-panel h3 {
+  margin: 0 0 10px;
+  font-size: .92rem;
+}
+#res .rdx-compare-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: 72svh;
+  border: 0;
+  border-radius: 10px;
+  background: #080b12;
+}
+#res .rdx-compare-panel .rdx-player-video {
+  width: 100%;
+  max-height: 72svh;
+  aspect-ratio: 9 / 16;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #080b12;
+}
+#res .rdx-compare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+#res .rdx-compare-actions small {
+  flex: 1 1 100%;
+  color: var(--mut);
+}
+@media (max-width: 700px) {
+  #res .rdx-compare-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #res .rdx-compare-frame,
+  #res .rdx-compare-panel .rdx-player-video {
+    max-height: none;
+    width: 100%;
+    aspect-ratio: 9 / 16;
+  }
+}
