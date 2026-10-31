@@ -70,6 +70,9 @@ export default async function handler(req, res) {
     return send(res, 202, { id });
   } catch (error) {
     const status = Number(error?.status) || 500;
+    if (stage === 'lecture du HTML dans le stockage privé' && (status === 404 || error?.code === 'BLOB_NOT_FOUND')) {
+      return send(res, 410, { error: 'Le fichier a expiré. Sélectionne-le à nouveau pour relancer le rendu.' });
+    }
     console.error('[RENDRAX render]', {
       stage,
       name: error?.name || 'Error',
