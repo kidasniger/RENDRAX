@@ -122,15 +122,15 @@ function isPublicAddress(address) {
 
 function validateUrl(url) {
   if (url.protocol !== 'https:') {
-    throw httpError(400, 'Seules les URL HTTPS sont acceptées.');
+    throw httpError(400, 'Seuls les liens HTTPS sont acceptés.');
   }
 
   if (url.username || url.password) {
-    throw httpError(400, 'Les URL contenant un identifiant ou un mot de passe sont refusées.');
+    throw httpError(400, 'Les liens contenant un nom d’utilisateur ou un mot de passe sont refusés.');
   }
 
   if (url.port && url.port !== '443') {
-    throw httpError(400, 'Seules les connexions HTTPS standard sur le port 443 sont acceptées.');
+    throw httpError(400, 'Seules les connexions HTTPS habituelles sont acceptées.');
   }
 
   url.hash = '';
@@ -172,18 +172,18 @@ function normalizeGitHubUrl(url) {
 
 function parseSourceUrl(rawUrl) {
   if (typeof rawUrl !== 'string' || rawUrl.trim().length === 0 || rawUrl.length > MAX_URL_LENGTH) {
-    throw httpError(400, 'Colle une URL HTTPS valide de 2 048 caractères maximum.');
+    throw httpError(400, 'Colle un lien HTTPS valide de 2 048 caractères maximum.');
   }
 
   if (/[\\\u0000-\u001f]/.test(rawUrl)) {
-    throw httpError(400, 'L’URL contient des caractères non autorisés.');
+    throw httpError(400, 'Le lien contient des caractères non autorisés.');
   }
 
   let url;
   try {
     url = new URL(rawUrl.trim());
   } catch {
-    throw httpError(400, 'L’adresse URL est invalide.');
+    throw httpError(400, 'Le lien est invalide.');
   }
 
   return validateUrl(url);
@@ -222,12 +222,12 @@ async function resolvePublicAddresses(hostname, deadline) {
     host.endsWith('.local') ||
     host.endsWith('.internal')
   ) {
-    throw httpError(403, 'Cette URL pointe vers un nom de réseau local ou privé.');
+    throw httpError(403, 'Ce lien mène vers un réseau local ou privé, ce qui n’est pas autorisé.');
   }
 
   if (isIP(host)) {
     if (!isPublicAddress(host)) {
-      throw httpError(403, 'Cette URL pointe vers une adresse IP locale ou non publique.');
+      throw httpError(403, 'Ce lien mène vers une adresse réseau privée ou non publique.');
     }
     return [{ address: host, family: isIP(host) }];
   }
@@ -237,20 +237,20 @@ async function resolvePublicAddresses(hostname, deadline) {
     records = await withDeadline(
       dnsLookup(host, { all: true, verbatim: true }),
       deadline,
-      'La résolution DNS a dépassé le délai autorisé.'
+      'La recherche de l’adresse du site a pris trop de temps.'
     );
   } catch (error) {
     if (error?.status) throw error;
-    throw httpError(400, 'Le domaine de cette URL est invalide ou inaccessible.');
+    throw httpError(400, 'L’adresse de ce site est invalide ou inaccessible.');
   }
 
   if (!Array.isArray(records) || records.length === 0) {
-    throw httpError(400, 'Le domaine de cette URL ne possède aucune adresse IP utilisable.');
+    throw httpError(400, 'L’adresse de ce site ne permet pas de le joindre.');
   }
 
   // Reject the host if any DNS answer is private or otherwise non-public.
   if (records.some((record) => !isPublicAddress(record.address))) {
-    throw httpError(403, 'Cette URL pointe vers une adresse IP locale ou non publique.');
+    throw httpError(403, 'Ce lien mène vers une adresse réseau privée ou non publique.');
   }
 
   return records.map(({ address, family }) => ({ address, family }));
@@ -290,7 +290,7 @@ function requestOnce(url, addresses, deadline) {
 
     const remaining = Math.max(1, deadline - Date.now());
     const timer = setTimeout(() => {
-      const error = httpError(504, 'Le téléchargement a dépassé la limite de 20 secondes.');
+      const error = httpError(504, 'Le téléchargement a pris trop de temps (20 secondes maximum).');
       if (activeResponse) activeResponse.destroy(error);
       request.destroy(error);
     }, remaining);
@@ -303,7 +303,7 @@ function requestOnce(url, addresses, deadline) {
       if (!responseReceived) {
         clearTimeout(timer);
         if (error?.status) reject(error);
-        else reject(httpError(502, 'Le serveur distant n’a pas pu être contacté.'));
+        else reject(httpError(502, 'Impossible de joindre le site qui fournit le fichier.'));
       }
     });
 
@@ -318,7 +318,7 @@ async function downloadHtml(rawUrl) {
 
   for (let redirects = 0; ; redirects += 1) {
     if (Date.now() >= deadline) {
-      throw httpError(504, 'Le téléchargement a dépassé la limite de 20 secondes.');
+      throw httpError(504, 'Le téléchargement a pris trop de temps (20 secondes maximum).');
     }
 
     const addresses = await resolvePublicAddresses(url.hostname, deadline);
@@ -328,7 +328,7 @@ async function downloadHtml(rawUrl) {
       result = await requestOnce(url, addresses, deadline);
     } catch (error) {
       if (error?.status) throw error;
-      throw httpError(502, 'Le serveur distant n’a pas pu être contacté.');
+      throw httpError(502, 'Impossible de joindre le site qui fournit le fichier.');
     }
 
     const { request, response } = result;
@@ -338,11 +338,11 @@ async function downloadHtml(rawUrl) {
       response.destroy();
 
       if (!location) {
-        throw httpError(400, 'Le serveur distant a renvoyé une redirection invalide.');
+        throw httpError(400, 'Le site a fourni un lien de redirection invalide.');
       }
 
       if (redirects >= MAX_REDIRECTS) {
-        throw httpError(400, 'Cette URL dépasse la limite de 3 redirections.');
+        throw httpError(400, 'Ce lien passe par trop de redirections (3 maximum).');
       }
 
       try {
@@ -356,7 +356,7 @@ async function downloadHtml(rawUrl) {
 
     if (response.statusCode !== 200) {
       response.destroy();
-      throw httpError(400, 'Le serveur distant n’a pas fourni le fichier demandé.');
+      throw httpError(400, 'Le site n’a pas fourni le fichier demandé.');
     }
 
     const contentType = String(response.headers['content-type'] || '')
@@ -368,20 +368,20 @@ async function downloadHtml(rawUrl) {
 
     if (!validHtmlType && !validHtmlExtension) {
       response.destroy();
-      throw httpError(415, 'Le lien doit pointer vers un fichier HTML ou renvoyer le type text/html.');
+      throw httpError(415, 'Le lien doit mener vers un fichier HTML ou une page web.');
     }
 
     const contentEncoding = String(response.headers['content-encoding'] || '').toLowerCase();
     if (contentEncoding && contentEncoding !== 'identity') {
       response.destroy();
-      throw httpError(415, 'Le serveur distant a envoyé un encodage non pris en charge.');
+      throw httpError(415, 'Le fichier utilise un format de texte non reconnu.');
     }
 
     const contentLength = Number(response.headers['content-length']);
     if (Number.isFinite(contentLength) && contentLength > MAX_BYTES) {
       response.destroy();
       request.destroy();
-      throw httpError(413, 'Le fichier dépasse la limite de 50 Mo.');
+      throw httpError(413, 'Le fichier dépasse la taille maximale de 50 Mo.');
     }
 
     const chunks = [];
@@ -390,14 +390,14 @@ async function downloadHtml(rawUrl) {
     try {
       for await (const chunk of response) {
         if (Date.now() >= deadline) {
-          throw httpError(504, 'Le téléchargement a dépassé la limite de 20 secondes.');
+          throw httpError(504, 'Le téléchargement a pris trop de temps (20 secondes maximum).');
         }
 
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         totalBytes += buffer.length;
 
         if (totalBytes > MAX_BYTES) {
-          const error = httpError(413, 'Le fichier dépasse la limite de 50 Mo.');
+          const error = httpError(413, 'Le fichier dépasse la taille maximale de 50 Mo.');
           response.destroy(error);
           request.destroy(error);
           throw error;
@@ -408,13 +408,13 @@ async function downloadHtml(rawUrl) {
     } catch (error) {
       if (error?.status) throw error;
       if (Date.now() >= deadline) {
-        throw httpError(504, 'Le téléchargement a dépassé la limite de 20 secondes.');
+        throw httpError(504, 'Le téléchargement a pris trop de temps (20 secondes maximum).');
       }
-      throw httpError(502, 'Le téléchargement du fichier distant a échoué.');
+      throw httpError(502, 'Le téléchargement du fichier depuis le site a échoué.');
     }
 
     if (totalBytes < 1) {
-      throw httpError(400, 'Le fichier HTML distant est vide.');
+      throw httpError(400, 'Le fichier HTML téléchargé est vide.');
     }
 
     return {
@@ -539,21 +539,21 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return send(res, 405, { error: 'Méthode non autorisée.' });
+    return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   }
 
   if (!sameOrigin(req)) {
-    return send(res, 403, { error: 'Origine de la demande refusée.' });
+    return send(res, 403, { error: 'Cette demande a été refusée pour des raisons de sécurité.' });
   }
 
   const { id, url, captchaToken } = readBody(req);
 
   if (!validJobId(id)) {
-    return send(res, 400, { error: 'Identifiant temporaire invalide.' });
+    return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
   }
 
   if (typeof url !== 'string' || url.trim().length === 0 || url.length > MAX_URL_LENGTH) {
-    return send(res, 400, { error: 'Colle une URL HTTPS valide de 2 048 caractères maximum.' });
+    return send(res, 400, { error: 'Colle un lien HTTPS valide de 2 048 caractères maximum.' });
   }
 
   let stage = 'vérification anti-robot';
@@ -562,7 +562,7 @@ export default async function handler(req, res) {
     await verifyTurnstile(req, captchaToken);
 
     if (!process.env.BLOB_STORE_ID) {
-      throw httpError(503, 'Le stockage Blob privé doit être connecté au projet Vercel.');
+      throw httpError(503, 'L’espace de stockage sécurisé n’est pas configuré.');
     }
 
     stage = 'validation et téléchargement de l’URL';
