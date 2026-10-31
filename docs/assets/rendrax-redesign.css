@@ -372,3 +372,18 @@ main.rdx-main label.checkline:focus-within {
   outline-offset: 2px;
 }
 
+/* Mise à jour 29 — base des transitions d'apparition (activation à l'étape suivante). */
+#settingsCard.rdx-transition,
+#progCard.rdx-transition,
+#res.rdx-transition {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+#settingsCard.rdx-transition.rdx-transition-visible,
+#progCard.rdx-transition.rdx-transition-visible,
+#res.rdx-transition.rdx-transition-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
