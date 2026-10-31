@@ -111,7 +111,6 @@ button.danger:hover{background:color-mix(in srgb,var(--err) 10%,transparent)}
 button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 button.go{min-height:54px;font-size:1.02rem;margin-top:16px}
 button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
-#renderEstimate{margin:8px 0 0;text-align:center;font-size:.84rem;font-weight:650;font-variant-numeric:tabular-nums}
 input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
 #audioOffsetValue{float:right;font-variant-numeric:tabular-nums;font-weight:700}
 
@@ -502,7 +501,6 @@ ul#list button{box-shadow:none}
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
-    <p id="renderEstimate" class="mut" role="status" aria-live="polite" hidden></p>
     <button id="testRender" class="sec" type="button">Rendu test de 10 s</button>
     <button id="cancel" class="danger" type="button" hidden>Annuler le rendu</button>
   </section>
@@ -557,14 +555,6 @@ const MODES = {
   full: { scale: '1', test: '0' },
   half: { scale: '0.5', test: '0' },
   test: { scale: '0.5', test: '10' }
-};
-const RENDER_ESTIMATE = {
-  preparationSeconds: 60,
-  fallbackDurationSeconds: 60,
-  minimumSeconds: 30,
-  roundingSeconds: 30,
-  profileFactors: { frameByFrame: 1.5, realtime: 0.8 },
-  qualityFactors: { full: 1, reduced: 0.7 }
 };
 const MAX_BYTES = 50e6;
 const MAX_ZIP_ENTRIES = 2000;
@@ -626,10 +616,7 @@ function initAdvancedSettings() {
 function initRenderPrefs() {
   readRenderPrefs();
   ['mode', 'format', 'duration', 'watermark', 'loudnorm'].forEach(id => {
-    $('#' + id).addEventListener('change', () => {
-      saveRenderPrefs();
-      if (id === 'mode' || id === 'duration') updateRenderEstimate();
-    });
+    $('#' + id).addEventListener('change', saveRenderPrefs);
   });
   $('#resetRenderPrefs').addEventListener('click', () => {
     $('#mode').value = 'full';
@@ -639,9 +626,7 @@ function initRenderPrefs() {
     $('#loudnorm').checked = true;
     setAdvancedSettings(false, false);
     store.set(PREFS_KEY, null);
-    updateRenderEstimate();
   });
-  updateRenderEstimate();
 }
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
@@ -871,76 +856,6 @@ function setBusy(b) {
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
 }
-function extractAnimationDurationSeconds(source) {
-  if (typeof source !== 'string' || !source) return null;
-
-  const patterns = [
-    /\b(?:const|let|var)\s+(?:DUR|TOTAL_DURATION|AUDIO_DURATION|audioDuration|D|duration)\s*=\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /\bduration\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /\bdata-duration\s*=\s*["']([0-9]+(?:\.[0-9]+)?)["']/i
-  ];
-  for (const pattern of patterns) {
-    const match = source.match(pattern);
-    if (!match) continue;
-    const value = Number(match[1]);
-    if (Number.isFinite(value) && value > 0) return value;
-  }
-
-  // Certains modèles GSAP stockent les repères temporels dans un tableau T.
-  const timeline = source.match(/\b(?:const|let|var)\s+T\s*=\s*\[([^\]]+)\]/i);
-  if (timeline) {
-    const values = timeline[1].match(/[0-9]+(?:\.[0-9]+)?/g) || [];
-    const max = values.reduce((highest, item) => Math.max(highest, Number(item)), 0);
-    if (Number.isFinite(max) && max > 0) return max;
-  }
-  return null;
-}
-
-function formatEstimateDuration(seconds) {
-  const minutes = Math.floor(seconds / 60);
-  const remaining = seconds % 60;
-  if (minutes && remaining) return minutes + ' min ' + remaining + ' s';
-  if (minutes) return minutes + ' min';
-  return seconds + ' s';
-}
-
-function updateRenderEstimate() {
-  const output = $('#renderEstimate');
-  if (!output) return;
-  if (!verdict || verdict.kind === 'invalid' || hasBlockingFinding(verdict)) {
-    output.hidden = true;
-    output.textContent = '';
-    return;
-  }
-
-  const mode = $('#mode').value;
-  const selectedLimit = Number($('#duration').value);
-  const detectedDuration = extractAnimationDurationSeconds(fileText);
-  let duration = mode === 'test' ? 10 :
-    (detectedDuration || RENDER_ESTIMATE.fallbackDurationSeconds);
-  if (mode !== 'test' && Number.isFinite(selectedLimit) && selectedLimit > 0) {
-    duration = Math.min(duration, selectedLimit);
-  }
-
-  const profileFactor = verdict.kind === 'generic'
-    ? RENDER_ESTIMATE.profileFactors.realtime
-    : RENDER_ESTIMATE.profileFactors.frameByFrame;
-  const qualityFactor = mode === 'full'
-    ? RENDER_ESTIMATE.qualityFactors.full
-    : RENDER_ESTIMATE.qualityFactors.reduced;
-  const rawEstimate = duration * profileFactor * qualityFactor + RENDER_ESTIMATE.preparationSeconds;
-  const safeEstimate = Number.isFinite(rawEstimate) && rawEstimate > 0
-    ? rawEstimate
-    : RENDER_ESTIMATE.fallbackDurationSeconds + RENDER_ESTIMATE.preparationSeconds;
-  const roundedEstimate = Math.max(
-    RENDER_ESTIMATE.minimumSeconds,
-    Math.round(safeEstimate / RENDER_ESTIMATE.roundingSeconds) * RENDER_ESTIMATE.roundingSeconds
-  );
-
-  output.textContent = 'Estimation : environ ' + formatEstimateDuration(roundedEstimate) + '.';
-  output.hidden = false;
-}
-
 function analyze(t, sizeBytes = null) {
   const count = (s, sub) => s.split(sub).length - 1;
   const findings = [];
@@ -1236,7 +1151,6 @@ function showVerdict(v, cls, msg) {
   passedSummary.textContent = 'Afficher les ' + successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '');
   report.hidden = findings.length === 0;
   syncGoButton();
-  updateRenderEstimate();
   if (v && v.kind !== 'invalid' && !hasBlockingFinding(v)) {
     revealTransition($('#settingsCard'));
   }
