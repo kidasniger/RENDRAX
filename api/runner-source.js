@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const extension = type === 'zip' ? 'zip' : 'html';
     const result = await get(`incoming/${id}.${extension}`, { access: 'private' });
     if (!result || result.statusCode !== 200) {
-      return send(res, 404, { error: 'Le fichier temporaire est introuvable ou a déjà été supprimé.' });
+      return send(res, 410, { error: 'Le fichier a expiré. Sélectionne-le à nouveau pour relancer le rendu.' });
     }
 
     res.statusCode = 200;
