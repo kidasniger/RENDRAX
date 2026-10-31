@@ -16,8 +16,8 @@ function authorized(req) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
-  if (!authorized(req)) return send(res, 401, { error: 'Non autorisé.' });
+  if (req.method !== 'GET') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
+  if (!authorized(req)) return send(res, 401, { error: 'Accès refusé.' });
 
   try {
     const cutoff = Date.now() - MAX_AGE_MS;
