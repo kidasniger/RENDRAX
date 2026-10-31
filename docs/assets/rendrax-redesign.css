@@ -303,3 +303,11 @@ ul#list .video-history-player .rdx-player-video{display:block;width:100%;max-wid
 .video-load-error p{flex:1 1 220px;margin:0;color:var(--tx);font-size:.88rem}
 .video-load-error .btn{flex:0 0 auto}
 
+
+
+/* Clavier : focus clairement visible sur les commandes et les lecteurs natifs */
+:where(a,button,input,select,textarea,video[controls],[tabindex]):focus-visible{
+  outline:3px solid var(--ac);
+  outline-offset:3px;
+}
+
