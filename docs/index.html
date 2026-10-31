@@ -151,6 +151,7 @@ input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
 #compatFindings,#compatPassedFindings{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px}
 #compatFindings li{padding:10px 11px;border:1px solid color-mix(in srgb,var(--warn) 28%,var(--bd));border-left:3px solid var(--warn);border-radius:10px;background:color-mix(in srgb,var(--warn) 5%,var(--surf));font-size:.84rem}
 #compatFindings li[data-level="blocking"]{border-color:color-mix(in srgb,var(--err) 35%,var(--bd));border-left-color:var(--err);background:color-mix(in srgb,var(--err) 5%,var(--surf))}
+#compatFindings li[data-level="info"]{border-color:var(--bd);border-left-color:var(--mut);background:transparent}
 #compatFindings li strong{display:block;margin-bottom:3px;font-size:.86rem}
 #compatFindings li p{margin:3px 0 0;line-height:1.45}
 #compatFindings li .compat-action{color:var(--tx);font-weight:600}
@@ -918,11 +919,6 @@ function analyze(t, sizeBytes = null) {
     external.size
       ? external.size + ' ressource(s) distante(s) seront vérifiées automatiquement.'
       : 'Aucune URL HTTP(S) externe courante détectée.');
-  for (const url of external) {
-    add('warn', 'Ressource externe à vérifier', url,
-      'Si cette ressource est inaccessible, télécharge-la et intègre-la dans ton HTML ou ton ZIP.');
-  }
-
   if (Number.isFinite(sizeBytes) && sizeBytes >= 0) {
     if (sizeBytes > MAX_BYTES) {
       add('blocking', 'Fichier trop volumineux', 'Le fichier dépasse la limite actuelle de 50 Mo.',
@@ -1027,11 +1023,13 @@ function showVerdict(v, cls, msg) {
   const warningCount = actionable.length - blockingCount;
 
   if (blockingCount) {
-    summary.textContent = 'Rendu bloqué · ' + blockingCount + ' problème(s) à corriger.';
+    summary.textContent = 'Rendu bloqué · ' + blockingCount + ' problème' + (blockingCount > 1 ? 's' : '') + ' à corriger.';
   } else if (warningCount) {
-    summary.textContent = successful.length + ' vérification(s) réussie(s) · ' + warningCount + ' point(s) à vérifier.';
+    summary.textContent = successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '') +
+      ' · ' + warningCount + ' point' + (warningCount > 1 ? 's' : '') + ' à vérifier.';
   } else {
-    summary.textContent = successful.length + ' vérification(s) réussie(s) · Aucun problème détecté.';
+    summary.textContent = successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' +
+      (successful.length > 1 ? 's' : '') + ' · Aucun problème détecté.';
   }
 
   const appendFinding = (finding, target) => {
@@ -1072,7 +1070,7 @@ function showVerdict(v, cls, msg) {
   }
 
   passed.hidden = successful.length === 0;
-  passedSummary.textContent = 'Afficher les ' + successful.length + ' vérification(s) réussie(s)';
+  passedSummary.textContent = 'Afficher les ' + successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '');
   report.hidden = findings.length === 0;
   syncGoButton();
   if (v && Array.isArray(v.resources) && v.resources.length && !v.resourceCheckStarted) {
