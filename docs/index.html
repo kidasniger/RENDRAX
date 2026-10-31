@@ -549,6 +549,72 @@ ul#list button{box-shadow:none}
 
 </main>
 
+<footer class="rdx-tutorial-footer">
+  <a id="rdxTutorialLink" href="#rdxTutorial">Revoir le tutoriel</a>
+</footer>
+
+<dialog id="rdxTutorial" class="rdx-tutorial" aria-labelledby="rdxTutorialTitle" aria-describedby="rdxTutorialDescription">
+  <div class="rdx-tutorial-shell">
+    <div class="rdx-tutorial-topline">
+      <span class="rdx-tutorial-brand">RENDRAX · GUIDE RAPIDE</span>
+      <span class="rdx-tutorial-count" id="rdxTutorialCount" aria-live="polite">1 / 3</span>
+    </div>
+    <div class="rdx-tutorial-steps">
+      <section class="rdx-tutorial-step" data-tutorial-step="0" aria-labelledby="rdxTutorialTitle">
+        <div class="rdx-tutorial-illustration" aria-hidden="true">
+          <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="19" y="12" width="58" height="72" rx="9" stroke="currentColor" stroke-width="3"/>
+            <path d="M31 31h34M31 43h22M31 55h17" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <path d="M58 65h19m-8-8 8 8-8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 id="rdxTutorialTitle">Choisis ton fichier HTML</h2>
+        <div id="rdxTutorialDescription" class="rdx-tutorial-copy">
+          <p>Importe un fichier HTML ou HTM, ou une archive ZIP.</p>
+          <p>RENDRAX analyse le contenu avant de préparer la conversion.</p>
+        </div>
+      </section>
+      <section class="rdx-tutorial-step" data-tutorial-step="1" aria-labelledby="rdxTutorialStep2Title" hidden>
+        <div class="rdx-tutorial-illustration" aria-hidden="true">
+          <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M48 13v70M13 48h70" stroke="currentColor" stroke-width="2" opacity=".22"/>
+            <circle cx="48" cy="48" r="29" stroke="currentColor" stroke-width="3"/>
+            <path d="M48 31v18l13 8" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M67 22 75 16M29 74l-8 6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h2 id="rdxTutorialStep2Title">Règle la qualité</h2>
+        <div class="rdx-tutorial-copy">
+          <p>Choisis Complète pour une sortie en 1080 × 1920.</p>
+          <p>Le mode Allégée réduit la résolution pour accélérer le rendu.</p>
+        </div>
+      </section>
+      <section class="rdx-tutorial-step" data-tutorial-step="2" aria-labelledby="rdxTutorialStep3Title" hidden>
+        <div class="rdx-tutorial-illustration" aria-hidden="true">
+          <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="17" y="15" width="62" height="66" rx="9" stroke="currentColor" stroke-width="3"/>
+            <path d="M29 29h38M29 39h25" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <path d="M48 49v21m-9-9 9 9 9-9" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 id="rdxTutorialStep3Title">Télécharge ta vidéo MP4</h2>
+        <div class="rdx-tutorial-copy">
+          <p>Lance le rendu et suis sa progression jusqu’à la fin.</p>
+          <p>Télécharge le MP4 depuis le résultat ou retrouve-le dans l’historique.</p>
+        </div>
+      </section>
+    </div>
+    <div class="rdx-tutorial-progress" aria-hidden="true">
+      <span class="is-active"></span><span></span><span></span>
+    </div>
+    <div class="rdx-tutorial-actions">
+      <button id="rdxTutorialPrev" class="sec" type="button" hidden>Précédent</button>
+      <button id="rdxTutorialNext" class="go" type="button">Suivant</button>
+    </div>
+    <button id="rdxTutorialSkip" class="rdx-tutorial-skip" type="button">Passer le tutoriel</button>
+  </div>
+</dialog>
+
 <script>
 const API = '/api';
 const MODES = {
@@ -2016,9 +2082,15 @@ async function cancel() {
   }
 }
 async function resume() {
-  const raw = store.get('kidas_job'); if (!raw) return;
-  let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
-  if (!job.id || !Number.isFinite(job.t0) || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
+  const raw = store.get('kidas_job');
+  if (!raw) return false;
+  let job;
+  try { job = JSON.parse(raw); }
+  catch (e) { store.set('kidas_job', null); return false; }
+  if (!job.id || !Number.isFinite(job.t0) || Date.now() - job.t0 > 95 * 60000) {
+    store.set('kidas_job', null);
+    return false;
+  }
   cancelled = false; setBusy(true); revealTransition($('#progCard')); setSteps(-1); status('Récupération de l’état du rendu…');
   try { await finish(await waitJob(job.id, job.t0)); }
   catch (e) {
@@ -2026,6 +2098,69 @@ async function resume() {
     fail(e, activeStep >= 0 ? activeStep : 1);
   }
   setBusy(false);
+  return true;
+}
+const TUTORIAL_KEY = 'rendrax_tuto_vu';
+let tutorialReturnFocus = null;
+let tutorialIndex = 0;
+function setTutorialStep(index) {
+  const dialog = $('#rdxTutorial');
+  const steps = [...dialog.querySelectorAll('[data-tutorial-step]')];
+  tutorialIndex = Math.max(0, Math.min(steps.length - 1, index));
+  steps.forEach((step, i) => { step.hidden = i !== tutorialIndex; });
+  [...dialog.querySelectorAll('.rdx-tutorial-progress span')].forEach((dot, i) => {
+    dot.classList.toggle('is-active', i === tutorialIndex);
+  });
+  $('#rdxTutorialCount').textContent = (tutorialIndex + 1) + ' / ' + steps.length;
+  $('#rdxTutorialPrev').hidden = tutorialIndex === 0;
+  $('#rdxTutorialNext').textContent = tutorialIndex === steps.length - 1 ? 'Terminer' : 'Suivant';
+}
+function openTutorial(trigger = null) {
+  const dialog = $('#rdxTutorial');
+  if (busy || dialog.open || typeof dialog.showModal !== 'function') return;
+  tutorialReturnFocus = trigger || document.activeElement;
+  setTutorialStep(0);
+  dialog.showModal();
+  $('#rdxTutorialNext').focus();
+}
+function initTutorial() {
+  const dialog = $('#rdxTutorial');
+  $('#rdxTutorialLink').addEventListener('click', event => {
+    event.preventDefault();
+    openTutorial($('#rdxTutorialLink'));
+  });
+  $('#rdxTutorialPrev').addEventListener('click', () => {
+    setTutorialStep(tutorialIndex - 1);
+    $('#rdxTutorialPrev').focus();
+  });
+  $('#rdxTutorialNext').addEventListener('click', () => {
+    if (tutorialIndex < 2) {
+      setTutorialStep(tutorialIndex + 1);
+      $('#rdxTutorialNext').focus();
+    } else {
+      dialog.close();
+    }
+  });
+  $('#rdxTutorialSkip').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => !element.hidden && element.getClientRects().length > 0);
+    if (!focusable.length) { event.preventDefault(); return; }
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+      event.preventDefault(); first.focus();
+    }
+  });
+  dialog.addEventListener('close', () => {
+    store.set(TUTORIAL_KEY, '1');
+    const target = tutorialReturnFocus;
+    tutorialReturnFocus = null;
+    if (target && target.isConnected && typeof target.focus === 'function') target.focus();
+    else $('#file').focus();
+  });
 }
 $('#file').onchange = () => {
   if (localSource && localSource.file !== $('#file').files[0]) localSource = null;
@@ -2081,7 +2216,10 @@ initAdvancedSettings();
 initRenderPrefs();
 loadList();
 initSecurity();
-resume();
+initTutorial();
+resume().then(resumed => {
+  if (!resumed && store.get(TUTORIAL_KEY) !== '1') openTutorial($('#file'));
+});
 </script>
 <script type="module" src="/assets/rendrax-motion.js?v=20261025-fix3"></script>
 </body>
