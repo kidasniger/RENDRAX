@@ -2111,6 +2111,11 @@ function setTutorialStep(index) {
   [...dialog.querySelectorAll('.rdx-tutorial-progress span')].forEach((dot, i) => {
     dot.classList.toggle('is-active', i === tutorialIndex);
   });
+  const activeHeading = steps[tutorialIndex].querySelector('h2');
+  const activeDescription = steps[tutorialIndex].querySelector('.rdx-tutorial-copy');
+  dialog.setAttribute('aria-labelledby', activeHeading.id);
+  if (activeDescription) dialog.setAttribute('aria-describedby', activeDescription.id);
+  else dialog.removeAttribute('aria-describedby');
   $('#rdxTutorialCount').textContent = (tutorialIndex + 1) + ' / ' + steps.length;
   $('#rdxTutorialPrev').hidden = tutorialIndex === 0;
   $('#rdxTutorialNext').textContent = tutorialIndex === steps.length - 1 ? 'Terminer' : 'Suivant';
