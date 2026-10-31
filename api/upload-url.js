@@ -5,11 +5,11 @@ const MAX_BYTES = 50 * 1000 * 1000;
 const FILE_TYPES = Object.freeze({ html: { extension: 'html', contentType: 'text/html' }, zip: { extension: 'zip', contentType: 'application/zip' } });
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return send(res, 405, { error: 'Méthode non autorisée.' });
-  if (!sameOrigin(req)) return send(res, 403, { error: 'Origine de la demande refusée.' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
+  if (!sameOrigin(req)) return send(res, 403, { error: 'Cette demande a été refusée pour des raisons de sécurité.' });
   const { id, captchaToken, type_fichier = 'html' } = readBody(req);
-  if (!validJobId(id)) return send(res, 400, { error: 'Identifiant temporaire invalide.' });
-  if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Type de fichier invalide.' });
+  if (!validJobId(id)) return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
+  if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Format de fichier non accepté.' });
   const fileType = FILE_TYPES[type_fichier];
   try {
     await verifyTurnstile(req, captchaToken);
