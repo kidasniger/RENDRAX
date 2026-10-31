@@ -464,29 +464,30 @@ main.rdx-main label.checkline:focus-within {
 .advanced-settings:not([hidden]){display:contents}
 .advanced-settings-toggle{grid-column:1/-1}
 
-/* Mise à jour 41 — tutoriel de première visite */
+/* Mise à jour 41 — tutoriel de première visite
+   Reprise des tokens, rayons et commandes natifs de l’interface RENDRAX. */
 .rdx-tutorial {
-  width: min(100% - 28px, 520px);
-  max-width: 520px;
-  max-height: min( min(88dvh, 760px), calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  width: min(calc(100% - 28px), 480px);
+  max-width: 480px;
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   margin: auto;
   padding: 0;
   overflow: auto;
   color: var(--tx);
   background: var(--surf);
   border: 1px solid var(--bd);
-  border-radius: 24px;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, .32);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  font: inherit;
 }
 .rdx-tutorial::backdrop {
-  background: rgba(5, 12, 24, .72);
-  backdrop-filter: blur(5px);
+  background: rgba(8, 11, 24, .58);
 }
 .rdx-tutorial-shell {
   display: flex;
   flex-direction: column;
-  min-height: 490px;
-  padding: clamp(20px, 5vw, 30px);
+  min-height: 0;
+  padding: clamp(18px, 4vw, 24px);
 }
 .rdx-tutorial-topline {
   display: flex;
@@ -494,14 +495,15 @@ main.rdx-main label.checkline:focus-within {
   justify-content: space-between;
   gap: 12px;
   color: var(--mut);
-  font: 750 .68rem/1.3 var(--mono);
-  letter-spacing: .09em;
+  font: 650 .75rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 .rdx-tutorial-count {
-  padding: 6px 9px;
+  padding: 4px 9px;
+  color: var(--mut);
+  background: var(--surf2);
   border: 1px solid var(--bd);
   border-radius: 999px;
-  letter-spacing: 0;
+  font: 600 .78rem/1.4 var(--mono);
   white-space: nowrap;
 }
 .rdx-tutorial-steps {
@@ -510,107 +512,117 @@ main.rdx-main label.checkline:focus-within {
   align-content: center;
 }
 .rdx-tutorial-step {
-  padding: 24px 0 18px;
+  padding: 22px 0 16px;
   text-align: center;
 }
 .rdx-tutorial-step[hidden] { display: none !important; }
 .rdx-tutorial-illustration {
   display: grid;
   place-items: center;
-  width: 112px;
-  height: 112px;
-  margin: 0 auto 22px;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 18px;
   color: var(--ac);
-  border: 1px solid color-mix(in srgb, var(--ac) 28%, var(--bd));
-  border-radius: 30px;
-  background: color-mix(in srgb, var(--ac) 9%, var(--surf2));
+  background: var(--surf2);
+  border: 1px solid var(--bd);
+  border-radius: var(--rs);
 }
 .rdx-tutorial-illustration svg {
   display: block;
-  width: 76px;
-  height: 76px;
+  width: 48px;
+  height: 48px;
 }
 .rdx-tutorial-step h2 {
-  margin: 0 0 14px;
+  margin: 0 0 9px;
   color: var(--tx);
-  font-size: clamp(1.35rem, 5vw, 1.75rem);
-  line-height: 1.15;
-  letter-spacing: -.035em;
+  font: 750 1.12rem/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -.02em;
 }
 .rdx-tutorial-copy {
   display: grid;
-  gap: 8px;
-  max-width: 39ch;
+  gap: 6px;
+  max-width: 40ch;
   margin: 0 auto;
   color: var(--mut);
-  font-size: .96rem;
-  line-height: 1.6;
+  font: 400 .9rem/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 .rdx-tutorial-copy p { margin: 0; }
 .rdx-tutorial-progress {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 0 20px;
+  gap: 7px;
+  padding: 5px 0 17px;
 }
 .rdx-tutorial-progress span {
-  width: 8px;
-  height: 8px;
-  border-radius: 99px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background: var(--bd);
-  transition: width 180ms ease, background-color 180ms ease;
 }
 .rdx-tutorial-progress span.is-active {
-  width: 25px;
+  width: 20px;
+  border-radius: 999px;
   background: var(--ac);
 }
 .rdx-tutorial-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 9px;
 }
 .rdx-tutorial-actions button,
 .rdx-tutorial-skip {
-  min-width: 48px;
-  min-height: 48px;
-  border-radius: 13px;
+  min-height: 44px;
   font: inherit;
-  font-weight: 750;
   cursor: pointer;
 }
 .rdx-tutorial-actions button {
   flex: 1 1 0;
-  padding: 10px 16px;
+  width: auto;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: .9rem;
+  font-weight: 700;
 }
 .rdx-tutorial-actions button[hidden] { display: none !important; }
 .rdx-tutorial-actions #rdxTutorialNext {
-  color: #fff;
-  border: 1px solid var(--ac);
+  color: var(--on);
   background: var(--ac);
+  border: 1px solid var(--ac);
 }
+.rdx-tutorial-actions #rdxTutorialNext:hover { background: var(--ac2); }
 .rdx-tutorial-actions #rdxTutorialPrev {
   color: var(--tx);
-  border: 1px solid var(--bd);
   background: var(--surf2);
+  border: 1px solid var(--bd);
+  font-weight: 600;
+}
+.rdx-tutorial-actions #rdxTutorialPrev:hover {
+  background: color-mix(in srgb, var(--ac) 8%, var(--surf2));
+  border-color: color-mix(in srgb, var(--tx) 25%, var(--bd));
 }
 .rdx-tutorial-skip {
   align-self: center;
-  margin-top: 8px;
-  padding: 8px 14px;
+  margin: 7px 0 0;
+  padding: 5px 12px;
   color: var(--mut);
-  border: 0;
   background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.rdx-tutorial-skip:hover { color: var(--ac); }
 .rdx-tutorial :where(button, a):focus-visible,
 .rdx-tutorial-footer a:focus-visible {
-  outline: 3px solid var(--ac);
+  outline: 2px solid var(--ac);
   outline-offset: 3px;
 }
 .rdx-tutorial-footer {
-  width: min(100% - 32px, 1160px);
+  width: min(calc(100% - 32px), 1160px);
   margin: -30px auto 0;
   padding: 0 0 max(24px, env(safe-area-inset-bottom));
   text-align: center;
@@ -619,37 +631,41 @@ main.rdx-main label.checkline:focus-within {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 8px 14px;
+  min-height: 44px;
+  padding: 7px 12px;
   color: var(--mut);
-  font-size: .88rem;
-  font-weight: 650;
+  font-size: .84rem;
+  font-weight: 600;
   text-decoration: underline;
-  text-underline-offset: 4px;
+  text-underline-offset: 3px;
 }
 @media (max-width: 520px) {
   .rdx-tutorial {
     width: calc(100% - 24px);
     max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    border-radius: 20px;
+    border-radius: var(--r);
   }
   .rdx-tutorial-shell {
-    min-height: min(500px, 78dvh);
-    padding: 20px 18px max(18px, env(safe-area-inset-bottom));
+    padding: 18px 16px max(16px, env(safe-area-inset-bottom));
   }
-  .rdx-tutorial-step { padding: 18px 0 14px; }
+  .rdx-tutorial-step { padding: 17px 0 13px; }
   .rdx-tutorial-illustration {
-    width: 96px;
-    height: 96px;
-    margin-bottom: 18px;
-    border-radius: 25px;
+    width: 68px;
+    height: 68px;
+    margin-bottom: 15px;
   }
-  .rdx-tutorial-illustration svg { width: 66px; height: 66px; }
-  .rdx-tutorial-copy { font-size: .91rem; }
-  .rdx-tutorial-actions { gap: 8px; }
+  .rdx-tutorial-illustration svg { width: 44px; height: 44px; }
+  .rdx-tutorial-copy { font-size: .86rem; }
+  .rdx-tutorial-actions { gap: 7px; }
   .rdx-tutorial-actions button { padding-inline: 10px; }
+}
+@media (max-height: 560px) {
+  .rdx-tutorial-shell { padding-block: 14px; }
+  .rdx-tutorial-step { padding-block: 10px; }
+  .rdx-tutorial-illustration { width: 54px; height: 54px; margin-bottom: 10px; }
+  .rdx-tutorial-illustration svg { width: 36px; height: 36px; }
+  .rdx-tutorial-progress { padding-bottom: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rdx-tutorial-progress span { transition: none; }
 }
-
