@@ -632,6 +632,7 @@ function initRenderPrefs() {
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
 let openHistoryPlayer = null;
 let importedSource = null, importingUrl = false;
+let localSource = null, lastSourceForRetry = null;
 let zipSelection = null, zipLoading = false, zipInspectToken = 0, zipMainToken = 0;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
 
@@ -1470,6 +1471,7 @@ async function importFromUrl() {
 function setFile(files) {
   if (!files || !files.length) return;
   const dt = new DataTransfer(); dt.items.add(files[0]); $('#file').files = dt.files;
+  if (localSource && localSource.file !== files[0]) localSource = null;
   checkFile();
 }
 function uploadPrivateBlob(url, file, type_fichier = 'html') {
@@ -1597,6 +1599,19 @@ function showResult(rel) {
     info.textContent = 'Durée ' + mmss(v.duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
   });
   box.append(v, info, bar);
+
+  if (lastSourceForRetry && lastSourceForRetry.id) {
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'sec';
+    retry.textContent = "Refaire avec d'autres réglages";
+    retry.addEventListener('click', () => {
+      $('#settingsCard').hidden = false;
+      $('#settingsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('#mode').focus({ preventScroll: true });
+    });
+    box.append(retry);
+  }
 
   if (typeof fileText === 'string' && fileText.trim()) {
     const compareBtn = document.createElement('button');
@@ -1865,6 +1880,9 @@ function currentStepIndex() { return [...$('#steps').children].findIndex(li => l
 async function cleanupUpload(id, type_fichier = 'html') {
   try { await api('/cleanup', { method: 'POST', body: { id, type_fichier } }); } catch (e) {}
 }
+function newRenderId() {
+  return 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+}
 async function go(testOnly = false) {
   if (busy) return;
   const f = $('#file').files[0];
@@ -1884,21 +1902,26 @@ async function go(testOnly = false) {
   if (!verdict || hasBlockingFinding(verdict)) { setSteps(-1); return status('Fichier refusé : le rapport contient un élément bloquant.', 'err'); }
   const m = testOnly ? MODES.test : MODES[$('#mode').value];
   const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
-  const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  if (!source && localSource && localSource.file !== f) localSource = null;
+  const needsUpload = !source && !localSource;
+  const sourceId = source ? source.id : (localSource ? localSource.id : newRenderId());
+  const id = newRenderId();
+  const htmlPrincipal = isZip ? zipSelection.mainPath : '';
   const t0 = Date.now();
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; resetTransition($('#res')); hint(''); resetRenderProgress();
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
     setSteps(0);
-    if (source) {
+    if (source || !needsUpload) {
       uploadComplete = true;
-      status('HTML importé déjà enregistré dans le stockage privé…');
+      status('Fichier déjà enregistré dans le stockage privé…');
     } else {
+      localSource = { id: sourceId, file: f, type_fichier, name: fileName };
       status('Vérification de sécurité…');
       const uploadCaptcha = await captchaToken();
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-      const signed = await api('/upload-url', { method: 'POST', body: { id, captchaToken: uploadCaptcha, type_fichier } });
-      await uploadPrivateBlobWithRecovery(signed.url, id, f, type_fichier);
+      const signed = await api('/upload-url', { method: 'POST', body: { id: sourceId, captchaToken: uploadCaptcha, type_fichier } });
+      await uploadPrivateBlobWithRecovery(signed.url, sourceId, f, type_fichier);
       uploadComplete = true;
     }
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -1906,17 +1929,20 @@ async function go(testOnly = false) {
     const renderCaptcha = await captchaToken();
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     await api('/render', { method: 'POST', body: {
-      id, captchaToken: renderCaptcha, type_fichier, html_principal: isZip ? zipSelection.mainPath : '', scale: m.scale, test: m.test,
+      id, source_id: sourceId, captchaToken: renderCaptcha, type_fichier, html_principal: htmlPrincipal, scale: m.scale, test: m.test,
       duration: $('#duration').value, format: $('#format').value, watermark: $('#watermark').checked, loudnorm: $('#loudnorm').checked,
       audio_offset_ms: Number($('#audioOffset').value), name: fileName.replace(/\.(?:html?|zip)$/i, '')
     }});
     dispatchAccepted = true;
-    if (source) importedSource = null;
+    lastSourceForRetry = { id: sourceId, type_fichier, html_principal: htmlPrincipal, name: fileName };
     store.set('kidas_job', JSON.stringify({ id, t0 }));
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (!source && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) await cleanupUpload(id, type_fichier);
+    if (needsUpload && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) {
+      await cleanupUpload(sourceId, type_fichier);
+      if (localSource && localSource.id === sourceId) localSource = null;
+    }
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
   }
@@ -1943,7 +1969,10 @@ async function resume() {
   }
   setBusy(false);
 }
-$('#file').onchange = checkFile;
+$('#file').onchange = () => {
+  if (localSource && localSource.file !== $('#file').files[0]) localSource = null;
+  checkFile();
+};
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#importUrlBtn').onclick = importFromUrl;
 $('#importUrl').oninput = () => {
