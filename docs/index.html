@@ -144,13 +144,23 @@ input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
 #verdict.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:color-mix(in srgb,var(--ok) 8%,transparent)}
 #verdict.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
 #verdict.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent);background:color-mix(in srgb,var(--warn) 8%,transparent)}
-#compatReport{margin-top:12px;padding:12px;border:1px solid var(--bd);border-radius:var(--rs)}
-#compatReport h3{margin:0 0 8px;font-size:.95rem}
-#compatFindings{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-#compatFindings li{padding:8px 10px;border:1px solid var(--bd);border-radius:var(--rs);font-size:.86rem}
-#compatFindings li strong{display:block;margin-bottom:2px}
-#compatFindings li p{margin:2px 0 0}
-#compatFindings li .compat-action{font-weight:600}
+#compatReport{margin-top:12px;padding:13px;border:1px solid var(--bd);border-radius:var(--rs);background:color-mix(in srgb,var(--surf2) 38%,transparent)}
+#compatReport h3{margin:0;font-size:.95rem}
+.compat-report-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.compat-summary{margin:0;color:var(--mut);font-size:.78rem;line-height:1.4}
+#compatFindings,#compatPassedFindings{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px}
+#compatFindings li{padding:10px 11px;border:1px solid color-mix(in srgb,var(--warn) 28%,var(--bd));border-left:3px solid var(--warn);border-radius:10px;background:color-mix(in srgb,var(--warn) 5%,var(--surf));font-size:.84rem}
+#compatFindings li[data-level="blocking"]{border-color:color-mix(in srgb,var(--err) 35%,var(--bd));border-left-color:var(--err);background:color-mix(in srgb,var(--err) 5%,var(--surf))}
+#compatFindings li strong{display:block;margin-bottom:3px;font-size:.86rem}
+#compatFindings li p{margin:3px 0 0;line-height:1.45}
+#compatFindings li .compat-action{color:var(--tx);font-weight:600}
+.compat-passed{margin-top:10px;border-top:1px solid var(--bd);padding-top:9px}
+.compat-passed summary{width:fit-content;cursor:pointer;color:var(--mut);font-size:.8rem;font-weight:650;touch-action:manipulation}
+#compatPassedFindings{margin-top:8px;gap:5px}
+#compatPassedFindings li{display:flex;align-items:flex-start;gap:7px;padding:3px 0;color:var(--mut);font-size:.78rem;line-height:1.4}
+#compatPassedFindings li::before{content:"✓";flex:0 0 auto;color:var(--ok);font-weight:800}
+#compatPassedFindings li strong{font-weight:650;color:var(--tx)}
+#compatPassedFindings li p{display:inline;margin:0}
 #prevBtn{margin-top:10px}
 iframe#prev{width:100%;height:420px;border:1px solid var(--bd);border-radius:var(--rs);margin-top:10px;background:#000;display:block}
 
@@ -423,8 +433,15 @@ ul#list button{box-shadow:none}
     <p id="fileinfo" hidden></p>
     <p id="verdict" role="status" hidden></p>
     <section id="compatReport" aria-labelledby="compatReportTitle" hidden>
-      <h3 id="compatReportTitle">Rapport de compatibilité</h3>
-      <ul id="compatFindings" role="list" aria-label="Constats de compatibilité"></ul>
+      <div class="compat-report-head">
+        <h3 id="compatReportTitle">Analyse du fichier</h3>
+        <p id="compatSummary" class="compat-summary" aria-live="polite"></p>
+      </div>
+      <ul id="compatFindings" role="list" aria-label="Points à vérifier"></ul>
+      <details id="compatPassed" class="compat-passed" hidden>
+        <summary id="compatPassedSummary">Afficher les vérifications réussies</summary>
+        <ul id="compatPassedFindings" role="list" aria-label="Vérifications réussies"></ul>
+      </details>
     </section>
     <button class="sec" id="prevBtn" type="button" hidden>Voir un aperçu</button>
     <iframe id="prev" title="Aperçu du fichier HTML" sandbox="allow-scripts" allow="autoplay" hidden></iframe>
@@ -896,12 +913,11 @@ function analyze(t, sizeBytes = null) {
     // Le diagnostic principal reste disponible même si le parseur HTML échoue.
   }
 
-  add(external.size ? 'warn' : 'good',
-    external.size ? 'Ressources externes détectées' : 'Aucune ressource externe détectée',
+  add(external.size ? 'info' : 'good',
+    external.size ? 'Ressources externes' : 'Aucune ressource externe',
     external.size
-      ? external.size + ' adresse(s) HTTP(S) distante(s) détectée(s).'
-      : 'Aucune URL HTTP(S) externe courante détectée.',
-    external.size ? 'La disponibilité de chaque ressource sera vérifiée avant le rendu.' : '');
+      ? external.size + ' ressource(s) distante(s) seront vérifiées automatiquement.'
+      : 'Aucune URL HTTP(S) externe courante détectée.');
   for (const url of external) {
     add('warn', 'Ressource externe à vérifier', url,
       'Si cette ressource est inaccessible, télécharge-la et intègre-la dans ton HTML ou ton ZIP.');
@@ -938,7 +954,7 @@ async function verifyExternalResources(v) {
     const results = Array.isArray(data.results) ? data.results : [];
     const byUrl = new Map(results.map(result => [result.url, result]));
     v.findings = (Array.isArray(v.findings) ? v.findings : [])
-      .filter(item => item.title !== 'Ressource externe à vérifier');
+      .filter(item => item.title !== 'Ressource externe à vérifier' && item.title !== 'Ressources externes');
 
     for (const url of v.resources) {
       const result = byUrl.get(url);
@@ -955,7 +971,7 @@ async function verifyExternalResources(v) {
   } catch (error) {
     if (verdict !== v) return;
     v.findings = (Array.isArray(v.findings) ? v.findings : [])
-      .filter(item => item.title !== 'Ressource externe à vérifier');
+      .filter(item => item.title !== 'Ressource externe à vérifier' && item.title !== 'Ressources externes');
     for (const url of v.resources) {
       v.findings.push({
         level: 'warn',
@@ -977,14 +993,20 @@ function showVerdict(v, cls, msg) {
 
   const report = $('#compatReport');
   const list = $('#compatFindings');
+  const passed = $('#compatPassed');
+  const passedList = $('#compatPassedFindings');
+  const passedSummary = $('#compatPassedSummary');
+  const summary = $('#compatSummary');
   list.textContent = '';
+  passedList.textContent = '';
+
   let findings = v && Array.isArray(v.findings) ? v.findings : [];
   if (v && !findings.length && v.kind !== 'invalid') {
     findings = [{
       level: 'warn',
       title: 'Diagnostic détaillé indisponible',
-      detail: 'Le serveur a fourni un verdict général, mais pas les informations nécessaires pour vérifier chaque élément HTML.',
-      action: 'Pour obtenir le rapport complet, importe directement le fichier HTML ou un ZIP.'
+      detail: 'Le serveur a fourni un verdict général, sans assez d’informations pour contrôler le HTML.',
+      action: 'Importe directement le fichier HTML ou un ZIP pour obtenir le diagnostic complet.'
     }];
     if (Number.isFinite(v.sizeBytes) && v.sizeBytes >= 0) {
       findings.push({
@@ -997,27 +1019,60 @@ function showVerdict(v, cls, msg) {
   if (v && v.kind === 'invalid' && !findings.length) {
     findings = [{ level: 'blocking', title: 'Import bloqué', detail: v.label || 'Le fichier ne peut pas être traité.' }];
   }
-  const states = {
-    good: { symbol: '✓', label: 'Bon' },
-    warn: { symbol: '⚠', label: 'Attention' },
-    blocking: { symbol: '✖', label: 'Bloquant' }
-  };
-  for (const finding of findings) {
-    const state = states[finding.level] || states.warn;
+
+  const actionable = findings.filter(item => item.level === 'warn' || item.level === 'blocking');
+  const informational = findings.filter(item => item.level === 'info');
+  const successful = findings.filter(item => item.level === 'good');
+  const blockingCount = actionable.filter(item => item.level === 'blocking').length;
+  const warningCount = actionable.length - blockingCount;
+
+  if (blockingCount) {
+    summary.textContent = 'Rendu bloqué · ' + blockingCount + ' problème(s) à corriger.';
+  } else if (warningCount) {
+    summary.textContent = successful.length + ' vérification(s) réussie(s) · ' + warningCount + ' point(s) à vérifier.';
+  } else {
+    summary.textContent = successful.length + ' vérification(s) réussie(s) · Aucun problème détecté.';
+  }
+
+  const appendFinding = (finding, target) => {
     const item = document.createElement('li');
+    item.dataset.level = finding.level || 'warn';
     const heading = document.createElement('strong');
-    heading.textContent = state.symbol + ' ' + state.label + ' — ' + (finding.title || 'Constat');
-    const detail = document.createElement('p');
-    detail.textContent = finding.detail || '';
-    item.append(heading, detail);
+    const prefix = finding.level === 'blocking' ? 'Bloquant' :
+      finding.level === 'info' ? 'Information' : 'À vérifier';
+    heading.textContent = prefix + ' · ' + (finding.title || 'Constat');
+    item.append(heading);
+
+    if (finding.detail) {
+      const detail = document.createElement('p');
+      detail.textContent = finding.detail;
+      item.append(detail);
+    }
     if (finding.action) {
       const action = document.createElement('p');
       action.className = 'compat-action';
-      action.textContent = 'Action recommandée : ' + finding.action;
+      action.textContent = 'À faire : ' + finding.action;
       item.append(action);
     }
-    list.append(item);
+    target.append(item);
+  };
+
+  for (const finding of [...actionable, ...informational]) appendFinding(finding, list);
+  for (const finding of successful) {
+    const item = document.createElement('li');
+    const title = document.createElement('strong');
+    title.textContent = finding.title || 'Vérification réussie';
+    item.append(title);
+    if (finding.detail) {
+      const detail = document.createElement('p');
+      detail.textContent = ' — ' + finding.detail;
+      item.append(detail);
+    }
+    passedList.append(item);
   }
+
+  passed.hidden = successful.length === 0;
+  passedSummary.textContent = 'Afficher les ' + successful.length + ' vérification(s) réussie(s)';
   report.hidden = findings.length === 0;
   syncGoButton();
   if (v && Array.isArray(v.resources) && v.resources.length && !v.resourceCheckStarted) {
