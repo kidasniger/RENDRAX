@@ -1536,6 +1536,58 @@ function showResult(rel) {
     info.textContent = 'Durée ' + mmss(v.duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
   });
   box.append(v, info, bar);
+
+  if (typeof fileText === 'string' && fileText.trim()) {
+    const compareBtn = document.createElement('button');
+    compareBtn.type = 'button';
+    compareBtn.className = 'sec';
+    compareBtn.textContent = 'Comparer';
+    compareBtn.setAttribute('aria-expanded', 'false');
+    compareBtn.setAttribute('aria-controls', 'rdxCompareView');
+
+    const compareView = document.createElement('section');
+    compareView.id = 'rdxCompareView';
+    compareView.className = 'rdx-compare-view';
+    compareView.hidden = true;
+    compareView.setAttribute('aria-label', 'Comparaison de la source HTML et de la vidéo finale');
+
+    const sourcePanel = document.createElement('div');
+    sourcePanel.className = 'rdx-compare-panel';
+    const sourceTitle = document.createElement('h3');
+    sourceTitle.textContent = 'HTML d’origine';
+    const sourceFrame = document.createElement('iframe');
+    sourceFrame.className = 'rdx-compare-frame';
+    sourceFrame.title = 'Animation HTML d’origine';
+    sourceFrame.setAttribute('sandbox', 'allow-scripts');
+    sourceFrame.setAttribute('allow', 'autoplay');
+    sourceFrame.hidden = true;
+    sourcePanel.append(sourceTitle, sourceFrame);
+
+    const videoPanel = document.createElement('div');
+    videoPanel.className = 'rdx-compare-panel';
+    const videoTitle = document.createElement('h3');
+    videoTitle.textContent = 'Vidéo finale';
+    videoPanel.append(videoTitle, v);
+    compareView.append(sourcePanel, videoPanel);
+
+    compareBtn.addEventListener('click', () => {
+      const opening = compareView.hidden;
+      compareView.hidden = !opening;
+      compareBtn.setAttribute('aria-expanded', String(opening));
+      compareBtn.textContent = opening ? 'Fermer la comparaison' : 'Comparer';
+      if (opening) {
+        sourceFrame.hidden = false;
+        sourceFrame.srcdoc = fileText;
+      } else {
+        sourceFrame.hidden = true;
+        sourceFrame.removeAttribute('srcdoc');
+        v.pause();
+        box.insertBefore(v, info);
+      }
+    });
+    box.append(compareBtn, compareView);
+  }
+
   revealTransition(box);
 }
 async function closeHistoryPlayer() {
