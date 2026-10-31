@@ -1,7 +1,7 @@
 import { send } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (req.method !== 'GET') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   const required = {
     KIDAS_GITHUB_TOKEN: process.env.KIDAS_GITHUB_TOKEN,
     BLOB_STORE_ID: process.env.BLOB_STORE_ID,
