@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   try {
     await verifyTurnstile(req, captchaToken);
     if (!process.env.BLOB_STORE_ID) {
-      const error = new Error('Le stockage Blob privé doit être connecté au projet Vercel.');
+      const error = new Error('L’espace de stockage sécurisé n’est pas configuré.');
       error.status = 503;
       throw error;
     }
