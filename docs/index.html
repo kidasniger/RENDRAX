@@ -1432,6 +1432,8 @@ function showResult(rel) {
   v.setAttribute('playsinline', '');
   v.setAttribute('webkit-playsinline', '');
   v.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
+  v.setAttribute('title', 'Lecteur vidéo : ' + a.name);
+  v.tabIndex = 0;
   v.preload = 'metadata';
   if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) v.poster = a.thumbnail_url;
   v.addEventListener('error', () => addVideoLoadFallback(box, a.browser_download_url, a.name), { once: true });
@@ -1527,6 +1529,8 @@ function loadList() {
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
         video.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
+        video.setAttribute('title', 'Lecteur vidéo : ' + a.name);
+        video.tabIndex = 0;
         video.preload = 'metadata';
         if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) video.poster = a.thumbnail_url;
         video.addEventListener('error', () => addVideoLoadFallback(panel, a.browser_download_url, a.name), { once: true });
