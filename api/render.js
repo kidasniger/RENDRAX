@@ -9,12 +9,12 @@ const DURATIONS = new Set(['0', '10', '30', '60', '120', '300']);
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   if (!sameOrigin(req)) return send(res, 403, { error: 'Cette demande a été refusée pour des raisons de sécurité.' });
-  const { id, captchaToken, scale, test, duration, format, name, watermark = true, loudnorm = true, audio_offset_ms = 0, type_fichier = 'html', html_principal = '' } = readBody(req);
+  const { id, source_id: sourceId = id, captchaToken, scale, test, duration, format, name, watermark = true, loudnorm = true, audio_offset_ms = 0, type_fichier = 'html', html_principal = '' } = readBody(req);
   const audioOffsetMs = Number(audio_offset_ms);
   const audioOffsetValid = (typeof audio_offset_ms === 'number' ||
     (typeof audio_offset_ms === 'string' && /^-?\d+$/.test(audio_offset_ms))) &&
     Number.isInteger(audioOffsetMs) && audioOffsetMs >= -2000 && audioOffsetMs <= 2000;
-  if (!validJobId(id)) return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
+  if (!validJobId(id) || !validJobId(sourceId)) return send(res, 400, { error: 'Fichier temporaire non reconnu.' });
   if (typeof type_fichier !== 'string' || !Object.prototype.hasOwnProperty.call(FILE_TYPES, type_fichier)) return send(res, 400, { error: 'Format de fichier non accepté.' });
   if (type_fichier === 'zip' && (typeof html_principal !== 'string' || !html_principal || html_principal.length > 1024)) return send(res, 400, { error: 'La page principale du fichier ZIP est incorrecte.' });
   if (type_fichier === 'html' && html_principal !== '') return send(res, 400, { error: 'Un réglage inattendu a été fourni pour la page principale.' });
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
       error.status = 503;
       throw error;
     }
-    const pathname = `incoming/${id}.${FILE_TYPES[type_fichier]}`;
+    const pathname = `incoming/${sourceId}.${FILE_TYPES[type_fichier]}`;
     const metadata = await head(pathname);
     if (Number(metadata.size) > MAX_BYTES) {
       const error = new Error('Le fichier dépasse la taille maximale de 50 Mo.');
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     stage = 'préparation du déclenchement du rendu';
     const inputs = {
       fichier: type_fichier === 'zip' ? 'kidas.zip' : 'kidas.html',
-      blob_id: id,
+      blob_id: sourceId,
       type_fichier,
       html_principal: type_fichier === 'zip' ? html_principal : '',
       scale: String(scale),
