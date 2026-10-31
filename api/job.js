@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { id, run_id: runId, current, total, phase } = readBody(req);
     if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) {
-      return send(res, 400, { error: 'Identifiant de rendu invalide.' });
+      return send(res, 400, { error: 'Création non reconnue.' });
     }
 
     const currentFrame = Number(current);
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
         !Number.isSafeInteger(totalFrames) || totalFrames < 0 ||
         (totalFrames > 0 && currentFrame > totalFrames) ||
         !['rendu', 'temps_reel', 'assemblage'].includes(phase)) {
-      return send(res, 400, { error: 'Données de progression invalides.' });
+      return send(res, 400, { error: 'Les informations d’avancement sont incorrectes.' });
     }
 
     try {
@@ -81,9 +81,9 @@ export default async function handler(req, res) {
     }
   }
 
-  if (req.method !== 'GET') return send(res, 405, { error: 'Méthode non autorisée.' });
+  if (req.method !== 'GET') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   const id = String(req.query?.id || '');
-  if (!validJobId(id)) return send(res, 400, { error: 'Identifiant de rendu invalide.' });
+  if (!validJobId(id)) return send(res, 400, { error: 'Création non reconnue.' });
   try {
     const runs = await githubRequest('/repos/kidasniger/RENDRAX/actions/runs?event=workflow_dispatch&per_page=100');
     const run = (runs.data.workflow_runs || []).find(item => item.display_title === `Rendu ${id}`);
