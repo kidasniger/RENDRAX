@@ -62,7 +62,7 @@ export default async function handler(req, res) {
       nom: safeName(name),
       tag: id
     };
-    stage = 'déclenchement du workflow GitHub Actions';
+    stage = 'démarrage du service de création';
     await githubRequest('/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches', {
       method: 'POST',
       body: { ref: 'main', inputs }
