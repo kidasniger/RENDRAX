@@ -459,3 +459,7 @@ main.rdx-main label.checkline:focus-within {
     aspect-ratio: 9 / 16;
   }
 }
+
+/* Keep advanced fields in the settings grid while the panel is expanded. */
+.advanced-settings:not([hidden]){display:contents}
+.advanced-settings-toggle{grid-column:1/-1}
