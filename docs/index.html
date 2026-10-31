@@ -684,6 +684,25 @@ function status(msg, cls, url) {
   if (url) $('#stla').href = url;
 }
 function hint(msg) { const h = $('#hint'); h.hidden = !msg; h.textContent = msg || ''; }
+function revealTransition(el) {
+  if (!el) return;
+  el.hidden = false;
+  el.classList.add('rdx-transition');
+  el.classList.remove('rdx-transition-visible');
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    el.classList.add('rdx-transition-visible');
+    return;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!el.hidden) el.classList.add('rdx-transition-visible');
+  }));
+}
+function resetTransition(el) {
+  if (!el) return;
+  el.classList.add('rdx-transition');
+  el.classList.remove('rdx-transition-visible');
+}
 function resetRenderProgress() {
   $('#renderProgress').hidden = true;
   $('#renderProgressPhase').textContent = 'Préparation du rendu';
@@ -1341,7 +1360,7 @@ async function importFromUrl() {
   $('#importUrl').disabled = true;
   $('#importUrlBtn').disabled = true;
   showVerdict(null);
-  $('#progCard').hidden = false;
+  revealTransition($('#progCard'));
   setSteps(-1);
   status('Vérification anti-robot…');
 
@@ -1477,7 +1496,12 @@ function addVideoLoadFallback(container, url, name) {
 function showResult(rel) {
   const a = mp4Of(rel);
   const box = $('#res'); box.textContent = '';
-  if (!a) { box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.'; return; }
+  resetTransition(box);
+  if (!a) {
+    box.textContent = 'Rendu terminé, mais aucun MP4 trouvé dans la publication.';
+    revealTransition(box);
+    return;
+  }
   const v = document.createElement('video');
   v.className = 'rdx-player-video';
   v.controls = true;
@@ -1512,6 +1536,7 @@ function showResult(rel) {
     info.textContent = 'Durée ' + mmss(v.duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
   });
   box.append(v, info, bar);
+  revealTransition(box);
 }
 async function closeHistoryPlayer() {
   if (!openHistoryPlayer) return;
@@ -1698,7 +1723,7 @@ async function go(testOnly = false) {
     if (!zipSelection.mainPath) return status('Choisis le HTML principal dans la liste des fichiers ZIP.', 'err');
     if (!zipSelection.analysis || zipSelection.analysis.kind === 'invalid') return status('Le HTML principal du ZIP n’a pas passé le diagnostic.', 'err');
   }
-  $('#progCard').hidden = false;
+  revealTransition($('#progCard'));
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
   if (!f && !source) { setSteps(-1); return status('Choisis un fichier HTML ou colle un lien.', 'err'); }
   if (!verdict) await checkFile();
@@ -1707,7 +1732,7 @@ async function go(testOnly = false) {
   const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
   const id = source ? source.id : 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
   const t0 = Date.now();
-  cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; hint(''); resetRenderProgress();
+  cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; resetTransition($('#res')); hint(''); resetRenderProgress();
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
     setSteps(0);
@@ -1756,7 +1781,7 @@ async function resume() {
   const raw = store.get('kidas_job'); if (!raw) return;
   let job; try { job = JSON.parse(raw); } catch (e) { return store.set('kidas_job', null); }
   if (!job.id || !Number.isFinite(job.t0) || Date.now() - job.t0 > 95 * 60000) return store.set('kidas_job', null);
-  cancelled = false; setBusy(true); $('#progCard').hidden = false; setSteps(-1); status('Récupération de l’état du rendu…');
+  cancelled = false; setBusy(true); revealTransition($('#progCard')); setSteps(-1); status('Récupération de l’état du rendu…');
   try { await finish(await waitJob(job.id, job.t0)); }
   catch (e) {
     const activeStep = currentStepIndex();
@@ -1811,6 +1836,7 @@ const drop = $('#drop');
 drop.addEventListener('drop', e => setFile(e.dataTransfer && e.dataTransfer.files));
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
+revealTransition($('#settingsCard'));
 loadList();
 initSecurity();
 resume();
