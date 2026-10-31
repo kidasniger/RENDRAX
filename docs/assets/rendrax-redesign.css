@@ -311,3 +311,24 @@ ul#list .video-history-player .rdx-player-video{display:block;width:100%;max-wid
   outline-offset:3px;
 }
 
+/* Mise à jour 28 — dimensions minimales des cibles tactiles */
+main.rdx-main :where(button, select, input[type="button"], input[type="submit"],
+  input[type="reset"], input[type="checkbox"], a.btn, .rdx-primary-link,
+  .example-download, .video-list-actions a, .video-list-actions button) {
+  min-width: 48px;
+  min-height: 48px;
+}
+main.rdx-main :where(button, select, input[type="button"], input[type="submit"],
+  input[type="reset"], input[type="checkbox"], a.btn, .rdx-primary-link,
+  .example-download, .video-list-actions a, .video-list-actions button) {
+  touch-action: manipulation;
+}
+main.rdx-main .actions,
+main.rdx-main .url-import-row,
+main.rdx-main .rdx-hero-actions,
+main.rdx-main .video-list-actions,
+main.rdx-main .example-list {
+  gap: max(8px, var(--rdx-target-gap, 8px));
+}
+main.rdx-main .checkline { min-height: 48px; }
+
