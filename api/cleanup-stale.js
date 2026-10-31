@@ -2,10 +2,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { del, list } from '@vercel/blob';
 import { publicError, send } from '../lib/kidas-server.js';
 
-const MAX_AGE_MS = 48 * 60 * 60 * 1000;
+const MAX_AGE_MS = 2 * 60 * 60 * 1000;
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 5;
-const PATH_PATTERN = /^incoming\/v[a-z0-9]{12,40}\.html$/;
+const PATH_PATTERN = /^incoming\/v[a-z0-9]{12,40}\.(?:html|zip)$/;
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       success: true,
       scanned,
       deleted: stale.length,
-      olderThanHours: 48,
+      olderThanHours: 2,
       morePending: hasMore
     });
   } catch (error) {
