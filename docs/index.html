@@ -407,7 +407,7 @@ ul#list button{box-shadow:none}
     <iframe id="prev" title="Aperçu du fichier HTML" sandbox="allow-scripts" allow="autoplay" hidden></iframe>
   </section>
 
-  <section id="settingsCard" class="card rdx-settings-card" aria-labelledby="h-set">
+  <section id="settingsCard" class="card rdx-settings-card" aria-labelledby="h-set" hidden>
     <div class="head"><span class="num" aria-hidden="true">02</span><h2 id="h-set">Réglages</h2></div>
     <div class="grid">
       <div class="field">
@@ -1052,7 +1052,7 @@ function showVerdict(v, cls, msg) {
   passedSummary.textContent = 'Afficher les ' + successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '');
   report.hidden = findings.length === 0;
   syncGoButton();
-  if (v && Array.isArray(v.resources) && v.resources.length && !v.resourceCheckStarted) {
+  if (v && v.kind !== 'invalid' && !hasBlockingFinding(v))   if (v && Array.isArray(v.resources) && v.resources.length && !v.resourceCheckStarted) {
     verifyExternalResources(v);
   }
 }
