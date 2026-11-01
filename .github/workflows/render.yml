@@ -282,7 +282,7 @@ jobs:
             echo "Miniature créée : $thumbnail ($(stat -c '%s' "$thumbnail") octets, image à ${timestamp}s)"
           done
 
-      - name: Publier le MP4 dans Vercel Blob privé
+      - name: Publier le MP4 dans Backblaze B2 privé
         env:
           VIDEO_ID: ${{ inputs.tag }}
           VIDEO_NAME: ${{ inputs.nom }}
@@ -331,7 +331,7 @@ jobs:
           rm -rf kidas-tmp
           if [ -n "$BLOB_ID" ]; then
             if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-              echo "::warning::OIDC indisponible; le fichier privé doit être supprimé depuis le stockage Vercel."
+              echo "::warning::OIDC indisponible; le fichier source privé doit être supprimé manuellement dans Backblaze B2."
               exit 0
             fi
             OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
