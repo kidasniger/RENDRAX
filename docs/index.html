@@ -1946,8 +1946,15 @@ async function loadList() {
         try {
           if (openHistoryPlayer && openHistoryPlayer.panel.parentElement === li) closeHistoryPlayer();
           await api('/delete-video', { method: 'POST', body: { id: r.id } });
+          li.remove();
+          if (!$('#list').children.length) $('#list').innerHTML = '<li class="empty">Aucune vidéo générée.</li>';
+          alert('Vidéo supprimée.');
           loadList();
-        } catch (e) { del.disabled = false; alert(explain(e)); }
+        } catch (e) {
+          del.disabled = false;
+          if (e && e.status === 404) { li.remove(); alert('Cette vidéo était déjà supprimée.'); loadList(); }
+          else alert('Suppression impossible : ' + explain(e));
+        }
       };
       actions.append(watch, del);
       row.append(thumb, meta, actions);
