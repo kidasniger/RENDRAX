@@ -1,4 +1,7 @@
-import { del, get, head, issueSignedToken, list, presignUrl, put } from '@vercel/blob';
+import {
+  b2Delete, b2GetJson, b2Head, b2List, b2PresignGet, b2PresignPut, b2Put,
+  isB2NotFound
+} from '../lib/b2-storage.js';
 import {
   readBody, safeName, send, validJobId, verifyGitHubActionsRequest,
   verifyGitHubActionsMaintenanceRequest, publicError
@@ -7,54 +10,41 @@ import {
 const MAX_VIDEO_BYTES = 500 * 1000 * 1000;
 const MAX_THUMBNAIL_BYTES = 60 * 1024;
 const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const SIGNED_LINK_TTL_MS = 5 * 60 * 1000;
+const SIGNED_LINK_TTL_SECONDS = 5 * 60;
 const MAX_CLEANUP_PER_RUN = 250;
-
-async function signedPut(pathname, contentType, maximumSizeInBytes) {
-  const validUntil = Date.now() + 10 * 60 * 1000;
-  const token = await issueSignedToken({
-    pathname, operations: ['put'], allowedContentTypes: [contentType],
-    maximumSizeInBytes, validUntil
-  });
-  const signed = await presignUrl(token, {
-    operation: 'put', pathname, access: 'private',
-    allowedContentTypes: [contentType], maximumSizeInBytes,
-    validUntil, addRandomSuffix: false, allowOverwrite: false
-  });
-  return signed.presignedUrl;
-}
 
 async function signedRead(req, res, id, extension) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   if (!validJobId(id)) return send(res, 400, { error: 'Lien vidéo invalide.' });
-  const metadataResult = await get(`video-meta/${id}.json`, { access: 'private' });
-  if (!metadataResult || metadataResult.statusCode !== 200) return send(res, 404, { error: 'Cette vidéo n’existe plus.' });
-  const metadata = await new Response(metadataResult.stream).json();
-  if (metadata.id !== id || !Number.isFinite(Date.parse(metadata.expires_at)) || Date.parse(metadata.expires_at) <= Date.now()) {
+  let metadata;
+  try { metadata = await b2GetJson(`video-meta/${id}.json`); }
+  catch (error) {
+    if (isB2NotFound(error)) return send(res, 404, { error: 'Cette vidéo n’existe plus.' });
+    throw error;
+  }
+  const expiresAt = Date.parse(metadata.expires_at);
+  if (metadata.id !== id || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
     return send(res, 410, { error: 'Ce lien de partage a expiré.' });
   }
-  const pathname = `videos/${id}.${extension}`;
-  const validUntil = Date.now() + SIGNED_LINK_TTL_MS;
-  const token = await issueSignedToken({ pathname, operations: ['get'], validUntil });
-  const signed = await presignUrl(token, { pathname, operation: 'get', access: 'private', validUntil });
-  return res.redirect(302, signed.presignedUrl);
+  const url = await b2PresignGet(`videos/${id}.${extension}`, SIGNED_LINK_TTL_SECONDS);
+  return res.redirect(302, url);
 }
 
 async function listVideos(res) {
-  const blobs = [];
-  let cursor;
+  const objects = [];
+  let continuationToken;
   do {
-    const page = await list({ prefix: 'video-meta/', limit: 1000, cursor, mode: 'expanded' });
-    blobs.push(...(page.blobs || []));
-    cursor = page.hasMore ? page.cursor : undefined;
-  } while (cursor && blobs.length < 1000);
+    const page = await b2List({ prefix: 'video-meta/', maxKeys: 1000, continuationToken });
+    objects.push(...page.objects);
+    continuationToken = page.hasMore ? page.continuationToken : undefined;
+  } while (continuationToken && objects.length < 5000);
 
-  const items = await Promise.all(blobs
-    .filter(blob => /^video-meta\/v[a-z0-9]{12,40}\.json$/.test(blob.pathname))
-    .map(async blob => {
-      const result = await get(blob.pathname, { access: 'private' });
-      if (!result || result.statusCode !== 200) return null;
-      const metadata = await new Response(result.stream).json();
+  const items = await Promise.all(objects
+    .filter(object => /^video-meta\/v[a-z0-9]{12,40}\.json$/.test(object.key || ''))
+    .map(async object => {
+      let metadata;
+      try { metadata = await b2GetJson(object.key); }
+      catch (error) { if (isB2NotFound(error)) return null; throw error; }
       const expiresAt = Date.parse(metadata.expires_at);
       if (!metadata.id || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
       return {
@@ -80,8 +70,8 @@ async function createUploadUrls(req, res) {
   if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) return send(res, 400, { error: 'Publication vidéo non reconnue.' });
   await verifyGitHubActionsRequest(req, runId);
   const [videoUrl, thumbnailUrl] = await Promise.all([
-    signedPut(`videos/${id}.mp4`, 'video/mp4', MAX_VIDEO_BYTES),
-    signedPut(`videos/${id}.jpg`, 'image/jpeg', MAX_THUMBNAIL_BYTES)
+    b2PresignPut(`videos/${id}.mp4`, 'video/mp4', 10 * 60),
+    b2PresignPut(`videos/${id}.jpg`, 'image/jpeg', 10 * 60)
   ]);
   return send(res, 200, { videoUrl, thumbnailUrl });
 }
@@ -91,8 +81,8 @@ async function publishVideo(req, res) {
   const { id, run_id: runId, name } = readBody(req);
   if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) return send(res, 400, { error: 'Publication vidéo non reconnue.' });
   await verifyGitHubActionsRequest(req, runId);
-  const video = await head(`videos/${id}.mp4`);
-  const thumbnail = await head(`videos/${id}.jpg`);
+  const video = await b2Head(`videos/${id}.mp4`);
+  const thumbnail = await b2Head(`videos/${id}.jpg`);
   if (!video || video.size < 1 || video.size > MAX_VIDEO_BYTES || video.contentType !== 'video/mp4') {
     return send(res, 422, { error: 'Le fichier MP4 publié est invalide.' });
   }
@@ -107,9 +97,9 @@ async function publishVideo(req, res) {
     size: video.size,
     content_type: 'video/mp4'
   };
-  await put(`video-meta/${id}.json`, JSON.stringify(metadata), {
-    access: 'private', addRandomSuffix: false, allowOverwrite: false,
-    contentType: 'application/json; charset=utf-8', cacheControlMaxAge: 60
+  await b2Put(`video-meta/${id}.json`, JSON.stringify(metadata), {
+    contentType: 'application/json; charset=utf-8',
+    cacheControl: 'private, no-store'
   });
   return send(res, 200, {
     ...metadata,
@@ -123,29 +113,28 @@ async function cleanupExpired(req, res) {
   const { run_id: runId } = readBody(req);
   if (!/^\d{1,20}$/.test(String(runId || ''))) return send(res, 400, { error: 'Tâche de maintenance non reconnue.' });
   await verifyGitHubActionsMaintenanceRequest(req, runId);
-  let cursor;
+  let continuationToken;
   let deleted = 0;
   let inspected = 0;
   let hasMore = true;
   while (hasMore && deleted < MAX_CLEANUP_PER_RUN) {
-    const page = await list({ prefix: 'video-meta/', limit: 100, cursor, mode: 'expanded' });
-    for (const blob of page.blobs || []) {
+    const page = await b2List({ prefix: 'video-meta/', maxKeys: 100, continuationToken });
+    for (const object of page.objects) {
       if (deleted >= MAX_CLEANUP_PER_RUN) break;
-      const match = blob.pathname.match(/^video-meta\/(v[a-z0-9]{12,40})\.json$/);
+      const match = String(object.key || '').match(/^video-meta\/(v[a-z0-9]{12,40})\.json$/);
       if (!match) continue;
       inspected += 1;
-      const record = await get(blob.pathname, { access: 'private' });
-      if (!record || record.statusCode !== 200) continue;
       let metadata;
-      try { metadata = await new Response(record.stream).json(); } catch { continue; }
+      try { metadata = await b2GetJson(object.key); }
+      catch (error) { if (isB2NotFound(error)) continue; throw error; }
       const expiresAt = Date.parse(metadata.expires_at);
       if (metadata.id !== match[1] || !Number.isFinite(expiresAt) || expiresAt > Date.now()) continue;
-      await del([`videos/${match[1]}.mp4`, `videos/${match[1]}.jpg`, blob.pathname]);
+      await b2Delete([`videos/${match[1]}.mp4`, `videos/${match[1]}.jpg`, object.key]);
       deleted += 1;
     }
-    hasMore = Boolean(page.hasMore);
-    cursor = page.cursor;
-    if (!cursor) hasMore = false;
+    hasMore = page.hasMore;
+    continuationToken = page.continuationToken;
+    if (!continuationToken) hasMore = false;
   }
   return send(res, 200, { success: true, inspected, deleted, hasMore });
 }
