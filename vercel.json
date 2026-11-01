@@ -12,6 +12,10 @@
   ],
   "rewrites": [
     {
+      "source": "/d/:id",
+      "destination": "/api/video-download?id=:id"
+    },
+    {
       "source": "/api/check-resources",
       "destination": "/api/import-url?mode=check-resources"
     }
