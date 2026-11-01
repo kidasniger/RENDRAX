@@ -1,4 +1,4 @@
-import { head } from '@vercel/blob';
+import { b2Head, isB2NotFound } from '../lib/b2-storage.js';
 import { githubRequest, readBody, safeName, sameOrigin, send, validJobId, verifyTurnstile, publicError } from '../lib/kidas-server.js';
 
 const MAX_BYTES = 50 * 1000 * 1000;
@@ -34,14 +34,12 @@ export default async function handler(req, res) {
   try {
     await verifyTurnstile(req, captchaToken);
     stage = 'lecture du HTML dans le stockage privé';
-    if (!process.env.BLOB_STORE_ID) {
-      const error = new Error('L’espace de stockage sécurisé n’est pas configuré.');
-      error.status = 503;
-      throw error;
-    }
     const pathname = `incoming/${sourceId}.${FILE_TYPES[type_fichier]}`;
-    const metadata = await head(pathname);
-    if (Number(metadata.size) > MAX_BYTES) {
+    const metadata = await b2Head(pathname);
+    if (metadata.size < 1) {
+      const error = new Error('Le fichier source est vide.'); error.status = 400; throw error;
+    }
+    if (metadata.size > MAX_BYTES) {
       const error = new Error('Le fichier dépasse la taille maximale de 50 Mo.');
       error.status = 413;
       throw error;
@@ -70,7 +68,7 @@ export default async function handler(req, res) {
     return send(res, 202, { id });
   } catch (error) {
     const status = Number(error?.status) || 500;
-    if (stage === 'lecture du HTML dans le stockage privé' && (status === 404 || error?.code === 'BLOB_NOT_FOUND')) {
+    if (stage === 'lecture du HTML dans le stockage privé' && (status === 404 || error?.code === 'BLOB_NOT_FOUND' || isB2NotFound(error))) {
       return send(res, 410, { error: 'Le fichier a expiré. Sélectionne-le à nouveau pour relancer le rendu.' });
     }
     console.error('[RENDRAX render]', {
