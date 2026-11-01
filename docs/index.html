@@ -717,10 +717,23 @@ async function api(path, opts = {}) {
     error.status = 0;
     throw error;
   }
-  const data = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  let data = {};
+  try { data = responseText ? JSON.parse(responseText) : {}; }
+  catch (parseError) {
+    data = { error: responseText.slice(0, 600) || 'Réponse serveur non JSON.' };
+  }
   if (!response.ok) {
-    const error = new Error(data.error || ('Erreur serveur ' + response.status));
+    const message = data.error || data.message || ('Erreur serveur HTTP ' + response.status);
+    const details = [
+      'HTTP ' + response.status,
+      data.code ? 'code=' + data.code : '',
+      data.requestId ? 'requestId=' + data.requestId : '',
+      data.details ? String(data.details).slice(0, 500) : ''
+    ].filter(Boolean).join(' · ');
+    const error = new Error(message + (details ? ' [' + details + ']' : ''));
     error.status = response.status;
+    error.response = data;
     throw error;
   }
   return data;
@@ -1552,13 +1565,30 @@ function uploadPrivateBlob(url, file, type_fichier = 'html') {
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) status('Envoi sécurisé du ' + (type_fichier === 'zip' ? 'ZIP' : 'HTML') + '… ' + Math.round(e.loaded / e.total * 100) + '%');
     };
+    const xhrDiagnostics = eventName => {
+      const responseText = String(xhr.responseText || '').trim().slice(0, 700);
+      const parts = [
+        'événement=' + eventName,
+        'HTTP=' + (xhr.status || 0),
+        'readyState=' + xhr.readyState,
+        'responseURL=' + (xhr.responseURL ? 'présente' : 'absente'),
+        responseText ? 'réponse=' + responseText : ''
+      ].filter(Boolean);
+      return parts.join(' | ');
+    };
     xhr.onload = () => {
       currentUploadXhr = null;
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error('Le stockage privé a refusé le fichier (' + xhr.status + ').'));
+      else reject(new Error('Backblaze a répondu avec HTTP ' + xhr.status + '. ' + xhrDiagnostics('load')));
     };
-    xhr.onerror = () => { currentUploadXhr = null; reject(new Error('Le transfert a été interrompu par le réseau ou l’espace de stockage.')); };
-    xhr.ontimeout = () => { currentUploadXhr = null; reject(new Error('Le transfert a pris plus de 8 minutes sans réponse.')); };
+    xhr.onerror = () => {
+      currentUploadXhr = null;
+      reject(new Error('Échec réseau/CORS pendant le PUT vers Backblaze. Le navigateur masque parfois la réponse réelle quand CORS bloque la requête. ' + xhrDiagnostics('error')));
+    };
+    xhr.ontimeout = () => {
+      currentUploadXhr = null;
+      reject(new Error('Délai dépassé après 8 minutes. ' + xhrDiagnostics('timeout')));
+    };
     xhr.onabort = () => { currentUploadXhr = null; const e = new Error('annulé'); e.cancelled = true; reject(e); };
     xhr.send(file);
   });
@@ -1578,6 +1608,7 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
       lastError = error;
       status('Vérification de la réception du HTML…');
       let confirmed = false;
+      let checkFailure = null;
       try {
         const checkCaptcha = await captchaToken();
         if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
@@ -1586,14 +1617,20 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
           body: { id, captchaToken: checkCaptcha, size: file.size, type_fichier }
         });
         confirmed = check.uploaded === true;
+        if (!confirmed) checkFailure = 'upload-check : le serveur répond uploaded=false.';
       } catch (checkError) {
         if (checkError.cancelled || cancelled) {
           const e = new Error('annulé'); e.cancelled = true; throw e;
         }
+        checkFailure = 'upload-check : ' + (checkError.message || String(checkError));
       }
       if (confirmed) return;
       if (attempt === 1) {
-        throw new Error('Le stockage privé n’a pas confirmé la réception après deux tentatives. Vérifie la connexion et réessaie. Détail : ' + (lastError.message || 'transfert interrompu'));
+        throw new Error(
+          'Échec de l’envoi après deux tentatives. Diagnostic PUT : ' +
+          (lastError.message || 'erreur inconnue') +
+          (checkFailure ? ' | Diagnostic upload-check : ' + checkFailure : '')
+        );
       }
       status('Nouvelle tentative sécurisée…');
       const retryCaptcha = await captchaToken();
