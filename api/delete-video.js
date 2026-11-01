@@ -10,18 +10,27 @@ export default async function handler(req, res) {
 
   try {
     let record;
-    try { record = await b2GetJson(`video-meta/${id}.json`); }
-    catch (error) {
-      if (isB2NotFound(error)) return send(res, 404, { error: 'Cette vidéo n’existe plus ou a déjà été supprimée.' });
+    try {
+      record = await b2GetJson(`video-meta/${id}.json`);
+    } catch (error) {
+      if (isB2NotFound(error)) {
+        return send(res, 404, { error: 'Cette vidéo n’existe plus ou a déjà été supprimée.' });
+      }
       throw error;
     }
     if (record.id !== id) return send(res, 404, { error: 'Cette vidéo n’existe pas.' });
 
+    // Remove the published assets, metadata, original upload (HTML or ZIP),
+    // and the progress record associated with this render.
     await b2Delete([
       `videos/${id}.mp4`,
       `videos/${id}.jpg`,
-      `video-meta/${id}.json`
+      `video-meta/${id}.json`,
+      `incoming/${id}.html`,
+      `incoming/${id}.zip`,
+      `progress/${id}.json`
     ]);
+
     return send(res, 200, { success: true, deleted: true });
   } catch (error) {
     const result = publicError(error);
