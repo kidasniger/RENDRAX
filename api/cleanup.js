@@ -1,4 +1,4 @@
-import { del } from '@vercel/blob';
+import { b2Delete } from '../lib/b2-storage.js';
 import { readBody, sameOrigin, send, validJobId, verifyGitHubActionsRequest, publicError } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
@@ -14,10 +14,7 @@ export default async function handler(req, res) {
       await verifyGitHubActionsRequest(req, runId);
     }
     await Promise.all([
-      del(`incoming/${id}.${type_fichier}`),
-      del(`progress/${id}.json`).catch(error => {
-        if (error?.status !== 404) throw error;
-      })
+      b2Delete([`incoming/${id}.${type_fichier}`, `progress/${id}.json`])
     ]);
     return send(res, 200, { success: true });
   } catch (error) {
