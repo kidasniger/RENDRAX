@@ -1,0 +1,33 @@
+name: Nettoyage des vidéos expirées
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Supprimer les vidéos expirées de Vercel Blob
+        env:
+          OIDC_REQUEST_URL: ${{ secrets.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          OIDC_REQUEST_TOKEN: ${{ secrets.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible; vérifie id-token: write}"
+          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible; vérifie id-token: write}"
+          TOKEN_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
+          OIDC_TOKEN="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "$TOKEN_URL" | jq -er '.value')"
+          echo "::add-mask::${OIDC_TOKEN}"
+          BODY="$(jq -cn --arg run_id "$GITHUB_RUN_ID" '{run_id:$run_id}')"
+          curl --fail --silent --show-error --retry 2 \
+            -X POST "https://rendrax.vercel.app/api/cleanup-expired-videos" \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H "Content-Type: application/json" --data "$BODY"
