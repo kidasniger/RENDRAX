@@ -1600,7 +1600,7 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
       const signed = await api('/upload-url', {
         method: 'POST',
-        body: { id, captchaToken: retryCaptcha, type_fichier }
+        body: { id, captchaToken: retryCaptcha, type_fichier, size: file.size }
       });
       activeUrl = signed.url;
     }
