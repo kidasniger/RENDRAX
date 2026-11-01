@@ -25,6 +25,6 @@ jobs:
           echo "::add-mask::${OIDC_TOKEN}"
           BODY="$(jq -cn --arg run_id "$GITHUB_RUN_ID" '{run_id:$run_id}')"
           curl --fail --silent --show-error --retry 2 \
-            -X POST "https://rendrax.vercel.app/api/cleanup-expired-videos" \
+            -X POST "https://rendrax.vercel.app/api/videos?action=cleanup-expired" \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
             -H "Content-Type: application/json" --data "$BODY"
