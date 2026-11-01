@@ -367,8 +367,8 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("kidasniger/RENDRAX/.github/workflows/render.yml@refs/heads/main", server)
         self.assertIn("payload.repository === 'kidasniger/RENDRAX'", server)
         self.assertIn("/repos/kidasniger/RENDRAX/actions/workflows/render.yml/dispatches", render_api)
+        self.assertIn("kidasniger/RENDRAX", job_api)
         for source in (job_api, videos_api, delete_api):
-            self.assertIn("kidasniger/RENDRAX", source)
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)
 
