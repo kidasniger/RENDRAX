@@ -1,5 +1,4 @@
-import { get } from '@vercel/blob';
-import { Readable } from 'node:stream';
+import { b2Get, isB2NotFound } from '../lib/b2-storage.js';
 import { publicError, send, validJobId, verifyGitHubActionsRequest } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
@@ -17,17 +16,22 @@ export default async function handler(req, res) {
   try {
     await verifyGitHubActionsRequest(req, runId);
     const extension = type === 'zip' ? 'zip' : 'html';
-    const result = await get(`incoming/${id}.${extension}`, { access: 'private' });
-    if (!result || result.statusCode !== 200) {
+    let result;
+    try { result = await b2Get(`incoming/${id}.${extension}`); }
+    catch (error) {
+      if (isB2NotFound(error)) return send(res, 410, { error: 'Le fichier a expiré. Sélectionne-le à nouveau pour relancer le rendu.' });
+      throw error;
+    }
+    if (!result?.Body) {
       return send(res, 410, { error: 'Le fichier a expiré. Sélectionne-le à nouveau pour relancer le rendu.' });
     }
 
     res.statusCode = 200;
-    res.setHeader('Content-Type', result.blob.contentType || (extension === 'zip' ? 'application/zip' : 'text/html; charset=utf-8'));
+    res.setHeader('Content-Type', result.ContentType || (extension === 'zip' ? 'application/zip' : 'text/html; charset=utf-8'));
     res.setHeader('Content-Disposition', `attachment; filename="input.${extension}"`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    const stream = Readable.fromWeb(result.stream);
+    const stream = result.Body;
     stream.on('error', error => {
       if (res.headersSent) res.destroy(error);
       else {
