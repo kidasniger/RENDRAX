@@ -1908,7 +1908,7 @@ async function loadList() {
         del.disabled = true;
         try {
           if (openHistoryPlayer && openHistoryPlayer.panel.parentElement === li) closeHistoryPlayer();
-          await api('/delete-video', { method: 'POST', body: { releaseId: r.id, tag: r.tag_name } });
+          await api('/delete-video', { method: 'POST', body: { id: r.id } });
           loadList();
         } catch (e) { del.disabled = false; alert(explain(e)); }
       };
