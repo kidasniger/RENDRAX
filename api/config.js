@@ -4,7 +4,11 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   const required = {
     KIDAS_GITHUB_TOKEN: process.env.KIDAS_GITHUB_TOKEN,
-    BLOB_STORE_ID: process.env.BLOB_STORE_ID,
+    B2_KEY_ID: process.env.B2_KEY_ID,
+    B2_APPLICATION_KEY: process.env.B2_APPLICATION_KEY,
+    B2_BUCKET_NAME: process.env.B2_BUCKET_NAME,
+    B2_ENDPOINT: process.env.B2_ENDPOINT,
+    B2_REGION: process.env.B2_REGION,
     TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY
   };
