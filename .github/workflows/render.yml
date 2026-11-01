@@ -303,7 +303,7 @@ jobs:
             --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
 
       - name: Supprimer les fichiers temporaires
-        if: ${{ always() && (failure() || cancelled()) }}
+        if: ${{ always() }}
         env:
           BLOB_ID: ${{ inputs.blob_id }}
           TYPE_FICHIER: ${{ inputs.type_fichier }}
@@ -327,5 +327,5 @@ jobs:
               -H "Authorization: Bearer ${OIDC_TOKEN}" \
               -H "Content-Type: application/json" \
               --data "{\"id\":\"${BLOB_ID}\",\"run_id\":\"${GITHUB_RUN_ID}\",\"type_fichier\":\"${TYPE_FICHIER:-html}\"}" \
-              || echo "::warning::Le nettoyage du fichier privé a échoué; vérifie les journaux Vercel."
+              || echo "::warning::Le nettoyage du fichier source privé a échoué; vérifie les journaux Vercel."
           fi
