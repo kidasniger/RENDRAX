@@ -2,7 +2,7 @@ import checkResourcesHandler from '../lib/check-resources.js';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import https from 'node:https';
-import { put } from '@vercel/blob';
+import { b2Put } from '../lib/b2-storage.js';
 import {
   readBody,
   sameOrigin,
@@ -561,10 +561,6 @@ export default async function handler(req, res) {
   try {
     await verifyTurnstile(req, captchaToken);
 
-    if (!process.env.BLOB_STORE_ID) {
-      throw httpError(503, 'L’espace de stockage sécurisé n’est pas configuré.');
-    }
-
     stage = 'validation et téléchargement de l’URL';
     const downloaded = await downloadHtml(url);
     const html = downloaded.buffer.toString('utf8');
@@ -584,11 +580,9 @@ export default async function handler(req, res) {
     }
 
     stage = 'enregistrement du HTML dans le stockage privé';
-    await put('incoming/' + id + '.html', downloaded.buffer, {
-      access: 'private',
-      contentType: 'text/html',
-      addRandomSuffix: false,
-      allowOverwrite: true
+    await b2Put('incoming/' + id + '.html', downloaded.buffer, {
+      contentType: 'text/html; charset=utf-8',
+      cacheControl: 'private, no-store'
     });
 
     return send(res, 200, {
