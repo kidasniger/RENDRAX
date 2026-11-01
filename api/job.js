@@ -1,4 +1,4 @@
-import { get, put } from '@vercel/blob';
+import { b2GetJson, b2Put, isB2NotFound } from '../lib/b2-storage.js';
 import { githubRequest, readBody, send, validJobId, verifyGitHubActionsRequest, publicError } from '../lib/kidas-server.js';
 
 function releaseSummary(release) {
@@ -20,9 +20,9 @@ function releaseSummary(release) {
 
 async function readProgress(id) {
   try {
-    const result = await get(`progress/${id}.json`, { access: 'private' });
-    if (!result || result.statusCode !== 200) return null;
-    const progress = await new Response(result.stream).json();
+    let progress;
+    try { progress = await b2GetJson(`progress/${id}.json`); }
+    catch (error) { if (isB2NotFound(error)) return null; throw error; }
     const current = Number(progress.current);
     const total = Number(progress.total);
     const phase = ['rendu', 'temps_reel', 'assemblage'].includes(progress.phase)
@@ -62,17 +62,14 @@ export default async function handler(req, res) {
 
     try {
       await verifyGitHubActionsRequest(req, runId);
-      await put(`progress/${id}.json`, JSON.stringify({
+      await b2Put(`progress/${id}.json`, JSON.stringify({
         current: currentFrame,
         total: totalFrames,
         phase,
         updatedAt: Date.now()
       }), {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
         contentType: 'application/json; charset=utf-8',
-        cacheControlMaxAge: 0
+        cacheControl: 'private, no-store'
       });
       return send(res, 200, { success: true });
     } catch (error) {
@@ -123,9 +120,10 @@ export default async function handler(req, res) {
       }
     }
     if (run.status === 'completed' && run.conclusion === 'success') {
-      const published = await get(`video-meta/${id}.json`, { access: 'private' });
-      if (published && published.statusCode === 200) {
-        const metadata = await new Response(published.stream).json();
+      let metadata = null;
+      try { metadata = await b2GetJson(`video-meta/${id}.json`); }
+      catch (error) { if (!isB2NotFound(error)) throw error; }
+      if (metadata) {
         if (metadata.id === id && Date.parse(metadata.expires_at) > Date.now()) {
           result.release = {
             id,
@@ -137,7 +135,7 @@ export default async function handler(req, res) {
               name: `${metadata.name || 'video'}.mp4`,
               size: metadata.size,
               browser_download_url: `/d/${id}`,
-              thumbnail_url: `/api/video-thumbnail?id=${id}`
+              thumbnail_url: `/api/videos?action=thumbnail&id=${id}`
             }]
           };
         }
