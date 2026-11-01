@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { del, list } from '@vercel/blob';
+import { b2Delete, b2List } from '../lib/b2-storage.js';
 import { publicError, send } from '../lib/kidas-server.js';
 
 const MAX_AGE_MS = 2 * 60 * 60 * 1000;
@@ -21,27 +21,26 @@ export default async function handler(req, res) {
 
   try {
     const cutoff = Date.now() - MAX_AGE_MS;
-    let cursor;
+    let continuationToken;
     let hasMore = true;
     let scanned = 0;
     const stale = [];
 
     for (let pageNumber = 0; pageNumber < MAX_PAGES && hasMore; pageNumber += 1) {
-      const page = await list({ prefix: 'incoming/', limit: PAGE_SIZE, cursor });
-      const blobs = Array.isArray(page.blobs) ? page.blobs : [];
-      scanned += blobs.length;
-      for (const blob of blobs) {
-        const pathname = String(blob.pathname || '');
+      const page = await b2List({ prefix: 'incoming/', maxKeys: PAGE_SIZE, continuationToken });
+      scanned += page.objects.length;
+      for (const object of page.objects) {
+        const pathname = String(object.key || '');
         if (!PATH_PATTERN.test(pathname)) continue;
-        const uploadedAt = new Date(blob.uploadedAt).getTime();
+        const uploadedAt = new Date(object.lastModified).getTime();
         if (Number.isFinite(uploadedAt) && uploadedAt < cutoff) stale.push(pathname);
       }
-      cursor = page.cursor;
-      hasMore = Boolean(page.hasMore && cursor);
+      continuationToken = page.continuationToken;
+      hasMore = Boolean(page.hasMore && continuationToken);
     }
 
     for (let i = 0; i < stale.length; i += 100) {
-      await del(stale.slice(i, i + 100));
+      await b2Delete(stale.slice(i, i + 100));
     }
 
     return send(res, 200, {
