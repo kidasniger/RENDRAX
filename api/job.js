@@ -123,11 +123,24 @@ export default async function handler(req, res) {
       }
     }
     if (run.status === 'completed' && run.conclusion === 'success') {
-      try {
-        const release = await githubRequest(`/repos/kidasniger/RENDRAX/releases/tags/${encodeURIComponent(id)}`);
-        result.release = releaseSummary(release.data);
-      } catch (error) {
-        if (error.status !== 404) throw error;
+      const published = await get(`video-meta/${id}.json`, { access: 'private' });
+      if (published && published.statusCode === 200) {
+        const metadata = await new Response(published.stream).json();
+        if (metadata.id === id && Date.parse(metadata.expires_at) > Date.now()) {
+          result.release = {
+            id,
+            tag_name: id,
+            name: metadata.name,
+            created_at: metadata.created_at,
+            expires_at: metadata.expires_at,
+            assets: [{
+              name: `${metadata.name || 'video'}.mp4`,
+              size: metadata.size,
+              browser_download_url: `/d/${id}`,
+              thumbnail_url: `/api/video-thumbnail?id=${id}`
+            }]
+          };
+        }
       }
     }
     return send(res, 200, result);
