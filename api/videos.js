@@ -66,12 +66,15 @@ async function listVideos(res) {
 
 async function createUploadUrls(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
-  const { id, run_id: runId } = readBody(req);
+  const { id, run_id: runId, video_size: videoSize, thumbnail_size: thumbnailSize } = readBody(req);
   if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) return send(res, 400, { error: 'Publication vidéo non reconnue.' });
+  const videoBytes = Number(videoSize);
+  const thumbnailBytes = Number(thumbnailSize);
+  if (!Number.isSafeInteger(videoBytes) || videoBytes < 1 || videoBytes > MAX_VIDEO_BYTES || !Number.isSafeInteger(thumbnailBytes) || thumbnailBytes < 1 || thumbnailBytes > MAX_THUMBNAIL_BYTES) return send(res, 400, { error: 'La taille du MP4 ou de la miniature est invalide.' });
   await verifyGitHubActionsRequest(req, runId);
   const [videoUrl, thumbnailUrl] = await Promise.all([
-    b2PresignPut(`videos/${id}.mp4`, 'video/mp4', 10 * 60),
-    b2PresignPut(`videos/${id}.jpg`, 'image/jpeg', 10 * 60)
+    b2PresignPut(`videos/${id}.mp4`, 'video/mp4', videoBytes, 10 * 60),
+    b2PresignPut(`videos/${id}.jpg`, 'image/jpeg', thumbnailBytes, 10 * 60)
   ]);
   return send(res, 200, { videoUrl, thumbnailUrl });
 }
