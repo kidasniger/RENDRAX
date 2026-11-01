@@ -1,4 +1,4 @@
-import { del, get } from '@vercel/blob';
+import { b2Delete, b2GetJson, isB2NotFound } from '../lib/b2-storage.js';
 import { readBody, sameOrigin, send, validJobId, publicError } from '../lib/kidas-server.js';
 
 export default async function handler(req, res) {
@@ -9,14 +9,15 @@ export default async function handler(req, res) {
   if (!validJobId(id)) return send(res, 400, { error: 'La vidéo ou son identifiant n’est pas reconnu.' });
 
   try {
-    const metadata = await get(`video-meta/${id}.json`, { access: 'private' });
-    if (!metadata || metadata.statusCode !== 200) {
-      return send(res, 404, { error: 'Cette vidéo n’existe plus ou a déjà été supprimée.' });
+    let record;
+    try { record = await b2GetJson(`video-meta/${id}.json`); }
+    catch (error) {
+      if (isB2NotFound(error)) return send(res, 404, { error: 'Cette vidéo n’existe plus ou a déjà été supprimée.' });
+      throw error;
     }
-    const record = await new Response(metadata.stream).json();
     if (record.id !== id) return send(res, 404, { error: 'Cette vidéo n’existe pas.' });
 
-    await del([
+    await b2Delete([
       `videos/${id}.mp4`,
       `videos/${id}.jpg`,
       `video-meta/${id}.json`
