@@ -8,7 +8,7 @@ const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   const { id, run_id: runId, name } = readBody(req);
-  if (!validJobId(id) || !/^\\d{1,20}$/.test(String(runId || ''))) {
+  if (!validJobId(id) || !/^\d{1,20}$/.test(String(runId || ''))) {
     return send(res, 400, { error: 'Publication vidéo non reconnue.' });
   }
 
