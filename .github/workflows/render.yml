@@ -282,25 +282,45 @@ jobs:
             echo "Miniature créée : $thumbnail ($(stat -c '%s' "$thumbnail") octets, image à ${timestamp}s)"
           done
 
-      - name: Publier le MP4 (artefact)
-        uses: actions/upload-artifact@v4
-        with:
-          name: video-mp4
-          path: "**/*.mp4"
-          if-no-files-found: error
-
-      - name: Publier le MP4 (Release, pour la page web)
-        if: ${{ inputs.tag != '' }}
+      - name: Publier le MP4 dans Vercel Blob privé
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ inputs.tag }}
+          VIDEO_ID: ${{ inputs.tag }}
+          VIDEO_NAME: ${{ inputs.nom }}
         run: |
           set -euo pipefail
-          mapfile -d '' assets < <(find . -type f \( -name '*.mp4' -o -name '*.jpg' \) -not -path './.git/*' -print0 | sort -z)
-          (("${#assets[@]}" > 0)) || { echo "::error::Aucun fichier vidéo ou miniature à publier."; exit 1; }
-          gh release create "$TAG" "${assets[@]}" \
-            --title "Vidéo $TAG" --notes "Générée par le workflow Rendu vidéo."
+          [[ "$VIDEO_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant vidéo RENDRAX invalide."; exit 1; }
+          mapfile -d '' videos < <(find . -type f -name '*.mp4' -not -path './.git/*' -print0 | sort -z)
+          (("${#videos[@]}" == 1)) || { echo "::error::Un seul MP4 final est attendu."; exit 1; }
+          video="${videos[0]}"
+          thumbnail="${video%.*}.jpg"
+          test -s "$video" && test -s "$thumbnail" || { echo "::error::MP4 ou miniature manquant."; exit 1; }
+
+          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC indisponible; vérifie id-token: write}"
+          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC indisponible; vérifie id-token: write}"
+          OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Frendrax.vercel.app%2Fkidas-render"
+          OIDC_TOKEN="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "$OIDC_REQUEST_URL" | jq -er '.value')"
+          echo "::add-mask::${OIDC_TOKEN}"
+
+          upload="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" '{id:$id,run_id:$run_id}')"
+          urls="$(curl --fail --silent --show-error --retry 2 \
+            -X POST "https://rendrax.vercel.app/api/video-upload-url" \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H "Content-Type: application/json" --data "$upload")"
+          video_url="$(jq -er '.videoUrl' <<< "$urls")"
+          thumbnail_url="$(jq -er '.thumbnailUrl' <<< "$urls")"
+
+          curl --fail --silent --show-error --location --retry 2 \
+            -X PUT "$video_url" -H "Content-Type: video/mp4" --data-binary "@$video"
+          curl --fail --silent --show-error --location --retry 2 \
+            -X PUT "$thumbnail_url" -H "Content-Type: image/jpeg" --data-binary "@$thumbnail"
+
+          publish="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" --arg name "${VIDEO_NAME:-video}" '{id:$id,run_id:$run_id,name:$name}')"
+          curl --fail --silent --show-error --retry 2 \
+            -X POST "https://rendrax.vercel.app/api/video-publish" \
+            -H "Authorization: Bearer ${OIDC_TOKEN}" \
+            -H "Content-Type: application/json" --data "$publish"
 
       - name: Supprimer les fichiers temporaires
         if: ${{ always() }}
