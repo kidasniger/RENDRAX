@@ -13,7 +13,7 @@
   "rewrites": [
     {
       "source": "/d/:id",
-      "destination": "/api/video-download?id=:id"
+      "destination": "/api/videos?action=download&id=:id"
     },
     {
       "source": "/api/check-resources",
