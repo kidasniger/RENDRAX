@@ -2033,7 +2033,7 @@ async function go(testOnly = false) {
       status('Vérification de sécurité…');
       const uploadCaptcha = await captchaToken();
       if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
-      const signed = await api('/upload-url', { method: 'POST', body: { id: sourceId, captchaToken: uploadCaptcha, type_fichier } });
+      const signed = await api('/upload-url', { method: 'POST', body: { id: sourceId, captchaToken: uploadCaptcha, type_fichier, size: f.size } });
       await uploadPrivateBlobWithRecovery(signed.url, sourceId, f, type_fichier);
       uploadComplete = true;
     }
