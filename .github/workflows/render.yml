@@ -305,7 +305,7 @@ jobs:
 
           upload="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" '{id:$id,run_id:$run_id}')"
           urls="$(curl --fail --silent --show-error --retry 2 \
-            -X POST "https://rendrax.vercel.app/api/video-upload-url" \
+            -X POST "https://rendrax.vercel.app/api/videos?action=upload-url" \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
             -H "Content-Type: application/json" --data "$upload")"
           video_url="$(jq -er '.videoUrl' <<< "$urls")"
@@ -318,7 +318,7 @@ jobs:
 
           publish="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" --arg name "${VIDEO_NAME:-video}" '{id:$id,run_id:$run_id,name:$name}')"
           curl --fail --silent --show-error --retry 2 \
-            -X POST "https://rendrax.vercel.app/api/video-publish" \
+            -X POST "https://rendrax.vercel.app/api/videos?action=publish" \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
             -H "Content-Type: application/json" --data "$publish"
 
