@@ -303,7 +303,9 @@ jobs:
             "$OIDC_REQUEST_URL" | jq -er '.value')"
           echo "::add-mask::${OIDC_TOKEN}"
 
-          upload="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" '{id:$id,run_id:$run_id}')"
+          video_size="$(stat -c '%s' "$video")"
+          thumbnail_size="$(stat -c '%s' "$thumbnail")"
+          upload="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" --argjson video_size "$video_size" --argjson thumbnail_size "$thumbnail_size" '{id:$id,run_id:$run_id,video_size:$video_size,thumbnail_size:$thumbnail_size}')"
           urls="$(curl --fail --silent --show-error --retry 2 \
             -X POST "https://rendrax.vercel.app/api/videos?action=upload-url" \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
