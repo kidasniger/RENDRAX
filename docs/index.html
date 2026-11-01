@@ -1651,7 +1651,7 @@ function showResult(rel) {
   dl.textContent = 'Télécharger (' + size(a.size) + ')';
   const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
   cp.onclick = async () => {
-    try { await navigator.clipboard.writeText(a.browser_download_url); cp.textContent = 'Lien copié ✓'; }
+    try { await navigator.clipboard.writeText(shareUrl); cp.textContent = 'Lien copié ✓'; }
     catch (e) { window.prompt('Copie ce lien :', a.browser_download_url); }
     setTimeout(() => { cp.textContent = 'Copier le lien'; }, 2000);
   };
@@ -1663,7 +1663,7 @@ function showResult(rel) {
   }
 
   const shareText = 'Regarde cette vidéo créée avec RENDRAX :';
-  const shareUrl = a.browser_download_url;
+  const shareUrl = new URL(a.browser_download_url, window.location.origin).href;
   const shareLinks = [
     {
       label: 'WhatsApp',
