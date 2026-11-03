@@ -112,6 +112,13 @@ button.go{min-height:54px;font-size:1.02rem;margin-top:16px}
 button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
 input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
 #audioOffsetValue{float:right;font-variant-numeric:tabular-nums;font-weight:700}
+.audio-offset-controls{display:grid;gap:9px;margin-top:8px}
+.audio-offset-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+button.audio-offset-step{width:100%;min-height:42px;padding:7px 5px;font-size:.86rem;font-variant-numeric:tabular-nums}
+.audio-offset-number{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px}
+.audio-offset-number label{grid-column:1/-1;margin:0 0 -3px}
+.audio-offset-number input{width:100%;min-width:0;min-height:44px;padding:8px 11px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2);color:var(--tx);font:600 .95rem/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.audio-offset-number button{min-width:48px;min-height:44px;justify-self:end}
 
 
 /* zone de dépôt */
@@ -561,7 +568,20 @@ ul#list button{box-shadow:none}
       </div>
       <div class="field field-wide">
         <label for="audioOffset">Décalage du son <output id="audioOffsetValue" for="audioOffset">0 ms</output></label>
-        <input id="audioOffset" type="range" min="-2000" max="2000" step="50" value="0">
+        <input id="audioOffset" type="range" min="-2000" max="2000" step="10" value="0">
+        <div class="audio-offset-controls" aria-label="Réglage précis du décalage audio">
+          <div class="audio-offset-steps" aria-label="Ajustement rapide">
+            <button class="sec audio-offset-step" type="button" data-offset-step="-50" aria-label="Avancer le son de 50 millisecondes">−50</button>
+            <button class="sec audio-offset-step" type="button" data-offset-step="-10" aria-label="Avancer le son de 10 millisecondes">−10</button>
+            <button class="sec audio-offset-step" type="button" data-offset-step="10" aria-label="Retarder le son de 10 millisecondes">+10</button>
+            <button class="sec audio-offset-step" type="button" data-offset-step="50" aria-label="Retarder le son de 50 millisecondes">+50</button>
+          </div>
+          <div class="audio-offset-number">
+            <label for="audioOffsetNumber">Valeur en ms</label>
+            <input id="audioOffsetNumber" type="number" min="-2000" max="2000" step="10" value="0" inputmode="numeric">
+            <button id="audioOffsetReset" class="sec" type="button" aria-label="Remettre le décalage audio à zéro">0</button>
+          </div>
+        </div>
         <p class="mut">Valeur positive : retarde le son. Valeur négative : avance le son. Plage : −2 000 à +2 000 ms.</p>
       </div>
       <div class="field field-wide">
@@ -2657,10 +2677,27 @@ $('#rdx-hero-file-cta').addEventListener('click', () => {
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#go').onclick = () => go(false);
 $('#testRender').onclick = () => go(true);
-$('#audioOffset').oninput = () => {
-  const value = Number($('#audioOffset').value);
-  $('#audioOffsetValue').textContent = (value > 0 ? '+' : '') + value + ' ms';
-};
+function setAudioOffset(value, persist = true) {
+  const slider = $('#audioOffset');
+  const number = $('#audioOffsetNumber');
+  const parsed = Number(value);
+  const bounded = Number.isFinite(parsed) ? Math.round(Math.max(-2000, Math.min(2000, parsed)) / 10) * 10 : 0;
+  slider.value = String(bounded);
+  number.value = String(bounded);
+  $('#audioOffsetValue').textContent = (bounded > 0 ? '+' : '') + bounded + ' ms';
+  updateAdvancedSettingsSummary();
+  if (persist) saveRenderPrefs();
+}
+$('#audioOffset').addEventListener('input', () => setAudioOffset($('#audioOffset').value, false));
+$('#audioOffset').addEventListener('change', () => setAudioOffset($('#audioOffset').value));
+$('#audioOffsetNumber').addEventListener('input', () => {
+  if ($('#audioOffsetNumber').value.trim() !== '') setAudioOffset($('#audioOffsetNumber').value, false);
+});
+$('#audioOffsetNumber').addEventListener('change', () => setAudioOffset($('#audioOffsetNumber').value));
+document.querySelectorAll('[data-offset-step]').forEach(button => {
+  button.addEventListener('click', () => setAudioOffset(Number($('#audioOffset').value) + Number(button.dataset.offsetStep)));
+});
+$('#audioOffsetReset').addEventListener('click', () => setAudioOffset(0));
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
 $('#format').addEventListener('change', applyPreviewFormat);
