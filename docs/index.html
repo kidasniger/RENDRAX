@@ -1683,7 +1683,7 @@ function validateImportUrl(value) {
   if (!raw) return { valid: false, message: 'Colle un lien HTTPS vers un fichier HTML.' };
   if (raw.length > 2048) return { valid: false, message: 'L’URL dépasse la limite de 2 048 caractères.' };
   if (!/^https:\/\//i.test(raw)) {
-    return { valid: false, message: /^http:\/\//i.test(raw) ? 'Le lien doit commencer par https://' : 'Le lien doit commencer par https://'; };
+    return { valid: false, message: 'Le lien doit commencer par https://' };
   }
   let parsed;
   try { parsed = new URL(raw); }
@@ -1692,7 +1692,7 @@ function validateImportUrl(value) {
   const labels = hostname.split('.');
   const validDomain = hostname.length <= 253 && labels.length >= 2 && labels.every(label =>
     label.length >= 1 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label)
-  ) && /^[a-z]{2,63}$/i.test(labels[labels.length - 1]);
+  ) && /^(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})$/i.test(labels[labels.length - 1]);
   if (!validDomain || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) {
     return { valid: false, message: 'Le domaine est invalide ou le lien utilise un port non autorisé.' };
   }
