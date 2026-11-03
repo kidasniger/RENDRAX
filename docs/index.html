@@ -84,6 +84,17 @@ h2{font-size:1.02rem;margin:0;font-weight:700;letter-spacing:-.01em}
 /* formulaires */
 .prefs-reset{display:inline-block;width:auto;min-height:0;margin:8px 0 0;padding:2px 0;border:0;border-radius:0;background:transparent;color:var(--mut);font-size:.78rem;font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .prefs-reset:hover{background:transparent;color:var(--ac)}
+.prefs-memory{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px}
+.prefs-memory-status{margin:0;color:var(--mut);font-size:.76rem;line-height:1.4}
+.prefs-memory .prefs-reset{flex:0 0 auto;margin:0}
+.prefs-dialog{width:min( calc(100% - 32px), 420px);padding:0;border:1px solid var(--bd);border-radius:18px;background:var(--surf);color:var(--tx);box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.prefs-dialog::backdrop{background:rgba(8,12,24,.58);backdrop-filter:blur(3px)}
+.prefs-dialog-content{padding:20px}
+.prefs-dialog h3{margin:0 0 8px;font-size:1.08rem}
+.prefs-dialog p{margin:0;color:var(--mut);font-size:.9rem}
+.prefs-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.prefs-dialog-actions button{width:auto;min-height:44px;margin:0;padding:9px 16px}
+@media(max-width:380px){.prefs-dialog-actions{flex-direction:column-reverse}.prefs-dialog-actions button{width:100%}}
 
 label{display:block;font-weight:600;margin:0 0 6px;font-size:.82rem;color:var(--mut)}
 .field{display:flex;flex-direction:column;min-width:0}
@@ -615,7 +626,20 @@ ul#list button{box-shadow:none}
     </div>
     <button id="advancedSettingsToggle" class="sec advanced-settings-toggle" type="button" aria-expanded="false" aria-controls="advancedSettings">Réglages avancés</button>
     <p id="advancedSettingsSummary" class="advanced-settings-summary" aria-live="polite"><span class="advanced-settings-dot" aria-hidden="true" hidden></span><span id="advancedSettingsSummaryText">Auto · Auto · Son 0 ms · Volume égalisé</span></p>
-    <button id="resetRenderPrefs" class="prefs-reset" type="button">Remettre les réglages par défaut</button>
+    <div class="prefs-memory">
+      <p id="renderPrefsMemory" class="prefs-memory-status" role="status" aria-live="polite">Aucun réglage personnalisé mémorisé.</p>
+      <button id="resetRenderPrefs" class="prefs-reset" type="button">Réinitialiser</button>
+    </div>
+    <dialog id="resetPrefsDialog" class="prefs-dialog" aria-labelledby="resetPrefsTitle" aria-describedby="resetPrefsDescription">
+      <div class="prefs-dialog-content">
+        <h3 id="resetPrefsTitle">Réinitialiser les réglages ?</h3>
+        <p id="resetPrefsDescription">Les options personnalisées seront effacées et les valeurs par défaut rétablies sur cet appareil.</p>
+        <div class="prefs-dialog-actions">
+          <button id="cancelResetPrefs" class="sec" type="button">Annuler</button>
+          <button id="confirmResetPrefs" class="danger" type="button">Réinitialiser</button>
+        </div>
+      </div>
+    </dialog>
     <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
@@ -781,16 +805,33 @@ function readRenderPrefs() {
   if (typeof prefs.watermark === 'boolean') $('#watermark').checked = prefs.watermark;
   if (typeof prefs.loudnorm === 'boolean') $('#loudnorm').checked = prefs.loudnorm;
   setAdvancedSettings(prefs.advanced === true, false);
+  updateRenderPrefsMemory(prefs.savedAt || null);
+}
+function updateRenderPrefsMemory(savedAt) {
+  const output = $('#renderPrefsMemory');
+  if (!output) return;
+  if (!savedAt) {
+    output.textContent = 'Aucun réglage personnalisé mémorisé.';
+    return;
+  }
+  const date = new Date(savedAt);
+  const dateLabel = Number.isNaN(date.getTime())
+    ? 'date non disponible'
+    : new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  output.textContent = 'Réglages mémorisés sur cet appareil · ' + dateLabel;
 }
 function saveRenderPrefs() {
+  const savedAt = new Date().toISOString();
   store.set(PREFS_KEY, JSON.stringify({
     mode: $('#mode').value,
     format: $('#format').value,
     duration: $('#duration').value,
     watermark: $('#watermark').checked,
     loudnorm: $('#loudnorm').checked,
-    advanced: $('#advancedSettingsToggle').getAttribute('aria-expanded') === 'true'
+    advanced: $('#advancedSettingsToggle').getAttribute('aria-expanded') === 'true',
+    savedAt
   }));
+  updateRenderPrefsMemory(savedAt);
 }
 function updateAdvancedSettingsSummary() {
   const summary = $('#advancedSettingsSummary');
@@ -978,17 +1019,38 @@ function initRenderPrefs() {
   ['mode', 'format', 'duration', 'watermark', 'loudnorm'].forEach(id => {
     $('#' + id).addEventListener('change', () => { saveRenderPrefs(); updateRenderEstimate(); });
   });
+  const dialog = $('#resetPrefsDialog');
   $('#resetRenderPrefs').addEventListener('click', () => {
-    $('#mode').value = 'full';
-    $('#mode').dispatchEvent(new Event('change', { bubbles: true }));
-    $('#format').value = 'auto';
-    $('#duration').value = '0';
-    $('#watermark').checked = false;
-    $('#loudnorm').checked = true;
-    setAdvancedSettings(false, false);
-    store.set(PREFS_KEY, null);
-    updateRenderEstimate();
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else if (window.confirm('Réinitialiser les réglages personnalisés ?')) resetRenderPrefsToDefaults();
   });
+  $('#cancelResetPrefs').addEventListener('click', () => dialog.close());
+  $('#confirmResetPrefs').addEventListener('click', () => {
+    resetRenderPrefsToDefaults();
+    dialog.close();
+  });
+  dialog.addEventListener('click', event => {
+    if (event.target === dialog) dialog.close();
+  });
+}
+function resetRenderPrefsToDefaults() {
+  $('#mode').value = 'full';
+  $('#mode').dispatchEvent(new Event('change', { bubbles: true }));
+  $('#format').value = 'auto';
+  $('#format').dispatchEvent(new Event('change', { bubbles: true }));
+  $('#duration').value = '0';
+  $('#duration').dispatchEvent(new Event('change', { bubbles: true }));
+  $('#watermark').checked = false;
+  $('#watermark').dispatchEvent(new Event('change', { bubbles: true }));
+  $('#loudnorm').checked = true;
+  $('#loudnorm').dispatchEvent(new Event('change', { bubbles: true }));
+  setAdvancedSettings(false, false);
+  store.set(PREFS_KEY, null);
+  updateRenderPrefsMemory(null);
+  updateRenderEstimate();
+  if (typeof syncUsagePresets === 'function') syncUsagePresets();
+  if (typeof syncAudioOffsetControls === 'function') syncAudioOffsetControls();
+}
 }
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
