@@ -737,3 +737,17 @@ main.rdx-main .drop-error[hidden]{display:none}
 #rdx-upload-bar::-moz-progress-bar{background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:999px}
 #rdx-upload-speed{margin:8px 0 0;color:var(--mut);font-size:.8rem;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce){#rdx-upload-bar{animation:none;transition:none}}
+
+
+/* Import direct de code HTML */
+.rdx-source-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.rdx-source-tab{min-width:0;margin:0}
+.rdx-source-tab.is-active{border-color:var(--ac);color:var(--ac);background:var(--surf2);font-weight:700}
+.rdx-paste-panel{display:flex;flex-direction:column;gap:9px}
+.rdx-paste-panel>label{font-weight:650;font-size:.9rem}
+.rdx-paste-html{display:block;width:100%;min-height:220px;resize:vertical;padding:13px;border:1px solid var(--bd);border-radius:14px;background:var(--surf2);color:var(--tx);font: .84rem/1.55 var(--mono);tab-size:2;white-space:pre;overflow:auto}
+.rdx-paste-html:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.rdx-paste-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rdx-paste-footer small{font-variant-numeric:tabular-nums}
+.rdx-paste-footer .go{width:auto;min-height:42px;padding:9px 16px}
+@media(max-width:380px){.rdx-paste-footer{align-items:stretch;flex-direction:column}.rdx-paste-footer .go{width:100%}}
