@@ -230,7 +230,7 @@ html.rdx-ready .rdx-splash{opacity:0;visibility:hidden;pointer-events:none}
   .rdx-hero .sub{font-size:.95rem;line-height:1.65}
   .rdx-hero-meta{margin-top:17px;gap:7px}
   .rdx-hero-meta span{font-size:.72rem;padding:7px 10px}
-  .rdx-hero-visual{min-height:245px;border-radius:23px}
+  .rdx-hero-visual{display:none}
   .rdx-code-card{top:14%;left:5%;width:63%;padding:11px}
   .rdx-video-card{right:5%;bottom:10%;width:39%}
   .rdx-pill-secure{left:5%;bottom:8%;font-size:.61rem}
