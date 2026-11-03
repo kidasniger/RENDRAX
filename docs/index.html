@@ -1006,10 +1006,15 @@ function analyze(t, sizeBytes = null) {
   const findings = [];
   const add = (level, title, detail, action = '') => findings.push({ level, title, detail, action });
 
-  if (typeof t !== 'string' || t.trim().length < 20 ||
+  if (typeof t !== 'string' || !t.trim()) {
+    const label = 'Le fichier HTML est vide : aucun contenu à analyser.';
+    add('blocking', 'Fichier HTML vide', label, 'Ajoute le code HTML puis sélectionne à nouveau le fichier.');
+    return { kind: 'invalid', label, findings, blocking: true };
+  }
+  if (t.trim().length < 20 ||
       !/<(?:!doctype|html|head|body|script|svg|canvas|div|style)\b/i.test(t)) {
-    const label = 'Ce fichier ne ressemble pas à une page HTML.';
-    add('blocking', 'Format HTML invalide', label, 'Sélectionne un fichier HTML ou HTM valide.');
+    const label = 'Ce fichier ne ressemble pas à une page HTML valide.';
+    add('blocking', 'Format HTML invalide', label, 'Vérifie le contenu et sélectionne une page HTML ou HTM complète.');
     return { kind: 'invalid', label, findings, blocking: true };
   }
 
@@ -1464,7 +1469,9 @@ async function inspectZip(file, token) {
       zipSelection.analysis = { kind: 'invalid', label: 'Le ZIP ne contient aucun fichier .html ou .htm.' };
       $('#zipSummary').textContent = 'Archive ouverte · ' + entries.length + ' fichier(s) trouvé(s), aucun HTML principal.';
       configureZipMainPicker([], '');
-      return showVerdict(zipSelection.analysis, 'err', '✗ Le ZIP ne contient aucun fichier .html ou .htm.');
+      const message = 'Ce ZIP ne contient aucune page HTML ou HTM.';
+      setDropState('error', message + ' Ajoute une page .html ou .htm à l’archive, puis réessaie.');
+      return showVerdict(zipSelection.analysis, 'err', '✗ ' + message + ' Ajoute une page .html ou .htm à l’archive, puis réessaie.');
     }
     const rootIndex = htmlPaths.filter(path => path.toLowerCase() === 'index.html');
     const indexFiles = htmlPaths.filter(path => path.split('/').pop().toLowerCase() === 'index.html');
@@ -1530,13 +1537,16 @@ async function checkFile() {
   $('#fileinfo').textContent = f.name + ' · ' + size(f.size);
   if (!/\.(?:html?|zip)$/i.test(f.name)) {
     zipSelection = null; clearZipInspector();
-    setDropState('error', 'Format non pris en charge. Choisis un fichier .html, .htm ou .zip.');
-    return showVerdict({ kind: 'invalid', label: 'Format de fichier non pris en charge.' }, 'err', '✗ Choisis un fichier .html, .htm ou .zip. Import bloqué.');
+    const message = 'Format refusé : « ' + f.name + ' ». Formats acceptés : .html, .htm et .zip. Renomme ou exporte ton fichier dans l’un de ces formats.';
+    setDropState('error', message);
+    return showVerdict({ kind: 'invalid', label: 'Format de fichier non pris en charge.' }, 'err', '✗ ' + message);
   }
   if (f.size > MAX_BYTES) {
     zipSelection = null; clearZipInspector();
-    setDropState('error', 'Fichier trop volumineux : la limite est de 50 Mo.');
-    return showVerdict({ kind: 'invalid', label: 'Fichier trop volumineux.' }, 'err', '✗ Fichier trop gros (50 Mo maximum). Import bloqué.');
+    const actualSize = size(f.size);
+    const message = 'Fichier trop volumineux : ' + actualSize + ' (limite : 50 Mo). Réduis sa taille ou compresse ses ressources, puis réessaie.';
+    setDropState('error', message);
+    return showVerdict({ kind: 'invalid', label: 'Fichier trop volumineux (' + actualSize + ').' }, 'err', '✗ ' + message);
   }
   setDropState('accepted', '', f);
   if (/\.zip$/i.test(f.name)) return inspectZip(f, token);
@@ -1546,7 +1556,10 @@ async function checkFile() {
   showVerdict(null, 'mut', 'Vérification du fichier…');
   let v;
   try { fileText = await f.text(); v = analyze(fileText, f.size); } catch (e) { v = { kind: 'invalid', label: 'Lecture du fichier impossible.', blocking: true }; }
-  if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
+  if (v.kind === 'invalid') {
+    setDropState('error', v.label + ' Action : vérifie le contenu du fichier et sélectionne une page HTML complète.');
+    return showVerdict(v, 'err', '✗ ' + v.label + ' Vérifie le contenu puis réessaie.');
+  }
   $('#prevBtn').hidden = false;
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
   else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
@@ -1655,11 +1668,12 @@ function setFile(files) {
   if (!files || !files.length) return;
   const file = files[0];
   if (!/\.(?:html?|zip)$/i.test(file.name)) {
-    setDropState('error', 'Format non pris en charge. Choisis un fichier .html, .htm ou .zip.');
+    setDropState('error', 'Format refusé : « ' + file.name + ' ». Formats acceptés : .html, .htm et .zip. Renomme ou exporte ton fichier dans l’un de ces formats.');
     return;
   }
   if (file.size > MAX_BYTES) {
-    setDropState('error', 'Fichier trop volumineux : la limite est de 50 Mo.');
+    const actualSize = size(file.size);
+    setDropState('error', 'Fichier trop volumineux : ' + actualSize + ' (limite : 50 Mo). Réduis sa taille ou compresse ses ressources, puis réessaie.');
     return;
   }
   const dt = new DataTransfer(); dt.items.add(file); $('#file').files = dt.files;
