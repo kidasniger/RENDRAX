@@ -225,6 +225,10 @@ video{width:100%;max-height:70vh;border-radius:var(--rs);background:#000;margin-
 .example-copy span{font-size:.78rem;color:var(--mut)}
 .example-download{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:7px 13px;border:1px solid var(--bd);border-radius:999px;background:var(--surf2);color:var(--tx);font-size:.82rem;font-weight:700;text-decoration:none}
 .example-download:hover{border-color:var(--ac);color:var(--ac)}
+.example-try{flex:0 0 auto;width:auto;min-height:44px;margin:0;padding:8px 13px;border:1px solid var(--bd);border-radius:999px;background:var(--surf2);color:var(--tx);font-size:.82rem;font-weight:700;white-space:nowrap}
+.example-try:hover{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 8%,var(--surf2));color:var(--ac)}
+.example-try:disabled{opacity:.65;cursor:wait}
+@media(max-width:420px){.example-try{min-height:44px;padding:7px 10px;font-size:.75rem}}
 @media(max-width:420px){.example-row{align-items:flex-start}.example-download{min-height:36px;padding:6px 10px;font-size:.76rem}}
 
 /* historique */
@@ -606,11 +610,11 @@ ul#list button{box-shadow:none}
     <summary class="examples-toggle"><span class="head" style="margin:0"><span class="num" aria-hidden="true">05</span><span><h2 id="h-examples">Exemples HTML complets</h2></span></span></summary>
     <p class="examples-intro">Voici cinq fichiers HTML complets déjà présents dans le dépôt. Leurs animations, scripts et pistes audio intégrées sont conservés : ce ne sont pas des modèles recréés ou simplifiés.</p>
     <ul class="example-list">
-      <li class="example-row"><span class="example-copy"><strong>10 Technologies pour créer ton site web</strong><span>Portrait 1080 × 1920 · 69,96 s · GSAP · audio MP3 intégré.</span></span><a class="example-download" href="exemples/10-technologies-motion.html" download="10-technologies-motion.html">Télécharger</a></li>
-      <li class="example-row"><span class="example-copy"><strong>BAK Power Services — RENDRAX</strong><span>Paysage 1920 × 1080 · 44,83 s · React + GSAP · audio MP3 intégré.</span></span><a class="example-download" href="exemples/bak-power-services-rendrax-paysage-v4-musique-v2.html" download="bak-power-services-rendrax-paysage-v4-musique-v2.html">Télécharger</a></li>
-      <li class="example-row"><span class="example-copy"><strong>KIDAS — Vidéo v2</strong><span>Portrait · React · voix et musique MP3 intégrées.</span></span><a class="example-download" href="exemples/kidas.html" download="kidas.html">Télécharger</a></li>
-      <li class="example-row"><span class="example-copy"><strong>RENDRAX — Présentation</strong><span>Portrait 1080 × 1920 · 67,63 s · GSAP · audio MP3 intégré.</span></span><a class="example-download" href="exemples/rendrax-promo.html" download="rendrax-promo.html">Télécharger</a></li>
-      <li class="example-row"><span class="example-copy"><strong>EditPro — Vidéo 60 s</strong><span>Canvas · images intégrées · voix MP3 encodée dans les données HTML.</span></span><a class="example-download" href="exemples/editpro.html" download="editpro.html">Télécharger</a></li>
+      <li class="example-row"><span class="example-copy"><strong>10 Technologies pour créer ton site web</strong><span>Portrait 1080 × 1920 · 69,96 s · GSAP · audio MP3 intégré.</span></span><button class="example-try" type="button" data-example-path="exemples/10-technologies-motion.html">Essayer cet exemple</button></li>
+      <li class="example-row"><span class="example-copy"><strong>BAK Power Services — RENDRAX</strong><span>Paysage 1920 × 1080 · 44,83 s · React + GSAP · audio MP3 intégré.</span></span><button class="example-try" type="button" data-example-path="exemples/bak-power-services-rendrax-paysage-v4-musique-v2.html">Essayer cet exemple</button></li>
+      <li class="example-row"><span class="example-copy"><strong>KIDAS — Vidéo v2</strong><span>Portrait · React · voix et musique MP3 intégrées.</span></span><button class="example-try" type="button" data-example-path="exemples/kidas.html">Essayer cet exemple</button></li>
+      <li class="example-row"><span class="example-copy"><strong>RENDRAX — Présentation</strong><span>Portrait 1080 × 1920 · 67,63 s · GSAP · audio MP3 intégré.</span></span><button class="example-try" type="button" data-example-path="exemples/rendrax-promo.html">Essayer cet exemple</button></li>
+      <li class="example-row"><span class="example-copy"><strong>EditPro — Vidéo 60 s</strong><span>Canvas · images intégrées · voix MP3 encodée dans les données HTML.</span></span><button class="example-try" type="button" data-example-path="exemples/editpro.html">Essayer cet exemple</button></li>
     </ul>
     <p class="examples-intro">Ces fichiers peuvent charger des bibliothèques ou des polices depuis des services externes. Une connexion Internet peut donc être nécessaire pendant l’import et la création de la vidéo.</p>
   </details>
@@ -1707,6 +1711,44 @@ function setFile(files) {
   if (localSource && localSource.file !== file) localSource = null;
   checkFile();
 }
+async function tryExample(button) {
+  if (!button || button.disabled) return;
+  const path = button.dataset.examplePath;
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Chargement…';
+  try {
+    if (!path || !path.startsWith('exemples/')) throw new Error('Chemin de l’exemple invalide.');
+    const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) throw new Error('Impossible de charger cet exemple (HTTP ' + response.status + ').');
+    const blob = await response.blob();
+    const filename = path.split('/').pop();
+    const file = new File([blob], filename, { type: 'text/html;charset=utf-8', lastModified: Date.now() });
+    if (file.size > MAX_BYTES) throw new Error('Cet exemple dépasse la limite de 50 Mo.');
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    localSource = null;
+    zipSelection = null;
+    $('#file').files = transfer.files;
+    setSourceTab('file');
+    await checkFile();
+    if (!verdict || verdict.kind === 'invalid' || hasBlockingFinding(verdict)) {
+      $('#fileCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      return;
+    }
+    $('#settingsCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  } catch (error) {
+    setDropState('error', error && error.message ? error.message : 'Impossible de charger cet exemple. Réessaie.');
+    $('#fileCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+document.querySelectorAll('.example-try').forEach(button => {
+  button.addEventListener('click', () => tryExample(button));
+});
+
 function uploadPrivateBlob(url, file, type_fichier = 'html') {
   const contentType = type_fichier === 'zip' ? 'application/zip' : 'text/html';
   return new Promise((resolve, reject) => {

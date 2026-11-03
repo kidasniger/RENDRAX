@@ -449,6 +449,26 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("renderPreview(fileText)", page)
         self.assertIn("renderPreview(selection.mainText)", page)
 
+    def test_examples_load_directly_into_the_existing_file_validation_flow(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        examples = (
+            "10-technologies-motion.html",
+            "bak-power-services-rendrax-paysage-v4-musique-v2.html",
+            "kidas.html",
+            "rendrax-promo.html",
+            "editpro.html",
+        )
+        for filename in examples:
+            self.assertIn('data-example-path="exemples/' + filename + '"', page)
+        self.assertIn('class="example-try"', page)
+        self.assertIn("async function tryExample(button)", page)
+        self.assertIn("await fetch(path, { credentials: 'same-origin', cache: 'no-store' })", page)
+        self.assertIn("new File([blob], filename", page)
+        self.assertIn("$('#file').files = transfer.files", page)
+        self.assertIn("await checkFile()", page)
+        self.assertIn("$('#settingsCard').scrollIntoView", page)
+        self.assertNotIn('download="10-technologies-motion.html"', page)
+
     def test_url_import_is_removed_and_local_html_workflows_remain(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         for removed in ('importUrl', 'url-import', 'importFromUrl', 'validateImportUrl',
