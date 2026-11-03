@@ -773,3 +773,21 @@ main.rdx-main .drop-error[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.rdx-preview-frame{transition:none}}
 
 #previewPanel[hidden],iframe#prev[hidden]{display:none!important}
+
+
+/* Proposition 21 — cartes radio de qualité */
+.mode-label{display:block;margin:0 0 9px;color:var(--mut);font-size:.82rem;font-weight:650}
+.mode-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.mode-card{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;min-height:170px;padding:12px;border:1px solid var(--bd);border-radius:15px;background:var(--surf2);color:var(--tx);cursor:pointer;transition:border-color .15s,background-color .15s,box-shadow .15s}
+.mode-card strong{font-size:.92rem;line-height:1.3}
+.mode-card .mode-resolution{font-size:.75rem;font-weight:750;color:var(--ac);font-variant-numeric:tabular-nums}
+.mode-card .mode-detail{min-height:2.6em;color:var(--mut);font-size:.72rem;line-height:1.35}
+.mode-card .mode-meta{display:block;color:var(--mut);font-size:.7rem;line-height:1.35}
+.mode-card .mode-meta b{color:var(--tx);font-weight:700}
+.mode-card:hover{border-color:color-mix(in srgb,var(--ac) 55%,var(--bd))}
+.mode-card.is-selected{border:2px solid var(--ac);padding:11px;background:color-mix(in srgb,var(--ac) 8%,var(--surf));box-shadow:0 0 0 2px color-mix(in srgb,var(--ac) 10%,transparent)}
+.mode-card:focus-visible{outline:3px solid var(--ac);outline-offset:3px}
+.mode-footnote{display:block;margin-top:8px;color:var(--mut);font-size:.72rem}
+.mode-native-select{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;opacity:0!important;pointer-events:none!important}
+@media(max-width:420px){.mode-cards{grid-template-columns:1fr;gap:8px}.mode-card{min-height:0;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:3px}.mode-card strong,.mode-card .mode-resolution,.mode-card .mode-detail{grid-column:1}.mode-card .mode-detail{min-height:0}.mode-card .mode-meta{grid-column:2;grid-row:1;align-self:start;text-align:right}.mode-card .mode-meta+.mode-meta{grid-row:2}.mode-card.is-selected{padding:11px}}
+@media(prefers-reduced-motion:reduce){.mode-card{transition:none}}

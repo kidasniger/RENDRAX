@@ -524,13 +524,15 @@ ul#list button{box-shadow:none}
   <section id="settingsCard" class="card rdx-settings-card" aria-labelledby="h-set" hidden>
     <div class="head"><span class="num" aria-hidden="true">02</span><h2 id="h-set">Réglages</h2></div>
     <div class="grid">
-      <div class="field">
-        <label for="mode">Qualité</label>
-        <select id="mode">
-          <option value="full">Complète · 1080×1920</option>
-          <option value="half">Allégée · 540×960</option>
-          <option value="test">Aperçu · 10 s · 540×960</option>
-        </select>
+      <div class="field field-wide">
+        <span class="mode-label" id="modeLabel">Qualité du rendu</span>
+        <div class="mode-cards" id="modeCards" role="radiogroup" aria-labelledby="modeLabel">
+          <div class="mode-card" role="radio" aria-checked="true" tabindex="0" data-mode="full"><strong>Complète</strong><span class="mode-resolution">1080 × 1920 px</span><span class="mode-detail">Qualité maximale</span><span class="mode-meta"><b>Temps</b> Le plus long</span><span class="mode-meta"><b>Poids</b> Le plus élevé</span></div>
+          <div class="mode-card" role="radio" aria-checked="false" tabindex="-1" data-mode="half"><strong>Allégée</strong><span class="mode-resolution">540 × 960 px</span><span class="mode-detail">¼ des pixels par image</span><span class="mode-meta"><b>Temps</b> Plus court</span><span class="mode-meta"><b>Poids</b> Environ ¼*</span></div>
+          <div class="mode-card" role="radio" aria-checked="false" tabindex="-1" data-mode="test"><strong>Aperçu</strong><span class="mode-resolution">540 × 960 px · 10 s max.</span><span class="mode-detail">Pour vérifier rapidement</span><span class="mode-meta"><b>Temps</b> Le plus rapide</span><span class="mode-meta"><b>Poids</b> Limité</span></div>
+        </div>
+        <small class="mode-footnote">* Estimation indicative : le poids réel dépend du contenu, du son et de la durée.</small>
+        <select id="mode" class="mode-native-select" aria-hidden="true" tabindex="-1"><option value="full">Complète · 1080×1920</option><option value="half">Allégée · 540×960</option><option value="test">Aperçu · 10 s · 540×960</option></select>
       </div>
       <div class="field field-wide">
         <label class="checkline" for="watermark">
@@ -757,6 +759,42 @@ function initAdvancedSettings() {
     setAdvancedSettings(!expanded);
   });
 }
+function initModeCards() {
+  const select = $('#mode'), group = $('#modeCards');
+  const cards = [...group.querySelectorAll('[role="radio"]')];
+  function sync(focusSelected) {
+    cards.forEach(card => {
+      const selected = card.dataset.mode === select.value;
+      card.setAttribute('aria-checked', String(selected));
+      card.tabIndex = selected ? 0 : -1;
+      card.classList.toggle('is-selected', selected);
+      if (selected && focusSelected) card.focus();
+    });
+  }
+  function choose(card, moveFocus = false) {
+    if (!card || !cards.includes(card)) return;
+    select.value = card.dataset.mode;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    sync(moveFocus);
+  }
+  cards.forEach((card, index) => {
+    card.addEventListener('click', () => choose(card));
+    card.addEventListener('keydown', event => {
+      let target = index;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') target = (index + 1) % cards.length;
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') target = (index - 1 + cards.length) % cards.length;
+      else if (event.key === 'Home') target = 0;
+      else if (event.key === 'End') target = cards.length - 1;
+      else if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); choose(card); return; }
+      else return;
+      event.preventDefault();
+      choose(cards[target], true);
+    });
+  });
+  select.addEventListener('change', () => sync(false));
+  sync(false);
+}
+
 function initRenderPrefs() {
   readRenderPrefs();
   ['mode', 'format', 'duration', 'watermark', 'loudnorm'].forEach(id => {
@@ -764,6 +802,7 @@ function initRenderPrefs() {
   });
   $('#resetRenderPrefs').addEventListener('click', () => {
     $('#mode').value = 'full';
+    $('#mode').dispatchEvent(new Event('change', { bubbles: true }));
     $('#format').value = 'auto';
     $('#duration').value = '0';
     $('#watermark').checked = false;
@@ -2549,6 +2588,7 @@ window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
 initAdvancedSettings();
 initRenderPrefs();
+initModeCards();
 loadList();
 initSecurity();
 initTutorial();
