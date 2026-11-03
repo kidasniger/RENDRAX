@@ -550,6 +550,14 @@ ul#list button{box-shadow:none}
 
   <section class="card" aria-labelledby="h-prog" id="progCard" hidden>
     <div class="head"><span class="num" aria-hidden="true">03</span><h2 id="h-prog">Rendu</h2></div>
+    <div id="rdx-upload-progress" class="rdx-upload-progress" hidden role="status" aria-live="polite">
+      <div class="rdx-upload-progress-head">
+        <strong id="rdx-upload-label">Envoi sécurisé du fichier</strong>
+        <strong id="rdx-upload-percent">0 %</strong>
+      </div>
+      <progress id="rdx-upload-bar" max="100" value="0" aria-label="Progression de l’envoi"></progress>
+      <p id="rdx-upload-speed">Préparation du transfert…</p>
+    </div>
     <ol class="steps" id="steps">
       <li data-s="pending">Envoi</li>
       <li data-s="pending">File d’attente</li>
@@ -906,6 +914,38 @@ function resetTransition(el) {
   if (!el) return;
   el.classList.add('rdx-transition');
   el.classList.remove('rdx-transition-visible');
+}
+function resetUploadProgress() {
+  const panel = $('#rdx-upload-progress');
+  if (!panel) return;
+  panel.hidden = true;
+  $('#rdx-upload-label').textContent = 'Envoi sécurisé du fichier';
+  $('#rdx-upload-percent').textContent = '0 %';
+  $('#rdx-upload-bar').value = 0;
+  $('#rdx-upload-speed').textContent = 'Préparation du transfert…';
+}
+function updateUploadProgress(loaded, total, samples) {
+  const panel = $('#rdx-upload-progress');
+  const percent = Math.max(0, Math.min(100, Math.round(loaded / total * 100)));
+  panel.hidden = false;
+  $('#rdx-upload-bar').value = percent;
+  $('#rdx-upload-percent').textContent = percent + ' %';
+  const now = Date.now();
+  const previous = samples[samples.length - 1];
+  if (!previous || loaded > previous.loaded) samples.push({ at: now, loaded });
+  while (samples.length > 2 && now - samples[0].at > 5000) samples.shift();
+  if (samples.length >= 2) {
+    const first = samples[0], last = samples[samples.length - 1];
+    const seconds = (last.at - first.at) / 1000;
+    const bytes = last.loaded - first.loaded;
+    const speed = seconds > 0 && bytes > 0 ? bytes / seconds : 0;
+    $('#rdx-upload-speed').textContent = speed > 0
+      ? 'Vitesse : ' + (speed / 1048576).toFixed(2).replace('.', ',') + ' Mo/s · ' +
+        (loaded / 1048576).toFixed(1).replace('.', ',') + ' / ' + (total / 1048576).toFixed(1).replace('.', ',') + ' Mo'
+      : 'Calcul de la vitesse…';
+  } else {
+    $('#rdx-upload-speed').textContent = 'Calcul de la vitesse…';
+  }
 }
 function resetRenderProgress() {
   $('#renderProgress').hidden = true;
@@ -1687,12 +1727,19 @@ function uploadPrivateBlob(url, file, type_fichier = 'html') {
   const contentType = type_fichier === 'zip' ? 'application/zip' : 'text/html';
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    const samples = [];
     currentUploadXhr = xhr;
+    $('#rdx-upload-label').textContent = 'Envoi sécurisé du ' + (type_fichier === 'zip' ? 'ZIP' : 'HTML');
+    $('#rdx-upload-progress').hidden = false;
+    $('#cancel').textContent = 'Annuler l’envoi';
     xhr.open('PUT', url, true);
     xhr.setRequestHeader('Content-Type', contentType);
     xhr.timeout = 480000;
     xhr.upload.onprogress = e => {
-      if (e.lengthComputable) status('Envoi sécurisé du ' + (type_fichier === 'zip' ? 'ZIP' : 'HTML') + '… ' + Math.round(e.loaded / e.total * 100) + '%');
+      if (e.lengthComputable) {
+        updateUploadProgress(e.loaded, e.total, samples);
+        status('Envoi sécurisé… ' + Math.round(e.loaded / e.total * 100) + '%');
+      }
     };
     const xhrDiagnostics = eventName => {
       const responseText = String(xhr.responseText || '').trim().slice(0, 700);
@@ -1707,7 +1754,11 @@ function uploadPrivateBlob(url, file, type_fichier = 'html') {
     };
     xhr.onload = () => {
       currentUploadXhr = null;
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        updateUploadProgress(file.size, file.size, samples);
+        $('#rdx-upload-speed').textContent = 'Envoi terminé · ' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' Mo';
+        resolve();
+      }
       else reject(new Error('Backblaze a répondu avec HTTP ' + xhr.status + '. ' + xhrDiagnostics('load')));
     };
     xhr.onerror = () => {
@@ -1726,6 +1777,11 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
   let activeUrl = url;
   let lastError = null;
   for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      $('#rdx-upload-bar').value = 0;
+      $('#rdx-upload-percent').textContent = '0 %';
+      $('#rdx-upload-speed').textContent = 'Nouvelle tentative…';
+    }
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     try {
       await uploadPrivateBlob(activeUrl, file, type_fichier);
@@ -1735,7 +1791,8 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
         const e = new Error('annulé'); e.cancelled = true; throw e;
       }
       lastError = error;
-      status('Vérification de la réception du HTML…');
+      $('#rdx-upload-label').textContent = 'Vérification de la réception…';
+      status('Vérification de la réception du fichier…');
       let confirmed = false;
       let checkFailure = null;
       try {
@@ -2206,6 +2263,7 @@ async function go(testOnly = false) {
   let step = 0, uploadComplete = false, dispatchAccepted = false;
   try {
     setSteps(0);
+    resetUploadProgress();
     if (source || !needsUpload) {
       uploadComplete = true;
       status('Fichier déjà enregistré dans le stockage privé…');
@@ -2217,6 +2275,8 @@ async function go(testOnly = false) {
       const signed = await api('/upload-url', { method: 'POST', body: { id: sourceId, captchaToken: uploadCaptcha, type_fichier, size: f.size } });
       await uploadPrivateBlobWithRecovery(signed.url, sourceId, f, type_fichier);
       uploadComplete = true;
+      $('#cancel').textContent = 'Annuler le rendu';
+      resetUploadProgress();
     }
     if (cancelled) { const e = new Error('annulé'); e.cancelled = true; throw e; }
     step = 1; setSteps(1); status('Préparation du rendu…');
@@ -2245,12 +2305,18 @@ async function go(testOnly = false) {
       verdict = null;
       syncGoButton();
     }
+    if (needsUpload && e.cancelled && !dispatchAccepted) {
+      await cleanupUpload(sourceId, type_fichier);
+      if (localSource && localSource.id === sourceId) localSource = null;
+    }
     if (needsUpload && uploadComplete && !dispatchAccepted && e.status && e.status >= 400) {
       await cleanupUpload(sourceId, type_fichier);
       if (localSource && localSource.id === sourceId) localSource = null;
     }
     const s = currentStepIndex();
     fail(e, s >= 0 ? s : step);
+    resetUploadProgress();
+    $('#cancel').textContent = 'Annuler le rendu';
   }
   setBusy(false);
 }
