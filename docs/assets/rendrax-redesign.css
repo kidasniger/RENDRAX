@@ -725,3 +725,15 @@ main.rdx-main .drop[data-state="drag"] .rdx-drop-feedback{color:var(--ac)}
 main.rdx-main .drop-error{margin:8px 2px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--err) 40%,var(--bd));border-radius:12px;background:color-mix(in srgb,var(--err) 8%,var(--surf));color:var(--err);font-size:.84rem;line-height:1.5}
 main.rdx-main .drop-error[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){main.rdx-main .drop[data-state="drag"]::after{animation:none}}
+
+
+/* Progression du transfert vers le stockage privé */
+.rdx-upload-progress{margin:12px 0;padding:13px 14px;border:1px solid var(--bd);border-radius:14px;background:var(--surf2)}
+.rdx-upload-progress-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px;font-size:.84rem}
+#rdx-upload-percent{font:750 .9rem/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ac)}
+#rdx-upload-bar{display:block;width:100%;height:10px;overflow:hidden;border:0;border-radius:999px;background:var(--bd);accent-color:var(--ac)}
+#rdx-upload-bar::-webkit-progress-bar{background:var(--bd);border-radius:999px}
+#rdx-upload-bar::-webkit-progress-value{background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:999px}
+#rdx-upload-bar::-moz-progress-bar{background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:999px}
+#rdx-upload-speed{margin:8px 0 0;color:var(--mut);font-size:.8rem;font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce){#rdx-upload-bar{animation:none;transition:none}}
