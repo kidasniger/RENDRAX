@@ -1810,7 +1810,11 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
         }
         checkFailure = 'upload-check : ' + (checkError.message || String(checkError));
       }
-      if (confirmed) return;
+      if (confirmed) {
+        updateUploadProgress(file.size, file.size, []);
+        $('#rdx-upload-speed').textContent = 'Envoi confirmé · ' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' Mo';
+        return;
+      }
       if (attempt === 1) {
         throw new Error(
           'Échec de l’envoi après deux tentatives. Diagnostic PUT : ' +
