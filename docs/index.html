@@ -436,12 +436,14 @@ ul#list button{box-shadow:none}
 
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
     <div class="head"><h2 id="h-file">Choisir un fichier</h2></div>
-    <label class="drop" id="drop" tabindex="-1">
+    <label class="drop" id="drop" tabindex="-1" data-state="idle" aria-describedby="rdx-drop-error">
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
-      <b>Choisir un fichier</b>
-      <span class="mut">ou déposer un fichier HTML, HTM ou ZIP · 50 Mo maximum</span>
+      <b id="rdx-drop-title">Choisir un fichier</b>
+      <span class="mut" id="rdx-drop-hint">ou déposer un fichier HTML, HTM ou ZIP · 50 Mo maximum</span>
+      <span class="rdx-drop-feedback" id="rdx-drop-feedback" aria-live="polite"></span>
       <input id="file" type="file" accept=".html,.htm,.zip,text/html,application/zip,application/x-zip-compressed" aria-label="Choisir un fichier HTML ou ZIP">
     </label>
+    <p class="rdx-drop-error" id="rdx-drop-error" role="alert" hidden></p>
     <div id="zipInspector" class="zip-inspector" hidden aria-live="polite">
       <p id="zipSummary" class="zip-summary"></p>
       <div id="zipMainPicker" class="zip-main-picker" hidden>
@@ -1501,7 +1503,10 @@ async function checkFile() {
     $('#fileinfo').textContent = importedSource.name + ' · ' + size(importedSource.size) + ' · URL';
     const v = importedSource.analysis || { kind: 'invalid', label: 'La vérification du fichier est indisponible.', blocking: true };
     v.sizeBytes = importedSource.size;
-    if (v.kind === 'invalid') return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
+    if (v.kind === 'invalid') {
+    setDropState('error', v.label || 'Le fichier HTML ne peut pas être utilisé.');
+    return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
+  }
     if (v.kind === 'generic') {
       return showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
     }
@@ -1512,6 +1517,7 @@ async function checkFile() {
     zipSelection = null;
     clearZipInspector();
     $('#fileinfo').hidden = true;
+    setDropState('idle');
     return showVerdict(null);
   }
   importedSource = null;
@@ -1519,12 +1525,15 @@ async function checkFile() {
   $('#fileinfo').textContent = f.name + ' · ' + size(f.size);
   if (!/\.(?:html?|zip)$/i.test(f.name)) {
     zipSelection = null; clearZipInspector();
+    setDropState('error', 'Format non pris en charge. Choisis un fichier .html, .htm ou .zip.');
     return showVerdict({ kind: 'invalid', label: 'Format de fichier non pris en charge.' }, 'err', '✗ Choisis un fichier .html, .htm ou .zip. Import bloqué.');
   }
   if (f.size > MAX_BYTES) {
     zipSelection = null; clearZipInspector();
+    setDropState('error', 'Fichier trop volumineux : la limite est de 50 Mo.');
     return showVerdict({ kind: 'invalid', label: 'Fichier trop volumineux.' }, 'err', '✗ Fichier trop gros (50 Mo maximum). Import bloqué.');
   }
+  setDropState('accepted', '', f);
   if (/\.zip$/i.test(f.name)) return inspectZip(f, token);
 
   zipSelection = null;
@@ -1611,10 +1620,45 @@ async function importFromUrl() {
     syncGoButton();
   }
 }
+function setDropState(state, message = '', file = null) {
+  const zone = $('#drop');
+  const title = $('#rdx-drop-title');
+  const hint = $('#rdx-drop-hint');
+  const feedback = $('#rdx-drop-feedback');
+  const error = $('#rdx-drop-error');
+  zone.dataset.state = state;
+  error.hidden = state !== 'error';
+  error.textContent = state === 'error' ? message : '';
+  feedback.textContent = state === 'accepted' && file
+    ? '✓ ' + file.name + ' · ' + size(file.size)
+    : state === 'drag' ? 'Dépose le fichier ici' : '';
+  if (state === 'idle') {
+    title.textContent = 'Choisir un fichier';
+    hint.textContent = 'ou déposer un fichier HTML, HTM ou ZIP · 50 Mo maximum';
+  } else if (state === 'drag') {
+    title.textContent = 'Relâche pour ajouter le fichier';
+    hint.textContent = 'HTML, HTM ou ZIP · 50 Mo maximum';
+  } else if (state === 'accepted') {
+    title.textContent = 'Fichier ajouté';
+    hint.textContent = 'Tu peux sélectionner un autre fichier à tout moment.';
+  } else if (state === 'error') {
+    title.textContent = 'Fichier refusé';
+    hint.textContent = 'Choisis un autre fichier HTML, HTM ou ZIP.';
+  }
+}
 function setFile(files) {
   if (!files || !files.length) return;
-  const dt = new DataTransfer(); dt.items.add(files[0]); $('#file').files = dt.files;
-  if (localSource && localSource.file !== files[0]) localSource = null;
+  const file = files[0];
+  if (!/\.(?:html?|zip)$/i.test(file.name)) {
+    setDropState('error', 'Format non pris en charge. Choisis un fichier .html, .htm ou .zip.');
+    return;
+  }
+  if (file.size > MAX_BYTES) {
+    setDropState('error', 'Fichier trop volumineux : la limite est de 50 Mo.');
+    return;
+  }
+  const dt = new DataTransfer(); dt.items.add(file); $('#file').files = dt.files;
+  if (localSource && localSource.file !== file) localSource = null;
   checkFile();
 }
 function uploadPrivateBlob(url, file, type_fichier = 'html') {
@@ -2339,9 +2383,30 @@ $('#prevBtn').onclick = () => {
   p.srcdoc = fileText;
 };
 const drop = $('#drop');
-['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
-['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
-drop.addEventListener('drop', e => setFile(e.dataTransfer && e.dataTransfer.files));
+let dropDepth = 0;
+drop.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dropDepth++;
+  if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) setDropState('drag');
+});
+drop.addEventListener('dragover', e => {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  if (drop.dataset.state !== 'drag') setDropState('drag');
+});
+drop.addEventListener('dragleave', e => {
+  e.preventDefault();
+  dropDepth = Math.max(0, dropDepth - 1);
+  if (!dropDepth && drop.dataset.state === 'drag') {
+    const file = $('#file').files[0];
+    setDropState(file ? 'accepted' : 'idle', '', file);
+  }
+});
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  dropDepth = 0;
+  setFile(e.dataTransfer && e.dataTransfer.files);
+});
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
 initAdvancedSettings();
