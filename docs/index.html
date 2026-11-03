@@ -98,6 +98,13 @@ select{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:pointer
 select:hover,input:hover{border-color:color-mix(in srgb,var(--tx) 25%,var(--bd))}
 .grid{display:grid;grid-template-columns:1fr;gap:12px}
 @media(min-width:480px){.grid{grid-template-columns:1fr 1fr}}
+.usage-presets{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
+.usage-preset{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-height:66px;margin:0;padding:11px 13px;border:1px solid var(--bd);border-radius:13px;background:var(--surf2);color:var(--tx);text-align:left}
+.usage-preset strong{font-size:.9rem}
+.usage-preset span{color:var(--mut);font-size:.76rem;font-weight:500}
+.usage-preset:hover{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 6%,var(--surf2))}
+.usage-preset[aria-pressed="true"]{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 10%,var(--surf2));box-shadow:inset 0 0 0 1px var(--ac)}
+@media(min-width:480px){.usage-presets{grid-template-columns:repeat(3,minmax(0,1fr))}.usage-preset{min-height:82px}}
 
 /* boutons */
 button{font:inherit;font-weight:700;border:0;border-radius:999px;min-height:48px;padding:12px 20px;background:var(--ac);color:var(--on);width:100%;margin-top:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,background-color .15s,border-color .15s}
@@ -542,6 +549,14 @@ ul#list button{box-shadow:none}
     <div class="head"><span class="num" aria-hidden="true">02</span><h2 id="h-set">Réglages</h2></div>
     <div class="grid">
       <div class="field field-wide">
+        <span class="mode-label" id="presetLabel">Préréglages d’usage</span>
+        <div class="usage-presets" id="usagePresets" role="group" aria-labelledby="presetLabel">
+          <button class="usage-preset" type="button" data-preset="social" aria-pressed="false"><strong>TikTok / Reels</strong><span>9:16 · Qualité complète</span></button>
+          <button class="usage-preset" type="button" data-preset="youtube" aria-pressed="false"><strong>YouTube</strong><span>16:9 · Qualité complète</span></button>
+          <button class="usage-preset" type="button" data-preset="preview" aria-pressed="false"><strong>Aperçu rapide</strong><span>9:16 · 10 s · Allégé</span></button>
+        </div>
+      </div>
+      <div class="field field-wide">
         <span class="mode-label" id="modeLabel">Qualité du rendu <button class="help-trigger" type="button" aria-label="Aide sur la qualité du rendu" aria-expanded="false" aria-controls="helpMode">?</button><span class="help-tooltip" id="helpMode" role="tooltip" hidden>La qualité complète produit une vidéo en 1080 × 1920. Le mode allégé utilise 540 × 960. L’aperçu est limité à 10 secondes.</span></span>
         <div class="mode-cards" id="modeCards" role="radiogroup" aria-labelledby="modeLabel">
           <div class="mode-card" role="radio" aria-checked="true" tabindex="0" data-mode="full"><strong>Complète</strong><span class="mode-resolution">1080 × 1920 px</span><span class="mode-detail">Qualité maximale</span><span class="mode-meta"><b>Temps</b> Le plus long</span><span class="mode-meta"><b>Poids</b> Le plus élevé</span></div>
@@ -852,6 +867,37 @@ function initModeCards() {
   sync(false);
 }
 
+const USAGE_PRESETS = {
+  social: { mode: 'full', format: 'portrait', duration: '0' },
+  youtube: { mode: 'full', format: 'landscape', duration: '0' },
+  preview: { mode: 'test', format: 'portrait', duration: '10' }
+};
+function syncUsagePresets() {
+  const mode = $('#mode').value;
+  const format = $('#format').value;
+  const duration = $('#duration').value;
+  document.querySelectorAll('[data-preset]').forEach(button => {
+    const preset = USAGE_PRESETS[button.dataset.preset];
+    const selected = !!preset && preset.mode === mode && preset.format === format && preset.duration === duration;
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+function initUsagePresets() {
+  document.querySelectorAll('[data-preset]').forEach(button => {
+    button.addEventListener('click', () => {
+      const preset = USAGE_PRESETS[button.dataset.preset];
+      if (!preset) return;
+      [['mode', preset.mode], ['format', preset.format], ['duration', preset.duration]].forEach(([id, value]) => {
+        const control = $('#' + id);
+        control.value = value;
+        control.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      syncUsagePresets();
+    });
+  });
+  ['mode', 'format', 'duration'].forEach(id => $('#' + id).addEventListener('change', syncUsagePresets));
+  syncUsagePresets();
+}
 function getEstimateProfile(source) {
   if (!source) return 'generic';
   if (source.includes('const [t,setT]=useState(0),') &&
@@ -2794,6 +2840,7 @@ window.addEventListener('drop', e => e.preventDefault());
 initAdvancedSettings();
 initRenderPrefs();
 initModeCards();
+initUsagePresets();
 updateRenderEstimate();
 loadList();
 initSecurity();
