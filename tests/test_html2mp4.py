@@ -372,6 +372,14 @@ class Html2Mp4Tests(unittest.TestCase):
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)
 
+    def test_file_drop_has_specific_validation_messages(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("Formats acceptés : .html, .htm et .zip.", page)
+        self.assertIn("Fichier trop volumineux : ' + actualSize + ' (limite : 50 Mo).", page)
+        self.assertIn("Ce ZIP ne contient aucune page HTML ou HTM.", page)
+        self.assertIn("Le fichier HTML est vide : aucun contenu à analyser.", page)
+        self.assertIn("Ajoute le code HTML puis sélectionne à nouveau le fichier.", page)
+
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         for filename in ("favicon.ico", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
