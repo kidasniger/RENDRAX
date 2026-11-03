@@ -350,7 +350,6 @@ main.rdx-main :where(button, select, input[type="button"], input[type="submit"],
   touch-action: manipulation;
 }
 main.rdx-main .actions,
-main.rdx-main .url-import-row,
 main.rdx-main .rdx-hero-actions,
 main.rdx-main .video-list-actions,
 main.rdx-main .example-list {
@@ -754,5 +753,3 @@ main.rdx-main .drop-error[hidden]{display:none}
 
 
 /* Proposition 17 — retour visuel de validation du lien */
-main.rdx-main .url-import-help[data-state="invalid"] { color: var(--rdx-danger, #b42318); }
-main.rdx-main .url-import-help[data-state="valid"] { color: var(--rdx-success, #18794e); }
