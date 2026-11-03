@@ -1016,13 +1016,13 @@ function updatePreRenderSummary() {
   const output = $('#preRenderSummary');
   if (!output) return;
   const file = $('#file').files[0];
-  const isZip = !!(file && /\\.zip$/i.test(file.name));
+  const isZip = !!(file && /\.zip$/i.test(file.name));
   const fileName = isZip && zipSelection && zipSelection.mainPath
     ? zipSelection.mainPath.split('/').pop()
     : file ? file.name : 'en attente';
   const formats = { auto: 'Automatique', portrait: 'Portrait 9:16', landscape: 'Paysage 16:9', square: 'Carré 1:1' };
   const qualities = { full: 'Complète', half: 'Allégée', test: 'Aperçu 10 s' };
-  const estimate = ($('#renderEstimate').textContent.match(/Durée estimée\\s*:\\s*(.*?)(?:\\s*·|$)/) || [])[1] || '—';
+  const estimate = ($('#renderEstimate').textContent.match(/Durée estimée\s*:\s*(.*?)(?:\s*·|$)/) || [])[1] || '—';
   output.textContent = 'Fichier : ' + fileName + ' · Format : ' + (formats[$('#format').value] || 'Automatique') +
     ' · Qualité : ' + (qualities[$('#mode').value] || 'Complète') + ' · Durée estimée : ' + estimate;
 }
