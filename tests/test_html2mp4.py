@@ -443,6 +443,8 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("function syncImportUrlButton()", page)
         self.assertIn("$('#importUrl').addEventListener('input'", page)
         self.assertIn("$('#importUrl').addEventListener('paste'", page)
+        input_handler = page.split("$('#importUrl').addEventListener('input',", 1)[1].split("});", 1)[0]
+        self.assertNotIn("cleanupUpload", input_handler)
         self.assertIn("$('#importUrlBtn').disabled = !canImport", page)
         self.assertIn("$('#importUrlBtn').onclick = importFromUrl", page)
         self.assertLess(page.index("const validation = validateImportUrl(rawUrl)"), page.index("const token = await captchaToken()"))
