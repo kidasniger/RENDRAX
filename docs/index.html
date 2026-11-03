@@ -17,7 +17,9 @@
 <meta name="theme-color" content="#f3f6ff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#080b18" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="/manifest.webmanifest">
-<noscript><style>.rdx-splash{display:none!important}</style></noscript>
+<noscript><style>.rdx-splash{display:none!important}/* Proposition 22 — estimation indicative avant rendu */
+.render-estimate{margin:10px 0 0;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--ac) 6%,var(--surf2));color:var(--tx);font-size:.84rem;font-weight:750;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+</style></noscript>
 <!-- Vercel Web Analytics -->
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -532,6 +534,7 @@ ul#list button{box-shadow:none}
           <div class="mode-card" role="radio" aria-checked="false" tabindex="-1" data-mode="test"><strong>Aperçu</strong><span class="mode-resolution">540 × 960 px · 10 s max.</span><span class="mode-detail">Pour vérifier rapidement</span><span class="mode-meta"><b>Temps</b> Le plus rapide</span><span class="mode-meta"><b>Poids</b> Limité</span></div>
         </div>
         <small class="mode-footnote">* Estimation indicative : le poids réel dépend du contenu, du son et de la durée.</small>
+        <p id="renderEstimate" class="render-estimate" role="status" aria-live="polite">Durée estimée : — · Poids : —</p>
         <select id="mode" class="mode-native-select" aria-hidden="true" tabindex="-1"><option value="full">Complète · 1080×1920</option><option value="half">Allégée · 540×960</option><option value="test">Aperçu · 10 s · 540×960</option></select>
       </div>
       <div class="field field-wide">
@@ -791,14 +794,89 @@ function initModeCards() {
       choose(cards[target], true);
     });
   });
-  select.addEventListener('change', () => sync(false));
+  select.addEventListener('change', () => { sync(false); updateRenderEstimate(); });
   sync(false);
 }
 
+function getEstimateProfile(source) {
+  if (!source) return 'generic';
+  if (source.includes('const [t,setT]=useState(0),') &&
+      /[.#]stage\s*\{/.test(source) && /\bAUD\s*=\s*'data:audio\//.test(source) &&
+      /\bD\s*=\s*\d/.test(source)) return 'kidas';
+  if (source.includes('function render(t)') && source.includes('(function loop(){let t=') &&
+      source.includes('const IM=') && /"voice"\s*:\s*"[A-Za-z0-9+\/=]{1000,}"/.test(source)) return 'editpro';
+  if (source.includes('window.__video') && /\bseek\s*\(/.test(source) &&
+      /<audio\b[^>]*\ssrc=["']data:audio\//i.test(source) && /\bDUR\s*=/.test(source)) return 'voicevideo';
+  if (source.includes('function render(t)') && /atob\(\s*VOICE\s*\)/.test(source) &&
+      /function\s+music\s*\(/.test(source) && /function\s+go\s*\(/.test(source) &&
+      /\(function\s+lp\s*\(\)\s*\{/.test(source) && /\bconst\s+D\s*=\s*\d/.test(source) &&
+      /\bvP\s*=/.test(source) && /\bmP\s*=/.test(source)) return 'musicpro';
+  if (/<audio\b[^>]*\bsrc=["']data:audio\/[a-z0-9.+-]+;base64,/i.test(source) &&
+      /\b(?:const\s+T\s*=\s*\[\s*\d|const\s+D\s*=\s*\d)/.test(source) &&
+      /\bSUB\s*=/.test(source) && /\btl\s*=\s*gsap\.timeline\(\s*\{\s*paused\s*:\s*true\s*\}\s*\)/.test(source) &&
+      /\btl\.time\([^;]*?,\s*false\s*\)/.test(source) &&
+      /\bstarted\s*\?\s*a\.currentTime|\bif\s*\(\s*started\s*\)\s*\{[\s\S]{0,1200}?\ba\.currentTime\b/.test(source) &&
+      /requestAnimationFrame\s*\(\s*lp\s*\)/.test(source) &&
+      /[.#]st\s*\{[^}]*?width:\s*\d+px;\s*height:\s*\d+px/.test(source)) return 'gsapvideo';
+  return 'generic';
+}
+function getDetectedDuration(source, profile) {
+  const readNumber = pattern => {
+    const match = source.match(pattern);
+    return match ? Number(match[1]) : 0;
+  };
+  let seconds = 0;
+  if (profile === 'voicevideo') seconds = readNumber(/\bDUR\s*=\s*(\d+(?:\.\d+)?)/);
+  else if (profile === 'editpro') seconds = readNumber(/if\s*\(\s*t\s*>=\s*(\d+(?:\.\d+)?)/);
+  else if (profile === 'kidas' || profile === 'musicpro') seconds = readNumber(/\bD\s*=\s*(\d+(?:\.\d+)?)/);
+  else if (profile === 'gsapvideo') {
+    seconds = readNumber(/\bD\s*=\s*(\d+(?:\.\d+)?)/);
+    if (!seconds) {
+      const timeline = source.match(/\b(?:const|let|var)\s+T\s*=\s*\[([^\]]+)\]/);
+      if (timeline) {
+        const values = timeline[1].match(/\d+(?:\.\d+)?/g) || [];
+        seconds = values.length ? Number(values[values.length - 1]) : 0;
+      }
+    }
+  }
+  if (!seconds) {
+    seconds = readNumber(/\b(?:const|let|var)\s+(?:D|DUR|DURATION|TOTAL|TOTAL_DURATION|VIDEO_DURATION)\s*=\s*(\d+(?:\.\d+)?)/i);
+  }
+  return Number.isFinite(seconds) && seconds >= 2 && seconds <= 900 ? seconds : 60;
+}
+function updateRenderEstimate() {
+  const output = $('#renderEstimate');
+  if (!output) return;
+  const source = zipSelection && zipSelection.mainText ? zipSelection.mainText : fileText;
+  if (!source || !source.trim()) {
+    output.textContent = 'Durée estimée : en attente du fichier · Poids : —';
+    return;
+  }
+  const profile = getEstimateProfile(source);
+  const fps = profile === 'generic' ? 30 : 60;
+  let seconds = getDetectedDuration(source, profile);
+  const maximum = Number($('#duration').value);
+  if (maximum > 0) seconds = Math.min(seconds, maximum);
+  const mode = $('#mode').value;
+  if (mode === 'test') seconds = Math.min(seconds, 10);
+  const scale = mode === 'full' ? 1 : 0.5;
+  const frames = Math.max(1, Math.round(seconds * fps));
+  const estimatedMinutes = Math.max(0.2, frames / (mode === 'full' ? 8 : 18) / 60);
+  const videoBitrateMbps = mode === 'full' ? 4.5 : 1.8;
+  const estimatedMegabytes = Math.max(0.1, seconds * (videoBitrateMbps * scale * scale + 0.192) / 8);
+  const durationLabel = estimatedMinutes < 1
+    ? Math.max(1, Math.round(estimatedMinutes * 60)) + ' s'
+    : (estimatedMinutes < 10 ? estimatedMinutes.toFixed(1) : Math.round(estimatedMinutes)).toString().replace('.', ',') + ' min';
+  const weightLabel = estimatedMegabytes < 1
+    ? Math.max(1, Math.round(estimatedMegabytes * 1024)) + ' Ko'
+    : estimatedMegabytes.toFixed(1).replace('.', ',') + ' Mo';
+  output.textContent = 'Durée estimée : ~' + durationLabel + ' · Poids : ~' + weightLabel + ' · ' + fps + ' i/s auto';
+}
 function initRenderPrefs() {
   readRenderPrefs();
+  updateRenderEstimate();
   ['mode', 'format', 'duration', 'watermark', 'loudnorm'].forEach(id => {
-    $('#' + id).addEventListener('change', saveRenderPrefs);
+    $('#' + id).addEventListener('change', () => { saveRenderPrefs(); updateRenderEstimate(); });
   });
   $('#resetRenderPrefs').addEventListener('click', () => {
     $('#mode').value = 'full';
@@ -809,6 +887,7 @@ function initRenderPrefs() {
     $('#loudnorm').checked = true;
     setAdvancedSettings(false, false);
     store.set(PREFS_KEY, null);
+    updateRenderEstimate();
   });
 }
 
@@ -1579,6 +1658,7 @@ async function chooseZipMain(path) {
     const html = await selection.archive.file(path).async('string');
     if (zipSelection !== selection || mainToken !== zipMainToken) return;
     selection.mainText = html;
+    updateRenderEstimate();
     selection.analysis = analyze(html, entry.size);
     $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
       ' · taille extraite : ' + size(entry.size) + '. Les chemins des fichiers associés seront conservés lors de leur extraction.';
@@ -1704,6 +1784,7 @@ async function checkFile() {
     setDropState('error', v.label + ' Action : vérifie le contenu du fichier et sélectionne une page HTML complète.');
     return showVerdict(v, 'err', '✗ ' + v.label + ' Vérifie le contenu puis réessaie.');
   }
+  updateRenderEstimate();
   renderPreview(fileText);
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
   else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
@@ -2589,6 +2670,7 @@ window.addEventListener('drop', e => e.preventDefault());
 initAdvancedSettings();
 initRenderPrefs();
 initModeCards();
+updateRenderEstimate();
 loadList();
 initSecurity();
 initTutorial();
