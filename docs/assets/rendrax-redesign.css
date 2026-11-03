@@ -39,7 +39,11 @@ main.rdx-main{
   display:inline-flex;align-items:center;gap:9px;margin:0 0 14px;
   font:750 .72rem/1.2 var(--mono);letter-spacing:.13em;color:var(--mut);
 }
-.rdx-live-dot{width:8px;height:8px;border-radius:50%;background:#19b985;box-shadow:0 0 0 4px rgba(25,185,133,.12)}
+.rdx-live-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#9299a8;box-shadow:0 0 0 4px rgba(146,153,168,.12)}
+.rdx-eyebrow[data-state="online"] .rdx-live-dot{background:#19b985;box-shadow:0 0 0 4px rgba(25,185,133,.12)}
+.rdx-eyebrow[data-state="degraded"] .rdx-live-dot{background:#e69a28;box-shadow:0 0 0 4px rgba(230,154,40,.16)}
+.rdx-eyebrow[data-state="offline"] .rdx-live-dot{background:#9299a8;box-shadow:0 0 0 4px rgba(146,153,168,.12)}
+.rdx-eyebrow[data-state="checking"] .rdx-live-dot{background:#9299a8;box-shadow:0 0 0 4px rgba(146,153,168,.12)}
 .rdx-hero h1{
   max-width:650px;font-size:clamp(2.65rem,5.4vw,5.1rem);line-height:.98;letter-spacing:-.075em;
   margin:0 0 19px;font-weight:850;text-wrap:balance;
