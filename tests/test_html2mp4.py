@@ -407,6 +407,19 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("Le fichier HTML est vide : aucun contenu à analyser.", page)
         self.assertIn("Ajoute le code HTML puis sélectionne à nouveau le fichier.", page)
 
+    def test_zip_inspector_presets_index_and_shows_candidate_sizes_and_resource_counts(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("configureZipMainPicker(htmlPaths, chosen, entries)", page)
+        self.assertIn("$('#zipMainPicker').hidden = htmlPaths.length < 2", page)
+        self.assertIn("path + (entry ? ' · ' + size(entry.size) : '')", page)
+        self.assertIn("if (rootIndex.length) chosen = rootIndex[0]", page)
+        self.assertIn("if (indexFiles.length) chosen = indexFiles[0]", page)
+        self.assertIn("fileSize.textContent = size(entry.size)", page)
+        self.assertIn("counts.image + ' image(s)", page)
+        self.assertIn("counts.script + ' script(s)", page)
+        self.assertIn("counts.audio + ' audio", page)
+        self.assertIn("tu peux choisir une autre page", page)
+
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         for filename in ("favicon.ico", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
