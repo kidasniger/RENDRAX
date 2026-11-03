@@ -482,16 +482,7 @@ ul#list button{box-shadow:none}
       </div>
       <ul id="zipResourceList" class="zip-resource-list"></ul>
     </div>
-    <div class="url-import">
-      <label for="importUrl">Ou coller un lien HTTPS</label>
-      <div class="url-import-row">
-        <input id="importUrl" type="url" inputmode="url" autocomplete="url" spellcheck="false"
-          maxlength="2048" placeholder="https://raw.githubusercontent.com/…" aria-describedby="importUrlHelp">
-        <button class="sec" id="importUrlBtn" type="button" disabled>Importer le lien</button>
-      </div>
-      <small id="importUrlHelp" class="url-import-help" aria-live="polite">Colle un lien HTTPS public vers un fichier HTML. Aucun téléchargement ne démarre avant ton clic sur « Importer le lien ».</small>
-    </div>
-    <p id="fileinfo" hidden></p>
+        <p id="fileinfo" hidden></p>
     <p id="verdict" role="status" hidden></p>
     <section id="compatReport" aria-labelledby="compatReportTitle" hidden>
       <div class="compat-report-head">
@@ -780,7 +771,6 @@ function initRenderPrefs() {
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null;
 let openHistoryPlayer = null;
-let importedSource = null, importingUrl = false;
 let localSource = null, lastSourceForRetry = null;
 let zipSelection = null, zipLoading = false, zipInspectToken = 0, zipMainToken = 0;
 let securityReady = false, securityMessage = '', captchaWidgetId = null, captchaResolve = null, captchaReject = null;
@@ -902,7 +892,6 @@ async function initSecurity() {
     statusEl.hidden = false;
   }
   syncGoButton();
-  syncImportUrlButton();
 }
 function captchaToken() {
   return new Promise((resolve, reject) => {
@@ -1067,9 +1056,7 @@ function setBusy(b) {
   $('#go').hidden = b;
   $('#testRender').hidden = b;
   $('#testRender').disabled = b || !securityReady || hasBlockingFinding(verdict);
-  $('#file').disabled = b || importingUrl;
-  $('#importUrl').disabled = b || importingUrl;
-  syncImportUrlButton();
+  $('#file').disabled = b;
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
 }
@@ -1622,23 +1609,6 @@ async function checkFile() {
   zipMainToken++;
   $('#prevBtn').hidden = true;
 
-  if (!f && importedSource) {
-    zipSelection = null;
-    clearZipInspector();
-    $('#fileinfo').hidden = false;
-    $('#fileinfo').textContent = importedSource.name + ' · ' + size(importedSource.size) + ' · URL';
-    const v = importedSource.analysis || { kind: 'invalid', label: 'La vérification du fichier est indisponible.', blocking: true };
-    v.sizeBytes = importedSource.size;
-    if (v.kind === 'invalid') {
-    setDropState('error', v.label || 'Le fichier HTML ne peut pas être utilisé.');
-    return showVerdict(v, 'err', '✗ ' + v.label + ' Import bloqué.');
-  }
-    if (v.kind === 'generic') {
-      return showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
-    }
-    return showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
-  }
-
   if (!f) {
     zipSelection = null;
     clearZipInspector();
@@ -1646,7 +1616,6 @@ async function checkFile() {
     setDropState('idle');
     return showVerdict(null);
   }
-  importedSource = null;
   $('#fileinfo').hidden = false;
   $('#fileinfo').textContent = f.name + ' · ' + size(f.size);
   if (!/\.(?:html?|zip)$/i.test(f.name)) {
@@ -1677,106 +1646,6 @@ async function checkFile() {
   $('#prevBtn').hidden = false;
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
   else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
-}
-function validateImportUrl(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return { valid: false, message: 'Colle un lien HTTPS vers un fichier HTML.' };
-  if (raw.length > 2048) return { valid: false, message: 'L’URL dépasse la limite de 2 048 caractères.' };
-  if (!/^https:\/\//i.test(raw)) {
-    return { valid: false, message: 'Le lien doit commencer par https://' };
-  }
-  let parsed;
-  try { parsed = new URL(raw); }
-  catch { return { valid: false, message: 'Le domaine du lien est invalide.' }; }
-  const hostname = parsed.hostname.toLowerCase();
-  const labels = hostname.split('.');
-  const validDomain = hostname.length <= 253 && labels.length >= 2 && labels.every(label =>
-    label.length >= 1 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label)
-  ) && /^(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})$/i.test(labels[labels.length - 1]);
-  if (!validDomain || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) {
-    return { valid: false, message: 'Le domaine est invalide ou le lien utilise un port non autorisé.' };
-  }
-  return { valid: true, message: securityReady ? 'Lien valide. Aucun téléchargement avant ton clic sur « Importer le lien ».' : (securityMessage || 'Lien valide, mais la protection de sécurité n’est pas prête.') };
-}
-function syncImportUrlButton() {
-  const input = $('#importUrl');
-  const help = $('#importUrlHelp');
-  const result = validateImportUrl(input.value);
-  const canImport = result.valid && securityReady && !busy && !importingUrl;
-  input.setAttribute('aria-invalid', input.value.trim() && !result.valid ? 'true' : 'false');
-  help.textContent = result.message;
-  help.dataset.state = result.valid ? (securityReady ? 'valid' : 'pending') : (input.value.trim() ? 'invalid' : 'idle');
-  $('#importUrlBtn').disabled = !canImport;
-}
-async function importFromUrl() {
-  if (busy || importingUrl) return;
-
-  const rawUrl = $('#importUrl').value.trim();
-  const validation = validateImportUrl(rawUrl);
-  if (!validation.valid) {
-    syncImportUrlButton();
-    return showVerdict(null, 'err', validation.message);
-  }
-  if (!securityReady) return showVerdict(null, 'err', securityMessage || 'La protection de sécurité n’est pas prête.');
-
-  importingUrl = true;
-  importedSource = null;
-  zipInspectToken++;
-  zipLoading = false;
-  zipSelection = null;
-  clearZipInspector();
-  $('#file').value = '';
-  $('#fileinfo').hidden = true;
-  $('#go').disabled = true;
-  $('#file').disabled = true;
-  $('#importUrl').disabled = true;
-  $('#importUrlBtn').disabled = true;
-  showVerdict(null);
-  revealTransition($('#progCard'));
-  setSteps(-1);
-  status('Vérification anti-robot…');
-
-  const id = 'v' + Date.now().toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-  try {
-    const token = await captchaToken();
-    status('Téléchargement du HTML depuis le lien…');
-    const data = await api('/import-url', {
-      method: 'POST',
-      body: { id, url: rawUrl, captchaToken: token }
-    });
-
-    let analysis = data.analysis || { kind: 'invalid', label: 'La vérification du fichier est indisponible.' };
-    if (data.stored !== true && analysis.kind !== 'invalid') {
-      analysis = { kind: 'invalid', label: 'Le HTML n’a pas été enregistré dans le stockage privé.' };
-    }
-    importedSource = {
-      id: data.id,
-      size: Number(data.size) || 0,
-      name: typeof data.name === 'string' ? data.name : 'import.html',
-      analysis,
-      url: rawUrl,
-      stored: data.stored === true
-    };
-
-    await checkFile();
-    setSteps(-1);
-    if (importedSource.analysis && importedSource.analysis.kind === 'invalid') {
-      status('Le lien a été téléchargé, mais le contenu a été refusé.', 'err');
-    } else {
-      status('Lien importé. Vérifie le fichier puis appuie sur « Générer MP4 ».', 'ok');
-    }
-  } catch (e) {
-    importedSource = null;
-    showVerdict(null, 'err', '✗ ' + explain(e));
-    setSteps(-1);
-    status('Impossible d’importer le fichier depuis ce lien.', 'err');
-  } finally {
-    importingUrl = false;
-    $('#file').disabled = busy;
-    $('#importUrl').disabled = busy;
-    syncImportUrlButton();
-    syncGoButton();
-  }
 }
 function setDropState(state, message = '', file = null) {
   const zone = $('#drop');
@@ -2338,7 +2207,6 @@ function newRenderId() {
 async function go(testOnly = false) {
   if (busy) return;
   const f = $('#file').files[0];
-  const source = importedSource;
   if (zipLoading) return status('Inspection du ZIP en cours…', 'warn');
   const isZip = !!(f && /\.zip$/i.test(f.name));
   const type_fichier = isZip ? 'zip' : 'html';
@@ -2349,14 +2217,14 @@ async function go(testOnly = false) {
   }
   revealTransition($('#progCard'));
   if (!securityReady) { setSteps(-1); return status(securityMessage || 'La sécurité du serveur n’est pas configurée.', 'err'); }
-  if (!f && !source) { setSteps(-1); return status('Choisis un fichier HTML ou colle un lien.', 'err'); }
+  if (!f) { setSteps(-1); return status('Choisis un fichier HTML ou ZIP.', 'err'); }
   if (!verdict) await checkFile();
   if (!verdict || hasBlockingFinding(verdict)) { setSteps(-1); return status('Fichier refusé : le rapport contient un élément bloquant.', 'err'); }
   const m = testOnly ? MODES.test : MODES[$('#mode').value];
-  const fileName = source ? source.name : (isZip ? zipSelection.mainPath.split('/').pop() : f.name);
-  if (!source && localSource && localSource.file !== f) localSource = null;
-  const needsUpload = !source && !localSource;
-  const sourceId = source ? source.id : (localSource ? localSource.id : newRenderId());
+  const fileName = isZip ? zipSelection.mainPath.split('/').pop() : f.name;
+  if (localSource && localSource.file !== f) localSource = null;
+  const needsUpload = !localSource;
+  const sourceId = localSource ? localSource.id : newRenderId();
   const id = newRenderId();
   const htmlPrincipal = isZip ? zipSelection.mainPath : '';
   const t0 = Date.now();
@@ -2365,7 +2233,7 @@ async function go(testOnly = false) {
   try {
     setSteps(0);
     resetUploadProgress();
-    if (source || !needsUpload) {
+    if (!needsUpload) {
       uploadComplete = true;
       status('Fichier déjà enregistré dans le stockage privé…');
     } else {
@@ -2394,8 +2262,7 @@ async function go(testOnly = false) {
     step = 2;
     await finish(await waitJob(id, t0));
   } catch (e) {
-    if (e.status === 410 && source) {
-      importedSource = null;
+    if (e.status === 410 && localSource) {
       localSource = null;
       lastSourceForRetry = null;
       $('#file').value = '';
@@ -2582,20 +2449,6 @@ $('#rdx-hero-file-cta').addEventListener('click', () => {
   if (!fileInput.disabled) fileInput.click();
 });
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
-$('#importUrlBtn').onclick = importFromUrl;
-$('#importUrl').addEventListener('input', () => {
-  if (importedSource && $('#importUrl').value.trim() !== importedSource.url) {
-    const previous = importedSource;
-    importedSource = null;
-    // Le nettoyage éventuel est laissé au mécanisme de rétention ; aucune requête réseau pendant la saisie.
-    resetPreview();
-    $('#fileinfo').hidden = true;
-    showVerdict(null);
-  }
-  syncImportUrlButton();
-});
-$('#importUrl').addEventListener('paste', () => requestAnimationFrame(syncImportUrlButton));
-syncImportUrlButton();
 $('#go').onclick = () => go(false);
 $('#testRender').onclick = () => go(true);
 $('#audioOffset').oninput = () => {
