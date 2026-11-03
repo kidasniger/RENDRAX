@@ -436,6 +436,11 @@ ul#list button{box-shadow:none}
 
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
     <div class="head"><h2 id="h-file">Choisir un fichier</h2></div>
+    <div class="rdx-source-tabs" role="tablist" aria-label="Méthode d’import HTML">
+      <button class="sec rdx-source-tab is-active" id="rdx-file-tab" type="button" role="tab" aria-selected="true" aria-controls="rdx-file-panel">Choisir un fichier</button>
+      <button class="sec rdx-source-tab" id="rdx-paste-tab" type="button" role="tab" aria-selected="false" aria-controls="rdx-paste-panel">Coller du code</button>
+    </div>
+    <div id="rdx-file-panel" role="tabpanel" aria-labelledby="rdx-file-tab">
     <label class="drop" id="drop" tabindex="-1" data-state="idle" aria-describedby="rdx-drop-error">
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
       <b id="rdx-drop-title">Choisir un fichier</b>
@@ -443,6 +448,16 @@ ul#list button{box-shadow:none}
       <span class="rdx-drop-feedback" id="rdx-drop-feedback" aria-live="polite"></span>
       <input id="file" type="file" accept=".html,.htm,.zip,text/html,application/zip,application/x-zip-compressed" aria-label="Choisir un fichier HTML ou ZIP">
     </label>
+    </div>
+    <div id="rdx-paste-panel" class="rdx-paste-panel" role="tabpanel" aria-labelledby="rdx-paste-tab" hidden>
+      <label for="rdx-paste-html">Code HTML</label>
+      <textarea id="rdx-paste-html" class="rdx-paste-html" rows="12" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="<!doctype html>\n<html>\n  ...\n</html>"></textarea>
+      <div class="rdx-paste-footer">
+        <small id="rdx-paste-size">0 octet · 50 Mo maximum</small>
+        <button class="go" id="rdx-paste-create" type="button">Utiliser ce code</button>
+      </div>
+      <p id="rdx-paste-error" class="rdx-drop-error" role="alert" hidden></p>
+    </div>
     <p class="rdx-drop-error" id="rdx-drop-error" role="alert" hidden></p>
     <div id="zipInspector" class="zip-inspector" hidden aria-live="polite">
       <p id="zipSummary" class="zip-summary"></p>
@@ -2423,6 +2438,56 @@ $('#file').onchange = () => {
   if (localSource && localSource.file !== $('#file').files[0]) localSource = null;
   checkFile();
 };
+function setSourceTab(tab) {
+  const paste = tab === 'paste';
+  $('#rdx-file-tab').classList.toggle('is-active', !paste);
+  $('#rdx-paste-tab').classList.toggle('is-active', paste);
+  $('#rdx-file-tab').setAttribute('aria-selected', String(!paste));
+  $('#rdx-paste-tab').setAttribute('aria-selected', String(paste));
+  $('#rdx-file-panel').hidden = paste;
+  $('#rdx-paste-panel').hidden = !paste;
+  if (paste) $('#rdx-paste-html').focus();
+}
+function createFileFromPastedHtml() {
+  const code = $('#rdx-paste-html').value;
+  const error = $('#rdx-paste-error');
+  error.hidden = true;
+  error.textContent = '';
+  const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+  if (!code.trim()) {
+    error.textContent = 'Colle une page HTML avant de continuer.';
+    error.hidden = false;
+    return;
+  }
+  if (blob.size > MAX_BYTES) {
+    error.textContent = 'Code trop volumineux : ' + size(blob.size) + ' (limite : 50 Mo). Réduis le code ou ses ressources intégrées.';
+    error.hidden = false;
+    return;
+  }
+  const file = new File([blob], 'code-colle.html', { type: 'text/html', lastModified: Date.now() });
+  importedSource = null;
+  localSource = null;
+  zipSelection = null;
+  $('#importUrl').value = '';
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  $('#file').files = transfer.files;
+  setSourceTab('file');
+  checkFile().then(() => {
+    if (verdict && verdict.kind !== 'invalid' && !hasBlockingFinding(verdict)) {
+      $('#settingsCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    }
+  });
+}
+$('#rdx-file-tab').addEventListener('click', () => setSourceTab('file'));
+$('#rdx-paste-tab').addEventListener('click', () => setSourceTab('paste'));
+$('#rdx-paste-html').addEventListener('input', () => {
+  const bytes = new Blob([$('#rdx-paste-html').value]).size;
+  $('#rdx-paste-size').textContent = size(bytes) + ' / 50 Mo';
+  $('#rdx-paste-error').hidden = true;
+});
+$('#rdx-paste-create').addEventListener('click', createFileFromPastedHtml);
+
 $('#rdx-hero-file-cta').addEventListener('click', () => {
   const fileCard = $('#fileCard');
   const drop = $('#drop');
