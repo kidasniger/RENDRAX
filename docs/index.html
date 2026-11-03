@@ -1514,7 +1514,7 @@ async function chooseZipMain(path) {
   selection.mainText = '';
   selection.analysis = { kind: 'invalid', label: 'Choisis le HTML principal du ZIP.' };
   fileText = '';
-  $('#prevBtn').hidden = true;
+  resetPreview();
   if (!path) {
     $('#zipSummary').textContent = 'ZIP chargé. Sélectionne le HTML principal pour analyser la page.';
     return showVerdict(selection.analysis, 'warn', 'Choisis le HTML principal dans la liste avant de continuer.');
