@@ -1403,10 +1403,12 @@ async function chooseZipMain(path) {
   const entry = selection.entries.find(item => item.path === path);
   if (!entry || !selection.archive.file(path)) {
     selection.analysis = { kind: 'invalid', label: 'Le HTML sélectionné est introuvable dans le ZIP.' };
+    setDropState('error', selection.analysis.label);
     return showVerdict(selection.analysis, 'err', '✗ Le HTML sélectionné est introuvable dans le ZIP.');
   }
   if (entry.size > MAX_BYTES) {
     selection.analysis = { kind: 'invalid', label: 'Le HTML principal dépasse 50 Mo une fois extrait.' };
+    setDropState('error', selection.analysis.label);
     return showVerdict(selection.analysis, 'err', '✗ Le HTML principal dépasse 50 Mo une fois extrait.');
   }
   $('#zipSummary').textContent = 'Lecture de la page principale : ' + path + '…';
@@ -1419,6 +1421,7 @@ async function chooseZipMain(path) {
     $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
       ' · taille extraite : ' + size(entry.size) + '. Les chemins des fichiers associés seront conservés lors de leur extraction.';
     if (selection.analysis.kind === 'invalid') {
+      setDropState('error', selection.analysis.label);
       showVerdict(selection.analysis, 'err', '✗ ' + selection.analysis.label + ' Import bloqué.');
     } else if (selection.analysis.kind === 'generic') {
       showVerdict(selection.analysis, 'warn', '⚠ ' + selection.analysis.label + '. Rendu universel en temps réel ; durée, synchronisation et son non garantis.');
@@ -1428,6 +1431,7 @@ async function chooseZipMain(path) {
   } catch (error) {
     if (zipSelection !== selection || mainToken !== zipMainToken) return;
     selection.analysis = { kind: 'invalid', label: 'Lecture du HTML principal impossible.' };
+    setDropState('error', selection.analysis.label);
     showVerdict(selection.analysis, 'err', '✗ Lecture du HTML principal impossible : ' + (error.message || 'archive illisible') + '.');
   }
 }
@@ -1483,6 +1487,7 @@ async function inspectZip(file, token) {
     $('#zipMainPicker').hidden = true;
     $('#zipResourceMeta').textContent = '';
     $('#zipResourceList').textContent = '';
+    setDropState('error', error.message || 'Archive ZIP invalide.');
     showVerdict({ kind: 'invalid', label: error.message || 'Archive ZIP invalide.' }, 'err', '✗ ' + (error.message || 'Archive ZIP invalide.'));
   } finally {
     if (token === zipInspectToken) zipLoading = false;
