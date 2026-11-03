@@ -372,6 +372,20 @@ class Html2Mp4Tests(unittest.TestCase):
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)
 
+    def test_upload_progress_supports_speed_cancel_and_cleanup(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
+        self.assertIn('id="rdx-upload-progress"', page)
+        self.assertIn('id="rdx-upload-percent"', page)
+        self.assertIn('id="rdx-upload-bar"', page)
+        self.assertIn("xhr.upload.onprogress", page)
+        self.assertIn("updateUploadProgress(e.loaded, e.total, samples)", page)
+        self.assertIn("Vitesse :", page)
+        self.assertIn("currentUploadXhr.abort()", page)
+        self.assertIn("if (needsUpload && e.cancelled && !dispatchAccepted)", page)
+        self.assertIn("await cleanupUpload(sourceId, type_fichier)", page)
+        self.assertIn("#rdx-upload-bar::-webkit-progress-value", styles)
+
     def test_file_drop_has_specific_validation_messages(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         self.assertIn("Formats acceptés : .html, .htm et .zip.", page)
