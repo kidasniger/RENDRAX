@@ -674,3 +674,13 @@ main.rdx-main label.checkline:focus-within {
 @media (prefers-reduced-motion: reduce) {
   .rdx-tutorial-progress span { transition: none; }
 }
+
+/* Splash sans animation lorsque l'utilisateur préfère réduire les mouvements. */
+@media (prefers-reduced-motion: reduce) {
+  .rdx-splash,
+  .rdx-splash-mark,
+  .rdx-splash-progress span {
+    animation: none !important;
+    transition: none !important;
+  }
+}
