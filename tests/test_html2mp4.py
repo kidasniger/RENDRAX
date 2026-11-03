@@ -407,6 +407,20 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("Le fichier HTML est vide : aucun contenu à analyser.", page)
         self.assertIn("Ajoute le code HTML puis sélectionne à nouveau le fichier.", page)
 
+    def test_compatibility_report_has_three_groups_help_links_and_collapsed_ok_group(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="rdx-compat-blocking"', page)
+        self.assertIn('id="compatFindings"', page)
+        self.assertIn('id="compatPassed"', page)
+        self.assertIn('id="rdx-compat-blocking-title"', page)
+        self.assertIn('id="rdx-compat-warn-title"', page)
+        self.assertIn("passed.open = false", page)
+        self.assertIn("help.href = compatHelpUrl(finding)", page)
+        self.assertIn("help.textContent = 'Consulter l’aide'", page)
+        self.assertIn("rel = 'noopener noreferrer'", page)
+        self.assertIn("finding.detail || 'Ce point mérite une vérification avant le rendu.'", page)
+        self.assertIn("compatHelpUrl(finding)", page)
+
     def test_zip_inspector_presets_index_and_shows_candidate_sizes_and_resource_counts(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         self.assertIn("configureZipMainPicker(htmlPaths, chosen, entries)", page)
