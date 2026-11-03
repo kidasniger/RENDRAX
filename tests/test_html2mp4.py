@@ -434,6 +434,21 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("counts.audio + ' audio", page)
         self.assertIn("tu peux choisir une autre page", page)
 
+    def test_integrated_preview_keeps_sandbox_and_updates_aspect_ratio(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
+        self.assertIn('id="previewPanel"', page)
+        self.assertIn('id="previewFrame"', page)
+        self.assertIn('id="format"', page)
+        self.assertIn('sandbox="allow-scripts"', page)
+        self.assertIn("function applyPreviewFormat()", page)
+        self.assertIn("frame.dataset.format = format === 'auto' ? 'portrait' : format", page)
+        self.assertIn('data-format="landscape"', styles)
+        self.assertIn('aspect-ratio:16/9', styles)
+        self.assertIn('aspect-ratio:1/1', styles)
+        self.assertIn("renderPreview(fileText)", page)
+        self.assertIn("renderPreview(selection.mainText)", page)
+
     def test_url_import_is_removed_and_local_html_workflows_remain(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         for removed in ('importUrl', 'url-import', 'importFromUrl', 'validateImportUrl',
