@@ -476,28 +476,45 @@ ul#list button{box-shadow:none}
     </div>
         <p id="fileinfo" hidden></p>
     <p id="verdict" role="status" hidden></p>
-    <section id="compatReport" aria-labelledby="compatReportTitle" hidden>
-      <div class="compat-report-head">
-        <h3 id="compatReportTitle">Analyse du fichier</h3>
-        <p id="compatSummary" class="compat-summary" aria-live="polite"></p>
-      </div>
-      <section class="compat-group compat-group-blocking" aria-labelledby="rdx-compat-blocking-title">
-        <h4 id="rdx-compat-blocking-title"><span aria-hidden="true">⛔</span> Bloquant <span id="rdx-compat-blocking-count" class="compat-group-count">0</span></h4>
-        <ul id="rdx-compat-blocking" role="list" aria-label="Erreurs bloquantes"></ul>
-        <p id="rdx-compat-blocking-empty" class="compat-empty">Aucun blocage détecté.</p>
+    <div class="rdx-analysis-layout">
+      <section id="compatReport" aria-labelledby="compatReportTitle" hidden>
+        <div class="compat-report-head">
+          <h3 id="compatReportTitle">Analyse du fichier</h3>
+          <p id="compatSummary" class="compat-summary" aria-live="polite"></p>
+        </div>
+        <section class="compat-group compat-group-blocking" aria-labelledby="rdx-compat-blocking-title">
+          <h4 id="rdx-compat-blocking-title"><span aria-hidden="true">⛔</span> Bloquant <span id="rdx-compat-blocking-count" class="compat-group-count">0</span></h4>
+          <ul id="rdx-compat-blocking" role="list" aria-label="Erreurs bloquantes"></ul>
+          <p id="rdx-compat-blocking-empty" class="compat-empty">Aucun blocage détecté.</p>
+        </section>
+        <section class="compat-group compat-group-warn" aria-labelledby="rdx-compat-warn-title">
+          <h4 id="rdx-compat-warn-title"><span aria-hidden="true">⚠</span> À vérifier <span id="rdx-compat-warn-count" class="compat-group-count">0</span></h4>
+          <ul id="compatFindings" role="list" aria-label="Points à vérifier"></ul>
+          <p id="rdx-compat-warn-empty" class="compat-empty">Aucun point à vérifier.</p>
+        </section>
+        <details id="compatPassed" class="compat-passed" hidden>
+          <summary id="compatPassedSummary"><span aria-hidden="true">✓</span> OK · Afficher les vérifications réussies</summary>
+          <ul id="compatPassedFindings" role="list" aria-label="Vérifications réussies"></ul>
+        </details>
       </section>
-      <section class="compat-group compat-group-warn" aria-labelledby="rdx-compat-warn-title">
-        <h4 id="rdx-compat-warn-title"><span aria-hidden="true">⚠</span> À vérifier <span id="rdx-compat-warn-count" class="compat-group-count">0</span></h4>
-        <ul id="compatFindings" role="list" aria-label="Points à vérifier"></ul>
-        <p id="rdx-compat-warn-empty" class="compat-empty">Aucun point à vérifier.</p>
+      <section id="previewPanel" class="rdx-preview-panel" aria-labelledby="previewTitle" hidden>
+        <div class="rdx-preview-head">
+          <div><h3 id="previewTitle">Aperçu avant rendu</h3><p>Vérifie le cadrage de ta page HTML.</p></div>
+          <label for="format">Format
+            <select id="format">
+              <option value="portrait">Portrait · 9:16</option>
+              <option value="landscape">Paysage · 16:9</option>
+              <option value="square">Carré · 1:1</option>
+              <option value="auto">Automatique</option>
+            </select>
+          </label>
+        </div>
+        <div id="previewFrame" class="rdx-preview-frame" data-format="portrait">
+          <iframe id="prev" title="Aperçu du fichier HTML" sandbox="allow-scripts" allow="autoplay" hidden></iframe>
+        </div>
+        <button class="sec" id="prevBtn" type="button" hidden>Actualiser l’aperçu</button>
       </section>
-      <details id="compatPassed" class="compat-passed" hidden>
-        <summary id="compatPassedSummary"><span aria-hidden="true">✓</span> OK · Afficher les vérifications réussies</summary>
-        <ul id="compatPassedFindings" role="list" aria-label="Vérifications réussies"></ul>
-      </details>
-    </section>
-    <button class="sec" id="prevBtn" type="button" hidden>Voir un aperçu</button>
-    <iframe id="prev" title="Aperçu du fichier HTML" sandbox="allow-scripts" allow="autoplay" hidden></iframe>
+    </div>
   </section>
 
   <section id="settingsCard" class="card rdx-settings-card" aria-labelledby="h-set" hidden>
@@ -519,15 +536,6 @@ ul#list button{box-shadow:none}
         <p class="mut">Optionnel. Active cette option pour ajouter le filigrane animé RENDRAX au MP4.</p>
       </div>
       <div id="advancedSettings" class="advanced-settings" hidden>
-      <div class="field">
-        <label for="format">Format</label>
-        <select id="format">
-          <option value="auto">Automatique</option>
-          <option value="portrait">Portrait · 9:16</option>
-          <option value="landscape">Paysage · 16:9</option>
-          <option value="square">Carré · 1:1</option>
-        </select>
-      </div>
       <div class="field">
         <label for="duration">Durée maximale</label>
         <select id="duration">
@@ -1390,9 +1398,25 @@ function showVerdict(v, cls, msg) {
     verifyExternalResources(v);
   }
 }
+function applyPreviewFormat() {
+  const format = $('#format').value;
+  $('#previewFrame').dataset.format = format === 'auto' ? 'portrait' : format;
+}
+function renderPreview(source) {
+  if (!source) return;
+  const frame = $('#prev');
+  $('#previewPanel').hidden = false;
+  $('#prevBtn').hidden = false;
+  applyPreviewFormat();
+  frame.hidden = false;
+  frame.srcdoc = source;
+}
 function resetPreview() {
-  const p = $('#prev'); p.hidden = true; p.removeAttribute('srcdoc');
-  $('#prevBtn').textContent = 'Voir un aperçu';
+  const frame = $('#prev');
+  frame.hidden = true;
+  frame.removeAttribute('srcdoc');
+  $('#previewPanel').hidden = true;
+  $('#prevBtn').textContent = 'Actualiser l’aperçu';
 }
 async function loadJsZip() {
   if (window.JSZip) return window.JSZip;
@@ -1522,8 +1546,10 @@ async function chooseZipMain(path) {
       setDropState('error', selection.analysis.label + ' ' + action);
       showVerdict(selection.analysis, 'err', '✗ ' + selection.analysis.label + ' ' + action);
     } else if (selection.analysis.kind === 'generic') {
+      renderPreview(selection.mainText);
       showVerdict(selection.analysis, 'warn', '⚠ ' + selection.analysis.label + '. Rendu universel en temps réel ; durée, synchronisation et son non garantis.');
     } else {
+      renderPreview(selection.mainText);
       showVerdict(selection.analysis, 'ok', '✓ HTML principal reconnu : ' + selection.analysis.label + '.');
     }
   } catch (error) {
@@ -1635,7 +1661,7 @@ async function checkFile() {
     setDropState('error', v.label + ' Action : vérifie le contenu du fichier et sélectionne une page HTML complète.');
     return showVerdict(v, 'err', '✗ ' + v.label + ' Vérifie le contenu puis réessaie.');
   }
-  $('#prevBtn').hidden = false;
+  renderPreview(fileText);
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
   else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
 }
@@ -2447,25 +2473,10 @@ $('#audioOffset').oninput = () => {
 };
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
+$('#format').addEventListener('change', applyPreviewFormat);
 $('#prevBtn').onclick = () => {
-  const p = $('#prev'), btn = $('#prevBtn');
-  if (!p.hidden) { resetPreview(); return; }
-  // Wait until srcdoc and its blocking scripts (for example GSAP from a CDN)
-  // have loaded before making the start button clickable in the preview.
-  btn.disabled = true;
-  btn.textContent = 'Chargement de l’aperçu…';
-  let timer = 0, revealed = false;
-  const reveal = () => {
-    if (revealed) return;
-    revealed = true;
-    if (timer) clearTimeout(timer);
-    p.hidden = false;
-    btn.disabled = false;
-    btn.textContent = 'Fermer l’aperçu';
-  };
-  p.addEventListener('load', reveal, { once: true });
-  timer = window.setTimeout(reveal, 20000);
-  p.srcdoc = fileText;
+  const source = zipSelection && zipSelection.mainText ? zipSelection.mainText : fileText;
+  renderPreview(source);
 };
 const drop = $('#drop');
 let dropDepth = 0;
