@@ -771,3 +771,5 @@ main.rdx-main .drop-error[hidden]{display:none}
 .rdx-preview-panel #prevBtn{margin-top:10px}
 @media(max-width:760px){.rdx-analysis-layout{grid-template-columns:minmax(0,1fr)}.rdx-preview-frame{width:min(100%,340px)}.rdx-preview-frame[data-format="landscape"]{width:100%}}
 @media(prefers-reduced-motion:reduce){.rdx-preview-frame{transition:none}}
+
+#previewPanel[hidden],iframe#prev[hidden]{display:none!important}
