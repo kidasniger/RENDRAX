@@ -3,7 +3,7 @@ import {
   isB2NotFound
 } from '../lib/b2-storage.js';
 import {
-  readBody, safeName, send, validJobId, verifyGitHubActionsRequest,
+  githubRequest, readBody, safeName, send, validJobId, verifyGitHubActionsRequest,
   verifyGitHubActionsMaintenanceRequest, publicError
 } from '../lib/kidas-server.js';
 
@@ -28,6 +28,21 @@ async function signedRead(req, res, id, extension) {
   }
   const url = await b2PresignGet(`videos/${id}.${extension}`, SIGNED_LINK_TTL_SECONDS);
   return res.redirect(302, url);
+}
+
+async function readGeneratedCount() {
+  try {
+    const response = await githubRequest('/repos/kidasniger/RENDRAX/git/trees/main?recursive=1');
+    const tree = response.data?.tree;
+    if (!Array.isArray(tree) || response.data?.truncated) return null;
+    return tree.filter(item =>
+      item.type === 'blob' &&
+      /^stats\/generated\/v[a-z0-9]{12,40}\.json$/.test(item.path || '')
+    ).length;
+  } catch (error) {
+    console.warn('[RENDRAX generated count]', error?.status || error?.name || 'error');
+    return null;
+  }
 }
 
 async function listVideos(res) {
@@ -61,7 +76,11 @@ async function listVideos(res) {
         }]
       };
     }));
-  return send(res, 200, { items: items.filter(Boolean).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)) });
+  const generatedCount = await readGeneratedCount();
+  return send(res, 200, {
+    items: items.filter(Boolean).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
+    ...(Number.isSafeInteger(generatedCount) ? { generatedCount } : {})
+  });
 }
 
 async function createUploadUrls(req, res) {
