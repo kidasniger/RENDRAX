@@ -431,6 +431,11 @@ ul#list button{box-shadow:none}
     </div>
   </header>
 
+  <div class="rdx-social-proof" aria-label="Statistiques et conservation des vidéos">
+    <span id="rdx-generated-count" hidden></span>
+    <span>Vidéos supprimées automatiquement après 30 jours</span>
+  </div>
+
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
     <div class="head"><h2 id="h-file">Choisir un fichier</h2></div>
     <label class="drop" id="drop" tabindex="-1">
@@ -1932,6 +1937,14 @@ async function loadList() {
   const ul = $('#list');
   try {
     const data = await api('/videos');
+    const generatedCount = $('#rdx-generated-count');
+    if (generatedCount && Number.isSafeInteger(data.generatedCount) && data.generatedCount >= 0) {
+      generatedCount.textContent = data.generatedCount.toLocaleString('fr-FR') + ' vidéos générées';
+      generatedCount.hidden = false;
+    } else if (generatedCount) {
+      generatedCount.textContent = '';
+      generatedCount.hidden = true;
+    }
     closeHistoryPlayer();
     ul.textContent = '';
     const items = data.items || [];
