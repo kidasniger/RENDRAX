@@ -334,6 +334,9 @@ ul#list button{box-shadow:none}
 }
 /* Proposition 22 — estimation indicative avant rendu */
 .render-estimate{margin:10px 0 0;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--ac) 6%,var(--surf2));color:var(--tx);font-size:.84rem;font-weight:750;line-height:1.5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.advanced-settings-summary{display:flex;align-items:center;gap:8px;margin:7px 0 14px;padding:0 3px;color:var(--mut);font-size:.82rem;line-height:1.45;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.advanced-settings-summary .advanced-settings-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 15%,transparent)}
+.advanced-settings-summary .advanced-settings-dot[hidden]{display:none}
 </style>
 <link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261031-tutorial41">
 <script type="importmap">
@@ -571,6 +574,7 @@ ul#list button{box-shadow:none}
       </div>
     </div>
     <button id="advancedSettingsToggle" class="sec advanced-settings-toggle" type="button" aria-expanded="false" aria-controls="advancedSettings">Réglages avancés</button>
+    <p id="advancedSettingsSummary" class="advanced-settings-summary" aria-live="polite"><span class="advanced-settings-dot" aria-hidden="true" hidden></span><span id="advancedSettingsSummaryText">Auto · Auto · Son 0 ms · Volume égalisé</span></p>
     <button id="resetRenderPrefs" class="prefs-reset" type="button">Remettre les réglages par défaut</button>
     <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
@@ -748,6 +752,25 @@ function saveRenderPrefs() {
     advanced: $('#advancedSettingsToggle').getAttribute('aria-expanded') === 'true'
   }));
 }
+function updateAdvancedSettingsSummary() {
+  const summary = $('#advancedSettingsSummary');
+  const text = $('#advancedSettingsSummaryText');
+  const dot = summary && summary.querySelector('.advanced-settings-dot');
+  if (!summary || !text || !dot) return;
+  const formatLabels = { auto: 'Auto', portrait: 'Portrait', landscape: 'Paysage', square: 'Carré' };
+  const durationLabels = { '0': 'Auto', '10': '10 s', '30': '30 s', '60': '60 s', '120': '2 min', '300': '5 min' };
+  const format = $('#format').value;
+  const duration = $('#duration').value;
+  const offset = Number($('#audioOffset').value) || 0;
+  const loudnorm = $('#loudnorm').checked;
+  text.textContent = (formatLabels[format] || 'Auto') + ' · ' +
+    (durationLabels[duration] || 'Auto') + ' · Son ' + offset + ' ms · ' +
+    (loudnorm ? 'Volume égalisé' : 'Volume non égalisé');
+  const changed = format !== 'auto' || duration !== '0' || offset !== 0 || !loudnorm;
+  dot.hidden = !changed;
+  summary.classList.toggle('has-changes', changed);
+  summary.setAttribute('aria-label', text.textContent + (changed ? ' · Réglages modifiés' : ' · Valeurs par défaut'));
+}
 function setAdvancedSettings(expanded, persist = true) {
   const toggle = $('#advancedSettingsToggle');
   const panel = $('#advancedSettings');
@@ -755,8 +778,13 @@ function setAdvancedSettings(expanded, persist = true) {
   panel.hidden = !expanded;
   toggle.textContent = expanded ? 'Masquer les réglages avancés' : 'Réglages avancés';
   if (persist) saveRenderPrefs();
+  updateAdvancedSettingsSummary();
 }
 function initAdvancedSettings() {
+  $('#audioOffset').addEventListener('input', updateAdvancedSettingsSummary);
+  $('#audioOffset').addEventListener('change', () => { saveRenderPrefs(); updateAdvancedSettingsSummary(); });
+  ['format', 'duration', 'loudnorm'].forEach(id => $('#' + id).addEventListener('change', updateAdvancedSettingsSummary));
+  updateAdvancedSettingsSummary();
   $('#advancedSettingsToggle').addEventListener('click', () => {
     const expanded = $('#advancedSettingsToggle').getAttribute('aria-expanded') === 'true';
     setAdvancedSettings(!expanded);
