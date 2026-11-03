@@ -15,8 +15,11 @@ export default async function handler(req, res) {
   const missing = Object.entries(required)
     .filter(([, value]) => !String(value || '').trim())
     .map(([name]) => name);
+  const ready = missing.length === 0;
+  const status = ready ? 'online' : (missing.length === Object.keys(required).length ? 'offline' : 'degraded');
   return send(res, 200, {
-    ready: missing.length === 0,
+    ready,
+    status,
     missing,
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
