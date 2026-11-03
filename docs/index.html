@@ -369,6 +369,11 @@ ul#list button{box-shadow:none}
         <span>Son intégré</span>
         <span>Sans compte</span>
       </div>
+      <div class="rdx-hero-actions">
+        <button type="button" class="rdx-primary-link" id="rdx-hero-file-cta" aria-controls="fileCard">
+          Choisir mon fichier HTML <span aria-hidden="true">→</span>
+        </button>
+      </div>
     </div>
     <div class="rdx-hero-visual" role="img" aria-label="Illustration animée : un code HTML devient une vidéo MP4">
       <div class="rdx-visual-fallback" aria-hidden="true">
@@ -401,7 +406,7 @@ ul#list button{box-shadow:none}
 
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
     <div class="head"><h2 id="h-file">Choisir un fichier</h2></div>
-    <label class="drop" id="drop">
+    <label class="drop" id="drop" tabindex="-1">
       <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
       <b>Choisir un fichier</b>
       <span class="mut">ou déposer un fichier HTML, HTM ou ZIP · 50 Mo maximum</span>
@@ -2221,6 +2226,17 @@ $('#file').onchange = () => {
   if (localSource && localSource.file !== $('#file').files[0]) localSource = null;
   checkFile();
 };
+$('#rdx-hero-file-cta').addEventListener('click', () => {
+  const fileCard = $('#fileCard');
+  const drop = $('#drop');
+  const fileInput = $('#file');
+  fileCard.scrollIntoView({
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start'
+  });
+  drop.focus({ preventScroll: true });
+  if (!fileInput.disabled) fileInput.click();
+});
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#importUrlBtn').onclick = importFromUrl;
 $('#importUrl').oninput = () => {
