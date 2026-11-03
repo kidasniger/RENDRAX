@@ -372,6 +372,19 @@ class Html2Mp4Tests(unittest.TestCase):
             self.assertNotIn("kidasniger/Kidas", source)
         self.assertNotIn("kidasniger/Kidas", server + render_api)
 
+    def test_paste_html_creates_client_file_and_uses_shared_validation(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
+        self.assertIn('id="rdx-paste-tab"', page)
+        self.assertIn('id="rdx-paste-html"', page)
+        self.assertIn('id="rdx-paste-create"', page)
+        self.assertIn("new Blob([code], { type: 'text/html;charset=utf-8' })", page)
+        self.assertIn("if (blob.size > MAX_BYTES)", page)
+        self.assertIn("new File([blob], 'code-colle.html'", page)
+        self.assertIn("$('#file').files = transfer.files", page)
+        self.assertIn("checkFile().then(() =>", page)
+        self.assertIn(".rdx-paste-html", styles)
+
     def test_upload_progress_supports_speed_cancel_and_cleanup(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
