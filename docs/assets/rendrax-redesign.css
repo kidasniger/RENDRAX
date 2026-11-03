@@ -751,3 +751,8 @@ main.rdx-main .drop-error[hidden]{display:none}
 .rdx-paste-footer small{font-variant-numeric:tabular-nums}
 .rdx-paste-footer .go{width:auto;min-height:42px;padding:9px 16px}
 @media(max-width:380px){.rdx-paste-footer{align-items:stretch;flex-direction:column}.rdx-paste-footer .go{width:100%}}
+
+
+/* Proposition 17 — retour visuel de validation du lien */
+main.rdx-main .url-import-help[data-state="invalid"] { color: var(--rdx-danger, #b42318); }
+main.rdx-main .url-import-help[data-state="valid"] { color: var(--rdx-success, #18794e); }
