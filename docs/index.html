@@ -25,42 +25,19 @@
 <script>
 (function(){
   const root = document.documentElement;
-  const storageKey = 'rendrax-theme-mode';
   const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  let mode = 'auto';
-  try {
-    const saved = localStorage.getItem(storageKey);
-    if (saved === 'auto' || saved === 'light' || saved === 'dark') mode = saved;
-  } catch (e) {}
 
   function applyTheme(){
-    const dark = mode === 'dark' || (mode === 'auto' && !!(media && media.matches));
+    const dark = !!(media && media.matches);
     root.dataset.theme = dark ? 'dark' : 'light';
-    root.dataset.themeMode = mode;
+    root.dataset.themeMode = 'auto';
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = dark ? '#080b18' : '#f3f6ff';
-    const button = document.getElementById('rdx-theme-toggle');
-    if (button) {
-      const next = mode === 'auto' ? 'clair' : mode === 'light' ? 'sombre' : 'automatique';
-      button.setAttribute('aria-label', 'Thème ' + (mode === 'auto' ? 'automatique' : mode === 'light' ? 'clair' : 'sombre') + '. Activer le thème ' + next + '.');
-      const visibleMode = button.querySelector('.rdx-theme-mode-label');
-      if (visibleMode) visibleMode.textContent = mode === 'auto' ? 'Auto' : mode === 'light' ? 'Clair' : 'Sombre';
-      button.title = 'Thème : ' + (mode === 'auto' ? 'auto' : mode === 'light' ? 'clair' : 'sombre') + ' — cliquer pour changer';
-    }
   }
 
-  document.addEventListener('click', function(event){
-    const button = event.target.closest('#rdx-theme-toggle');
-    if (!button) return;
-    mode = mode === 'auto' ? 'light' : mode === 'light' ? 'dark' : 'auto';
-    try { localStorage.setItem(storageKey, mode); } catch (e) {}
-    applyTheme();
-  });
-
   if (media) {
-    const onSystemThemeChange = function(){ if (mode === 'auto') applyTheme(); };
-    if (media.addEventListener) media.addEventListener('change', onSystemThemeChange);
-    else if (media.addListener) media.addListener(onSystemThemeChange);
+    if (media.addEventListener) media.addEventListener('change', applyTheme);
+    else if (media.addListener) media.addListener(applyTheme);
   }
   applyTheme();
 })();
@@ -405,15 +382,6 @@ ul#list button{box-shadow:none}
           <img class="brand-logo" data-rdx-logo-light src="/assets/rendrax-logo.svg?v=20261025-fix3" alt="RENDRAX" width="520" height="120">
           <img class="brand-logo" data-rdx-logo-dark src="/assets/rendrax-logo-dark.svg?v=20261025-fix3" alt="" aria-hidden="true" width="520" height="120">
         </a>
-        <button type="button" class="rdx-theme-toggle" id="rdx-theme-toggle" aria-label="Thème automatique. Activer le thème clair." title="Thème : auto — cliquer pour changer">
-          <svg class="rdx-theme-icon rdx-theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path>
-          </svg>
-          <svg class="rdx-theme-icon rdx-theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
-          </svg>
-          <span class="rdx-theme-mode-label">Auto</span>
-        </button>
       </div>
       <p class="rdx-eyebrow" id="rdx-service-status" data-state="checking" role="status" aria-live="polite"><span class="rdx-live-dot" aria-hidden="true"></span><span id="rdx-service-label">ATELIER DE RENDU · Vérification…</span></p>
       <h1>Convertir HTML en MP4</h1>
