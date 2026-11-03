@@ -753,3 +753,21 @@ main.rdx-main .drop-error[hidden]{display:none}
 
 
 /* Proposition 17 — retour visuel de validation du lien */
+
+
+/* Aperçu intégré au rapport de compatibilité */
+.rdx-analysis-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.82fr);align-items:start;gap:14px;margin-top:12px}
+.rdx-analysis-layout #compatReport{margin-top:0;min-width:0}
+.rdx-preview-panel{min-width:0;padding:14px;border:1px solid var(--bd);border-radius:var(--rs);background:color-mix(in srgb,var(--surf2) 38%,transparent)}
+.rdx-preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rdx-preview-head h3{margin:0;font-size:.95rem}
+.rdx-preview-head p{margin:4px 0 0;color:var(--mut);font-size:.78rem}
+.rdx-preview-head label{display:grid;gap:5px;min-width:120px;font-size:.75rem;font-weight:650}
+.rdx-preview-head select{min-height:40px;padding:7px 28px 7px 10px;font-size:.8rem}
+.rdx-preview-frame{position:relative;width:min(100%,360px);margin:0 auto;overflow:hidden;border:1px solid var(--bd);border-radius:12px;background:#111;box-shadow:0 8px 24px rgba(0,0,0,.12);aspect-ratio:9/16;transition:aspect-ratio .18s ease,width .18s ease}
+.rdx-preview-frame[data-format="landscape"]{width:100%;aspect-ratio:16/9}
+.rdx-preview-frame[data-format="square"]{width:min(100%,440px);aspect-ratio:1/1}
+.rdx-preview-frame iframe#prev{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0;background:#fff;display:block}
+.rdx-preview-panel #prevBtn{margin-top:10px}
+@media(max-width:760px){.rdx-analysis-layout{grid-template-columns:minmax(0,1fr)}.rdx-preview-frame{width:min(100%,340px)}.rdx-preview-frame[data-format="landscape"]{width:100%}}
+@media(prefers-reduced-motion:reduce){.rdx-preview-frame{transition:none}}
