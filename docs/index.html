@@ -1426,8 +1426,11 @@ async function chooseZipMain(path) {
     $('#zipSummary').textContent = 'ZIP : ' + selection.file.name + ' · HTML principal : ' + path +
       ' · taille extraite : ' + size(entry.size) + '. Les chemins des fichiers associés seront conservés lors de leur extraction.';
     if (selection.analysis.kind === 'invalid') {
-      setDropState('error', selection.analysis.label);
-      showVerdict(selection.analysis, 'err', '✗ ' + selection.analysis.label + ' Import bloqué.');
+      const action = selection.analysis.label.includes('vide')
+        ? 'Ajoute le code HTML puis sélectionne à nouveau le fichier.'
+        : 'Vérifie le HTML principal et sélectionne une page complète.';
+      setDropState('error', selection.analysis.label + ' ' + action);
+      showVerdict(selection.analysis, 'err', '✗ ' + selection.analysis.label + ' ' + action);
     } else if (selection.analysis.kind === 'generic') {
       showVerdict(selection.analysis, 'warn', '⚠ ' + selection.analysis.label + '. Rendu universel en temps réel ; durée, synchronisation et son non garantis.');
     } else {
