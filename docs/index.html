@@ -337,10 +337,35 @@ ul#list button{box-shadow:none}
 </script>
 <script>
 (function(){
-  var done = function(){ document.documentElement.classList.add('rdx-ready'); };
-  if (document.readyState === 'complete') setTimeout(done, 900);
-  else window.addEventListener('load', function(){ setTimeout(done, 900); }, { once:true });
-  setTimeout(done, 2400);
+  var root = document.documentElement;
+  var done = function(){
+    root.classList.add('rdx-ready');
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+    if (readyTimer) clearTimeout(readyTimer);
+  };
+  var fallbackTimer = null;
+  var readyTimer = null;
+  var visited = false;
+  var reduceMotion = false;
+
+  try {
+    visited = localStorage.getItem('rdx-visited') === '1';
+    localStorage.setItem('rdx-visited', '1');
+  } catch (e) {}
+
+  try {
+    reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (e) {}
+
+  if (visited || reduceMotion) {
+    done();
+    return;
+  }
+
+  if (document.readyState === 'complete') readyTimer = setTimeout(done, 600);
+  else window.addEventListener('load', function(){ readyTimer = setTimeout(done, 600); }, { once:true });
+
+  fallbackTimer = setTimeout(done, 2400);
 })();
 </script>
 </head>
