@@ -132,6 +132,11 @@ select:hover,input:hover{border-color:color-mix(in srgb,var(--tx) 25%,var(--bd))
 button{font:inherit;font-weight:700;border:0;border-radius:999px;min-height:48px;padding:12px 20px;background:var(--ac);color:var(--on);width:100%;margin-top:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,background-color .15s,border-color .15s}
 button:hover{background:var(--ac2)}
 button:active{transform:scale(.98)}
+.test-render-recommendation{margin-top:12px;padding:12px;border:1px solid var(--bd);border-radius:14px;background:var(--surf2);text-align:center}
+.test-render-recommendation p{margin:0 0 9px;font-size:.9rem;font-weight:650;color:var(--tx)}
+.test-render-recommendation button{display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.test-render-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;background:var(--accent);color:white;font-size:.7rem;font-weight:750;line-height:1.2}
+.test-render-recommendation.is-completed{border-color:var(--bd);background:transparent}
 button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd);width:auto;margin:0;padding:8px 16px;min-height:44px;font-weight:600;font-size:.9rem}
 button.sec:hover{background:var(--surf2);border-color:color-mix(in srgb,var(--tx) 25%,var(--bd))}
 button.danger{background:transparent;color:var(--err);border:1px solid color-mix(in srgb,var(--err) 50%,transparent)}
@@ -661,7 +666,10 @@ ul#list button{box-shadow:none}
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
-    <button id="testRender" class="sec" type="button">Rendu test de 10 s</button>
+    <div class="test-render-recommendation" id="testRenderRecommendation">
+      <p>Vérifier en 10 s avant le rendu complet</p>
+      <button id="testRender" class="sec" type="button">Rendu test de 10 s <span class="test-render-badge" id="testRenderBadge">Recommandé</span></button>
+    </div>
     <button id="cancel" class="danger" type="button" hidden>Annuler le rendu</button>
   </section>
 
@@ -2554,8 +2562,12 @@ async function waitJob(id, t0) {
   }
   throw new Error('Délai dépassé (plus de 95 minutes).');
 }
-async function finish(rel) {
+async function finish(rel, testOnly = false) {
   showResult(rel); setSteps(4); status('Terminé ✓', 'ok'); hint('');
+  if (testOnly) {
+    store.set('kidas_test_render_success', '1');
+    updateTestRenderRecommendation();
+  }
   resetRenderProgress();
   store.set('kidas_job', null); loadList();
 }
@@ -2628,7 +2640,7 @@ async function go(testOnly = false) {
     lastSourceForRetry = { id: sourceId, type_fichier, html_principal: htmlPrincipal, name: fileName };
     store.set('kidas_job', JSON.stringify({ id, t0 }));
     step = 2;
-    await finish(await waitJob(id, t0));
+    await finish(await waitJob(id, t0), testOnly);
   } catch (e) {
     if (e.status === 410 && localSource) {
       localSource = null;
@@ -2816,7 +2828,16 @@ $('#rdx-hero-file-cta').addEventListener('click', () => {
 });
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#go').onclick = () => go(false);
+function updateTestRenderRecommendation() {
+  const completed = store.get('kidas_test_render_success') === '1';
+  const recommendation = $('#testRenderRecommendation');
+  const badge = $('#testRenderBadge');
+  if (!recommendation || !badge) return;
+  badge.hidden = completed;
+  recommendation.classList.toggle('is-completed', completed);
+}
 $('#testRender').onclick = () => go(true);
+updateTestRenderRecommendation();
 function initContextualHelp() {
   const triggers = [...document.querySelectorAll('.help-trigger[aria-controls]')];
   function closeHelp(trigger, restoreFocus = false) {
