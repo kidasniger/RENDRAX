@@ -151,20 +151,27 @@ input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
 #compatReport h3{margin:0;font-size:.95rem}
 .compat-report-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .compat-summary{margin:0;color:var(--mut);font-size:.78rem;line-height:1.4}
-#compatFindings,#compatPassedFindings{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px}
-#compatFindings li{padding:10px 11px;border:1px solid color-mix(in srgb,var(--warn) 28%,var(--bd));border-left:3px solid var(--warn);border-radius:10px;background:color-mix(in srgb,var(--warn) 5%,var(--surf));font-size:.84rem}
-#compatFindings li[data-level="blocking"]{border-color:color-mix(in srgb,var(--err) 35%,var(--bd));border-left-color:var(--err);background:color-mix(in srgb,var(--err) 5%,var(--surf))}
-#compatFindings li[data-level="info"]{border-color:var(--bd);border-left-color:var(--mut);background:transparent}
-#compatFindings li strong{display:block;margin-bottom:3px;font-size:.86rem}
-#compatFindings li p{margin:3px 0 0;line-height:1.45}
-#compatFindings li .compat-action{color:var(--tx);font-weight:600}
-.compat-passed{margin-top:10px;border-top:1px solid var(--bd);padding-top:9px}
-.compat-passed summary{width:fit-content;cursor:pointer;color:var(--mut);font-size:.8rem;font-weight:650;touch-action:manipulation}
+.compat-group{margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)}
+.compat-group h4{display:flex;align-items:center;gap:7px;margin:0;font-size:.86rem}
+.compat-group-blocking h4{color:var(--err)}
+.compat-group-warn h4{color:var(--warn)}
+.compat-group-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;border-radius:999px;background:var(--surf2);color:var(--tx);font:700 .7rem/1 var(--mono)}
+#rdx-compat-blocking,#compatFindings,#compatPassedFindings{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:7px}
+#rdx-compat-blocking li,#compatFindings li{padding:10px 11px;border:1px solid var(--bd);border-left:3px solid var(--warn);border-radius:10px;background:color-mix(in srgb,var(--warn) 5%,var(--surf));font-size:.84rem}
+#rdx-compat-blocking li{border-color:color-mix(in srgb,var(--err) 35%,var(--bd));border-left-color:var(--err);background:color-mix(in srgb,var(--err) 5%,var(--surf))}
+#rdx-compat-blocking li strong,#compatFindings li strong{display:block;margin-bottom:3px;font-size:.86rem}
+#rdx-compat-blocking li p,#compatFindings li p{margin:3px 0 0;line-height:1.45}
+#rdx-compat-blocking li .compat-action,#compatFindings li .compat-action{color:var(--tx);font-weight:600}
+.compat-help-link{display:inline-block;margin-top:6px;font-size:.78rem;font-weight:650;text-underline-offset:3px}
+.compat-empty{margin:7px 0 0;color:var(--mut);font-size:.8rem}
+.compat-passed{margin-top:12px;border-top:1px solid var(--bd);padding-top:10px}
+.compat-passed summary{width:fit-content;cursor:pointer;color:var(--ok);font-size:.82rem;font-weight:700;touch-action:manipulation}
 #compatPassedFindings{margin-top:8px;gap:5px}
-#compatPassedFindings li{display:flex;align-items:flex-start;gap:7px;padding:3px 0;color:var(--mut);font-size:.78rem;line-height:1.4}
+#compatPassedFindings li{display:flex;align-items:flex-start;gap:7px;padding:5px 0;color:var(--mut);font-size:.78rem;line-height:1.4}
 #compatPassedFindings li::before{content:"✓";flex:0 0 auto;color:var(--ok);font-weight:800}
 #compatPassedFindings li strong{font-weight:650;color:var(--tx)}
 #compatPassedFindings li p{display:inline;margin:0}
+#compatPassedFindings li .compat-help-link{margin:0 0 0 5px}
 #prevBtn{margin-top:10px}
 iframe#prev{width:100%;height:420px;border:1px solid var(--bd);border-radius:var(--rs);margin-top:10px;background:#000;display:block}
 
@@ -491,9 +498,18 @@ ul#list button{box-shadow:none}
         <h3 id="compatReportTitle">Analyse du fichier</h3>
         <p id="compatSummary" class="compat-summary" aria-live="polite"></p>
       </div>
-      <ul id="compatFindings" role="list" aria-label="Points à vérifier"></ul>
+      <section class="compat-group compat-group-blocking" aria-labelledby="rdx-compat-blocking-title">
+        <h4 id="rdx-compat-blocking-title"><span aria-hidden="true">⛔</span> Bloquant <span id="rdx-compat-blocking-count" class="compat-group-count">0</span></h4>
+        <ul id="rdx-compat-blocking" role="list" aria-label="Erreurs bloquantes"></ul>
+        <p id="rdx-compat-blocking-empty" class="compat-empty">Aucun blocage détecté.</p>
+      </section>
+      <section class="compat-group compat-group-warn" aria-labelledby="rdx-compat-warn-title">
+        <h4 id="rdx-compat-warn-title"><span aria-hidden="true">⚠</span> À vérifier <span id="rdx-compat-warn-count" class="compat-group-count">0</span></h4>
+        <ul id="compatFindings" role="list" aria-label="Points à vérifier"></ul>
+        <p id="rdx-compat-warn-empty" class="compat-empty">Aucun point à vérifier.</p>
+      </section>
       <details id="compatPassed" class="compat-passed" hidden>
-        <summary id="compatPassedSummary">Afficher les vérifications réussies</summary>
+        <summary id="compatPassedSummary"><span aria-hidden="true">✓</span> OK · Afficher les vérifications réussies</summary>
         <ul id="compatPassedFindings" role="list" aria-label="Vérifications réussies"></ul>
       </details>
     </section>
@@ -1264,6 +1280,17 @@ async function verifyExternalResources(v) {
 
   if (verdict === v) showVerdict(v, previousClass, previousMessage);
 }
+function compatHelpUrl(finding) {
+  const title = String(finding.title || '').toLowerCase();
+  if (title.includes('audio')) return 'https://developer.mozilla.org/fr/docs/Web/Media/Audio_and_video_delivery';
+  if (title.includes('canvas')) return 'https://developer.mozilla.org/fr/docs/Web/API/Canvas_API/Tutorial';
+  if (title.includes('css') || title.includes('style')) return 'https://developer.mozilla.org/fr/docs/Web/CSS';
+  if (title.includes('taille') || title.includes('volumineux')) return 'https://developer.mozilla.org/fr/docs/Learn_web_development/Extensions/Performance';
+  if (title.includes('externe') || title.includes('internet') || title.includes('accessible') || title.includes('inaccessible')) return 'https://developer.mozilla.org/fr/docs/Web/HTTP';
+  if (title.includes('html') || title.includes('format') || title.includes('vide')) return 'https://developer.mozilla.org/fr/docs/Learn_web_development/Getting_started/Your_first_website/Creating_the_content';
+  if (title.includes('gsap') || title.includes('animation')) return 'https://developer.mozilla.org/fr/docs/Web/API/Animation';
+  return 'https://developer.mozilla.org/fr/docs/Learn_web_development/Getting_started/Your_first_website';
+}
 function showVerdict(v, cls, msg) {
   verdict = v;
   const e = $('#verdict');
@@ -1272,13 +1299,20 @@ function showVerdict(v, cls, msg) {
   e.className = cls || 'mut';
 
   const report = $('#compatReport');
-  const list = $('#compatFindings');
+  const blockingList = $('#rdx-compat-blocking');
+  const blockingCountEl = $('#rdx-compat-blocking-count');
+  const blockingEmpty = $('#rdx-compat-blocking-empty');
+  const warningList = $('#compatFindings');
+  const warningCountEl = $('#rdx-compat-warn-count');
+  const warningEmpty = $('#rdx-compat-warn-empty');
   const passed = $('#compatPassed');
   const passedList = $('#compatPassedFindings');
   const passedSummary = $('#compatPassedSummary');
   const summary = $('#compatSummary');
-  list.textContent = '';
+  blockingList.textContent = '';
+  warningList.textContent = '';
   passedList.textContent = '';
+  passed.open = false;
 
   let findings = v && Array.isArray(v.findings) ? v.findings : [];
   if (v && !findings.length && v.kind !== 'invalid') {
@@ -1300,61 +1334,74 @@ function showVerdict(v, cls, msg) {
     findings = [{ level: 'blocking', title: 'Import bloqué', detail: v.label || 'Le fichier ne peut pas être traité.' }];
   }
 
-  const actionable = findings.filter(item => item.level === 'warn' || item.level === 'blocking');
-  const informational = findings.filter(item => item.level === 'info');
+  const blocking = findings.filter(item => item.level === 'blocking');
+  const review = findings.filter(item => item.level !== 'blocking' && item.level !== 'good');
   const successful = findings.filter(item => item.level === 'good');
-  const blockingCount = actionable.filter(item => item.level === 'blocking').length;
-  const warningCount = actionable.length - blockingCount;
+  blockingCountEl.textContent = String(blocking.length);
+  warningCountEl.textContent = String(review.length);
+  blockingEmpty.hidden = blocking.length > 0;
+  warningEmpty.hidden = review.length > 0;
 
-  if (blockingCount) {
-    summary.textContent = 'Rendu bloqué · ' + blockingCount + ' problème' + (blockingCount > 1 ? 's' : '') + ' à corriger.';
-  } else if (warningCount) {
+  if (blocking.length) {
+    summary.textContent = 'Rendu bloqué · ' + blocking.length + ' problème' + (blocking.length > 1 ? 's' : '') + ' à corriger.';
+  } else if (review.length) {
     summary.textContent = successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '') +
-      ' · ' + warningCount + ' point' + (warningCount > 1 ? 's' : '') + ' à vérifier.';
+      ' · ' + review.length + ' point' + (review.length > 1 ? 's' : '') + ' à vérifier.';
   } else {
     summary.textContent = successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' +
       (successful.length > 1 ? 's' : '') + ' · Aucun problème détecté.';
   }
 
-  const appendFinding = (finding, target) => {
+  const appendFinding = (finding, target, level) => {
     const item = document.createElement('li');
-    item.dataset.level = finding.level || 'warn';
+    item.dataset.level = level;
     const heading = document.createElement('strong');
-    const prefix = finding.level === 'blocking' ? 'Bloquant' :
-      finding.level === 'info' ? 'Information' : 'À vérifier';
-    heading.textContent = prefix + ' · ' + (finding.title || 'Constat');
+    heading.textContent = (level === 'blocking' ? 'Bloquant' : 'À vérifier') + ' · ' + (finding.title || 'Constat');
     item.append(heading);
 
-    if (finding.detail) {
-      const detail = document.createElement('p');
-      detail.textContent = finding.detail;
-      item.append(detail);
-    }
+    const detail = document.createElement('p');
+    detail.textContent = finding.detail || 'Ce point mérite une vérification avant le rendu.';
+    item.append(detail);
+
     if (finding.action) {
       const action = document.createElement('p');
       action.className = 'compat-action';
       action.textContent = 'À faire : ' + finding.action;
       item.append(action);
     }
+    const help = document.createElement('a');
+    help.className = 'compat-help-link';
+    help.href = compatHelpUrl(finding);
+    help.target = '_blank';
+    help.rel = 'noopener noreferrer';
+    help.textContent = 'Consulter l’aide';
+    item.append(help);
     target.append(item);
   };
 
-  for (const finding of [...actionable, ...informational]) appendFinding(finding, list);
+  for (const finding of blocking) appendFinding(finding, blockingList, 'blocking');
+  for (const finding of review) appendFinding(finding, warningList, finding.level || 'warn');
+
   for (const finding of successful) {
     const item = document.createElement('li');
     const title = document.createElement('strong');
     title.textContent = finding.title || 'Vérification réussie';
     item.append(title);
-    if (finding.detail) {
-      const detail = document.createElement('p');
-      detail.textContent = ' — ' + finding.detail;
-      item.append(detail);
-    }
+    const detail = document.createElement('p');
+    detail.textContent = finding.detail || 'Le contrôle est réussi.';
+    item.append(detail);
+    const help = document.createElement('a');
+    help.className = 'compat-help-link';
+    help.href = compatHelpUrl(finding);
+    help.target = '_blank';
+    help.rel = 'noopener noreferrer';
+    help.textContent = 'En savoir plus';
+    item.append(help);
     passedList.append(item);
   }
 
   passed.hidden = successful.length === 0;
-  passedSummary.textContent = 'Afficher les ' + successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '');
+  passedSummary.textContent = '✓ OK · Afficher les ' + successful.length + ' contrôle' + (successful.length > 1 ? 's' : '') + ' réussi' + (successful.length > 1 ? 's' : '');
   report.hidden = findings.length === 0;
   syncGoButton();
   if (v && v.kind !== 'invalid' && !hasBlockingFinding(v)) {
