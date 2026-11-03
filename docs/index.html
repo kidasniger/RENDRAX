@@ -102,6 +102,17 @@ label{display:block;font-weight:600;margin:0 0 6px;font-size:.82rem;color:var(--
 .checkline{display:flex;align-items:center;gap:10px;min-height:46px;margin:0;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2);color:var(--tx);font-size:.95rem;cursor:pointer}
 .checkline:hover{border-color:color-mix(in srgb,var(--tx) 25%,var(--bd))}
 .checkline input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--ac);margin:0}
+.watermark-preview{display:flex;align-items:center;gap:12px;margin-top:10px;padding:12px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2)}
+.watermark-preview[hidden]{display:none}
+.watermark-preview-frame{position:relative;display:grid;place-items:center;flex:0 0 auto;width:min(42vw,132px);aspect-ratio:9/16;overflow:hidden;border:1px solid color-mix(in srgb,var(--tx) 18%,transparent);border-radius:9px;background:linear-gradient(145deg,#202b46,#111827 58%,#35415a);box-shadow:0 4px 14px rgba(0,0,0,.14);transition:aspect-ratio .2s ease}
+.watermark-preview-frame[data-format="landscape"]{aspect-ratio:16/9}
+.watermark-preview-frame[data-format="square"]{aspect-ratio:1/1}
+.watermark-preview-frame::before,.watermark-preview-frame::after{content:"";position:absolute;border:1px solid rgba(255,255,255,.12);border-radius:50%;width:72%;aspect-ratio:1;transform:rotate(-24deg)}
+.watermark-preview-frame::after{width:48%;transform:rotate(28deg)}
+.watermark-preview-mark{position:absolute;right:7%;bottom:7%;z-index:1;padding:4px 7px;border:1px solid rgba(255,255,255,.24);border-radius:5px;background:rgba(9,14,27,.58);color:#fff;font:800 8px/1.2 system-ui,sans-serif;letter-spacing:.12em;text-shadow:0 1px 4px rgba(0,0,0,.5);animation:watermark-preview-pulse 2.4s ease-in-out infinite}
+.watermark-preview-note{margin:0;color:var(--mut);font-size:.78rem;line-height:1.45}
+@keyframes watermark-preview-pulse{0%,100%{opacity:.68;transform:translateY(0)}50%{opacity:1;transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.watermark-preview-mark{animation:none}}
 select{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--rs);background-color:var(--surf2);color:var(--tx);font:inherit;font-size:.95rem}
 select{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:pointer;text-overflow:ellipsis;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -584,6 +595,12 @@ ul#list button{box-shadow:none}
           <span>Ajouter le filigrane animé RENDRAX</span>
         </label>
         <button class="help-trigger" type="button" aria-label="Aide sur le filigrane" aria-expanded="false" aria-controls="helpWatermark">?</button><span class="help-tooltip" id="helpWatermark" role="tooltip" hidden>Ajoute le filigrane animé RENDRAX à la vidéo MP4. Laisse cette option désactivée pour ne pas l’afficher.</span>
+        <div id="watermarkPreview" class="watermark-preview" hidden aria-label="Aperçu du filigrane RENDRAX">
+          <div id="watermarkPreviewFrame" class="watermark-preview-frame" data-format="portrait" aria-hidden="true">
+            <span class="watermark-preview-mark">RENDRAX</span>
+          </div>
+          <p class="watermark-preview-note">Position et animation indicatives du filigrane dans la vidéo.</p>
+        </div>
       </div>
       <div id="advancedSettings" class="advanced-settings" hidden>
       <div class="field">
@@ -1683,7 +1700,17 @@ function showVerdict(v, cls, msg) {
 }
 function applyPreviewFormat() {
   const format = $('#format').value;
-  $('#previewFrame').dataset.format = format === 'auto' ? 'portrait' : format;
+  const resolvedFormat = format === 'auto' ? 'portrait' : format;
+  $('#previewFrame').dataset.format = resolvedFormat;
+  $('#watermarkPreviewFrame').dataset.format = resolvedFormat;
+}
+function updateWatermarkPreview() {
+  const enabled = $('#watermark').checked;
+  $('#watermarkPreview').hidden = !enabled;
+  if (enabled) {
+    const format = $('#format').value;
+    $('#watermarkPreviewFrame').dataset.format = format === 'auto' ? 'portrait' : format;
+  }
 }
 function renderPreview(source) {
   if (!source) return;
@@ -2867,6 +2894,9 @@ $('#audioOffsetReset').addEventListener('click', () => setAudioOffset(0));
 $('#cancel').onclick = cancel;
 $('#refresh').onclick = loadList;
 $('#format').addEventListener('change', applyPreviewFormat);
+$('#watermark').addEventListener('change', updateWatermarkPreview);
+applyPreviewFormat();
+updateWatermarkPreview();
 $('#prevBtn').onclick = () => {
   const source = zipSelection && zipSelection.mainText ? zipSelection.mainText : fileText;
   renderPreview(source);
