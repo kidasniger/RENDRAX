@@ -137,12 +137,6 @@ input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
 .zip-resource-path{min-width:0;flex:1;overflow-wrap:anywhere;white-space:normal;font:.78rem/1.45 var(--mono);color:var(--tx)}
 .zip-resource-size{flex:0 0 auto;color:var(--mut);font:600 .7rem/1.5 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .zip-resource-list li.empty{display:block;color:var(--mut);font-size:.8rem}
-.url-import{margin-top:16px;padding-top:16px;border-top:1px solid var(--bd)}
-.url-import-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
-.url-import-row input[type=url]{flex:1 1 280px;min-width:0;width:100%;min-height:48px;padding:11px 13px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--surf2);color:var(--tx);font:inherit;font-size:.92rem}
-.url-import-row input[type=url]:focus-visible{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 15%,transparent)}
-.url-import-row button{flex:0 0 auto;min-height:48px;margin:0;padding:10px 16px}
-.url-import-help{display:block;margin-top:8px;font-size:.8rem}
 #verdict{margin:10px 0 0;font-size:.88rem;padding:10px 12px;border-radius:var(--rs);border:1px solid var(--bd);text-wrap:pretty}
 #verdict.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:color-mix(in srgb,var(--ok) 8%,transparent)}
 #verdict.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
@@ -330,8 +324,6 @@ ul#list button{box-shadow:none}
   ol.steps li{font-size:.67rem;gap:8px}
   ul#list li{gap:8px}
   ul#list button{padding:6px 11px}
-  .url-import-row{flex-direction:column}
-  .url-import-row button{width:100%}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
@@ -2414,10 +2406,8 @@ function createFileFromPastedHtml() {
     return;
   }
   const file = new File([blob], 'code-colle.html', { type: 'text/html', lastModified: Date.now() });
-  importedSource = null;
   localSource = null;
   zipSelection = null;
-  $('#importUrl').value = '';
   const transfer = new DataTransfer();
   transfer.items.add(file);
   $('#file').files = transfer.files;
