@@ -2587,7 +2587,7 @@ $('#importUrl').addEventListener('input', () => {
   if (importedSource && $('#importUrl').value.trim() !== importedSource.url) {
     const previous = importedSource;
     importedSource = null;
-    if (previous.stored) cleanupUpload(previous.id);
+    // Le nettoyage éventuel est laissé au mécanisme de rétention ; aucune requête réseau pendant la saisie.
     resetPreview();
     $('#fileinfo').hidden = true;
     showVerdict(null);
