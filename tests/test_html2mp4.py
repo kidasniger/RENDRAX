@@ -434,23 +434,16 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("counts.audio + ' audio", page)
         self.assertIn("tu peux choisir une autre page", page)
 
-    def test_import_url_validates_live_without_network_requests(self):
+    def test_url_import_is_removed_and_local_html_workflows_remain(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-        self.assertIn('<div class="url-import">', page)
-        self.assertNotIn('<div class="url-import" hidden>', page)
-        self.assertIn('id="importUrlHelp" class="url-import-help" aria-live="polite"', page)
-        self.assertIn("function validateImportUrl(value)", page)
-        self.assertIn("Le lien doit commencer par https://", page)
-        self.assertIn("const validDomain = hostname.length <= 253", page)
-        self.assertIn("function syncImportUrlButton()", page)
-        self.assertIn("$('#importUrl').addEventListener('input'", page)
-        self.assertIn("$('#importUrl').addEventListener('paste'", page)
-        input_handler = page.split("$('#importUrl').addEventListener('input',", 1)[1].split("});", 1)[0]
-        self.assertNotIn("cleanupUpload", input_handler)
-        self.assertIn("$('#importUrlBtn').disabled = !canImport", page)
-        self.assertIn("$('#importUrlBtn').onclick = importFromUrl", page)
-        self.assertLess(page.index("const validation = validateImportUrl(rawUrl)"), page.index("const token = await captchaToken()"))
-        self.assertIn("Aucun téléchargement ne démarre avant ton clic", page)
+        for removed in ('importUrl', 'url-import', 'importFromUrl', 'validateImportUrl',
+                        'importedSource', 'importingUrl', '/import-url'):
+            self.assertNotIn(removed, page)
+        self.assertIn('id="rdx-paste-html"', page)
+        self.assertIn('id="rdx-paste-create"', page)
+        self.assertIn('id="file"', page)
+        self.assertIn("uploadPrivateBlobWithRecovery", page)
+        self.assertIn("p.srcdoc = fileText", page)
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
