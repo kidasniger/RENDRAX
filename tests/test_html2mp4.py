@@ -436,6 +436,8 @@ class Html2Mp4Tests(unittest.TestCase):
 
     def test_import_url_validates_live_without_network_requests(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<div class="url-import">', page)
+        self.assertNotIn('<div class="url-import" hidden>', page)
         self.assertIn('id="importUrlHelp" class="url-import-help" aria-live="polite"', page)
         self.assertIn("function validateImportUrl(value)", page)
         self.assertIn("Le lien doit commencer par https://", page)
