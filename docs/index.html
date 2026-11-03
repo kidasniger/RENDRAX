@@ -43,6 +43,8 @@
     if (button) {
       const next = mode === 'auto' ? 'clair' : mode === 'light' ? 'sombre' : 'automatique';
       button.setAttribute('aria-label', 'Thème ' + (mode === 'auto' ? 'automatique' : mode === 'light' ? 'clair' : 'sombre') + '. Activer le thème ' + next + '.');
+      const visibleMode = button.querySelector('.rdx-theme-mode-label');
+      if (visibleMode) visibleMode.textContent = mode === 'auto' ? 'Auto' : mode === 'light' ? 'Clair' : 'Sombre';
       button.title = 'Thème : ' + (mode === 'auto' ? 'auto' : mode === 'light' ? 'clair' : 'sombre') + ' — cliquer pour changer';
     }
   }
