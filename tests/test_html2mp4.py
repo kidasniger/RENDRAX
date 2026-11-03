@@ -434,6 +434,20 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("counts.audio + ' audio", page)
         self.assertIn("tu peux choisir une autre page", page)
 
+    def test_import_url_validates_live_without_network_requests(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="importUrlHelp" class="url-import-help" aria-live="polite"', page)
+        self.assertIn("function validateImportUrl(value)", page)
+        self.assertIn("Le lien doit commencer par https://", page)
+        self.assertIn("const validDomain = hostname.length <= 253", page)
+        self.assertIn("function syncImportUrlButton()", page)
+        self.assertIn("$('#importUrl').addEventListener('input'", page)
+        self.assertIn("$('#importUrl').addEventListener('paste'", page)
+        self.assertIn("$('#importUrlBtn').disabled = !canImport", page)
+        self.assertIn("$('#importUrlBtn').onclick = importFromUrl", page)
+        self.assertLess(page.index("const validation = validateImportUrl(rawUrl)"), page.index("const token = await captchaToken()"))
+        self.assertIn("Aucun téléchargement ne démarre avant ton clic", page)
+
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         for filename in ("favicon.ico", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
