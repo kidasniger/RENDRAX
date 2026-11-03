@@ -142,6 +142,7 @@ button.sec:hover{background:var(--surf2);border-color:color-mix(in srgb,var(--tx
 button.danger{background:transparent;color:var(--err);border:1px solid color-mix(in srgb,var(--err) 50%,transparent)}
 button.danger:hover{background:color-mix(in srgb,var(--err) 10%,transparent)}
 button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.pre-render-summary{margin:16px 0 0;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--surf2);color:var(--tx);font-size:.82rem;line-height:1.5;overflow-wrap:anywhere}
 button.go{min-height:54px;font-size:1.02rem;margin-top:16px}
 button.go .dot{width:10px;height:10px;border-radius:50%;background:currentColor}
 input[type="range"]{width:100%;accent-color:var(--ac);padding:0;min-height:32px}
@@ -665,6 +666,7 @@ ul#list button{box-shadow:none}
     <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
     <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
+    <p id="preRenderSummary" class="pre-render-summary" aria-live="polite">Fichier : en attente · Format : Automatique · Qualité : Complète · Durée estimée : —</p>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
     <div class="test-render-recommendation" id="testRenderRecommendation">
       <p>Vérifier en 10 s avant le rendu complet</p>
@@ -1010,12 +1012,27 @@ function getDetectedDuration(source, profile) {
   }
   return Number.isFinite(seconds) && seconds >= 2 && seconds <= 900 ? seconds : 60;
 }
+function updatePreRenderSummary() {
+  const output = $('#preRenderSummary');
+  if (!output) return;
+  const file = $('#file').files[0];
+  const isZip = !!(file && /\\.zip$/i.test(file.name));
+  const fileName = isZip && zipSelection && zipSelection.mainPath
+    ? zipSelection.mainPath.split('/').pop()
+    : file ? file.name : 'en attente';
+  const formats = { auto: 'Automatique', portrait: 'Portrait 9:16', landscape: 'Paysage 16:9', square: 'Carré 1:1' };
+  const qualities = { full: 'Complète', half: 'Allégée', test: 'Aperçu 10 s' };
+  const estimate = ($('#renderEstimate').textContent.match(/Durée estimée\\s*:\\s*(.*?)(?:\\s*·|$)/) || [])[1] || '—';
+  output.textContent = 'Fichier : ' + fileName + ' · Format : ' + (formats[$('#format').value] || 'Automatique') +
+    ' · Qualité : ' + (qualities[$('#mode').value] || 'Complète') + ' · Durée estimée : ' + estimate;
+}
 function updateRenderEstimate() {
   const output = $('#renderEstimate');
   if (!output) return;
   const source = zipSelection && zipSelection.mainText ? zipSelection.mainText : fileText;
   if (!source || !source.trim()) {
     output.textContent = 'Durée estimée : en attente du fichier · Poids : —';
+    updatePreRenderSummary();
     return;
   }
   const profile = getEstimateProfile(source);
@@ -1037,6 +1054,7 @@ function updateRenderEstimate() {
     ? Math.max(1, Math.round(estimatedMegabytes * 1024)) + ' Ko'
     : estimatedMegabytes.toFixed(1).replace('.', ',') + ' Mo';
   output.textContent = 'Durée estimée : ~' + durationLabel + ' · Poids : ~' + weightLabel + ' · ' + fps + ' i/s auto';
+  updatePreRenderSummary();
 }
 function initRenderPrefs() {
   readRenderPrefs();
@@ -2828,6 +2846,7 @@ $('#rdx-hero-file-cta').addEventListener('click', () => {
 });
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#go').onclick = () => go(false);
+updatePreRenderSummary();
 function updateTestRenderRecommendation() {
   const completed = store.get('kidas_test_render_success') === '1';
   const recommendation = $('#testRenderRecommendation');
