@@ -33,7 +33,7 @@ main.rdx-main{
   min-height:330px;
 }
 .rdx-hero-copy{position:relative;z-index:1;min-width:0}
-.rdx-hero .brand{margin:0 0 25px;width:auto}
+.rdx-hero .brand{margin:0 0 25px;width:auto;justify-content:space-between;gap:12px}
 .rdx-hero .brand-logo{width:190px;max-height:46px}
 .rdx-theme-toggle{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;
