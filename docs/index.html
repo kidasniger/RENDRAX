@@ -2708,7 +2708,7 @@ function initContextualHelp() {
     (ids[tooltip.id] || []).forEach(id => {
       const control = document.getElementById(id);
       if (control) {
-        const describedBy = (control.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+        const describedBy = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
         if (!describedBy.includes(tooltip.id)) describedBy.push(tooltip.id);
         control.setAttribute('aria-describedby', describedBy.join(' '));
       }
