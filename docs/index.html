@@ -489,7 +489,7 @@ ul#list button{box-shadow:none}
           maxlength="2048" placeholder="https://raw.githubusercontent.com/…" aria-describedby="importUrlHelp">
         <button class="sec" id="importUrlBtn" type="button" disabled>Importer le lien</button>
       </div>
-      <small id="importUrlHelp" class="url-import-help">GitHub Raw, Gist ou lien direct vers un fichier HTML · HTTPS uniquement · 50 Mo maximum.</small>
+      <small id="importUrlHelp" class="url-import-help" aria-live="polite">Colle un lien HTTPS public vers un fichier HTML. Aucun téléchargement ne démarre avant ton clic sur « Importer le lien ».</small>
     </div>
     <p id="fileinfo" hidden></p>
     <p id="verdict" role="status" hidden></p>
@@ -902,7 +902,7 @@ async function initSecurity() {
     statusEl.hidden = false;
   }
   syncGoButton();
-  $('#importUrlBtn').disabled = !securityReady || importingUrl || busy;
+  syncImportUrlButton();
 }
 function captchaToken() {
   return new Promise((resolve, reject) => {
@@ -1069,7 +1069,7 @@ function setBusy(b) {
   $('#testRender').disabled = b || !securityReady || hasBlockingFinding(verdict);
   $('#file').disabled = b || importingUrl;
   $('#importUrl').disabled = b || importingUrl;
-  $('#importUrlBtn').disabled = b || importingUrl || !securityReady;
+  syncImportUrlButton();
   $('#cancel').hidden = !b;
   $('#cancel').disabled = false;
 }
@@ -1678,18 +1678,44 @@ async function checkFile() {
   if (v.kind === 'generic') showVerdict(v, 'warn', '⚠ Fichier non reconnu : rendu universel en temps réel. La durée, la synchronisation et le son ne sont pas garantis.');
   else showVerdict(v, 'ok', '✓ Fichier reconnu : ' + v.label + '. Rendu image par image avec le son, synchronisé.');
 }
+function validateImportUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return { valid: false, message: 'Colle un lien HTTPS vers un fichier HTML.' };
+  if (raw.length > 2048) return { valid: false, message: 'L’URL dépasse la limite de 2 048 caractères.' };
+  if (!/^https:\/\//i.test(raw)) {
+    return { valid: false, message: /^http:\/\//i.test(raw) ? 'Le lien doit commencer par https://' : 'Le lien doit commencer par https://'; };
+  }
+  let parsed;
+  try { parsed = new URL(raw); }
+  catch { return { valid: false, message: 'Le domaine du lien est invalide.' }; }
+  const hostname = parsed.hostname.toLowerCase();
+  const labels = hostname.split('.');
+  const validDomain = hostname.length <= 253 && labels.length >= 2 && labels.every(label =>
+    label.length >= 1 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label)
+  ) && /^[a-z]{2,63}$/i.test(labels[labels.length - 1]);
+  if (!validDomain || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) {
+    return { valid: false, message: 'Le domaine est invalide ou le lien utilise un port non autorisé.' };
+  }
+  return { valid: true, message: securityReady ? 'Lien valide. Aucun téléchargement avant ton clic sur « Importer le lien ».' : (securityMessage || 'Lien valide, mais la protection de sécurité n’est pas prête.') };
+}
+function syncImportUrlButton() {
+  const input = $('#importUrl');
+  const help = $('#importUrlHelp');
+  const result = validateImportUrl(input.value);
+  const canImport = result.valid && securityReady && !busy && !importingUrl;
+  input.setAttribute('aria-invalid', input.value.trim() && !result.valid ? 'true' : 'false');
+  help.textContent = result.message;
+  help.dataset.state = result.valid ? (securityReady ? 'valid' : 'pending') : (input.value.trim() ? 'invalid' : 'idle');
+  $('#importUrlBtn').disabled = !canImport;
+}
 async function importFromUrl() {
   if (busy || importingUrl) return;
 
   const rawUrl = $('#importUrl').value.trim();
-  if (!rawUrl) return showVerdict(null, 'err', 'Colle une URL HTTPS vers un fichier HTML.');
-  if (rawUrl.length > 2048) return showVerdict(null, 'err', 'L’URL dépasse la limite de 2 048 caractères.');
-
-  let parsed;
-  try { parsed = new URL(rawUrl); }
-  catch { return showVerdict(null, 'err', 'L’adresse URL est invalide.'); }
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) {
-    return showVerdict(null, 'err', 'Utilise une URL HTTPS publique, sans identifiant ni port personnalisé.');
+  const validation = validateImportUrl(rawUrl);
+  if (!validation.valid) {
+    syncImportUrlButton();
+    return showVerdict(null, 'err', validation.message);
   }
   if (!securityReady) return showVerdict(null, 'err', securityMessage || 'La protection de sécurité n’est pas prête.');
 
@@ -1748,7 +1774,7 @@ async function importFromUrl() {
     importingUrl = false;
     $('#file').disabled = busy;
     $('#importUrl').disabled = busy;
-    $('#importUrlBtn').disabled = !securityReady || busy;
+    syncImportUrlButton();
     syncGoButton();
   }
 }
@@ -2557,7 +2583,7 @@ $('#rdx-hero-file-cta').addEventListener('click', () => {
 });
 $('#zipMainFile').onchange = () => chooseZipMain($('#zipMainFile').value);
 $('#importUrlBtn').onclick = importFromUrl;
-$('#importUrl').oninput = () => {
+$('#importUrl').addEventListener('input', () => {
   if (importedSource && $('#importUrl').value.trim() !== importedSource.url) {
     const previous = importedSource;
     importedSource = null;
@@ -2566,7 +2592,10 @@ $('#importUrl').oninput = () => {
     $('#fileinfo').hidden = true;
     showVerdict(null);
   }
-};
+  syncImportUrlButton();
+});
+$('#importUrl').addEventListener('paste', () => requestAnimationFrame(syncImportUrlButton));
+syncImportUrlButton();
 $('#go').onclick = () => go(false);
 $('#testRender').onclick = () => go(true);
 $('#audioOffset').oninput = () => {
