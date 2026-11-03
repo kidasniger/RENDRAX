@@ -386,7 +386,7 @@ ul#list button{box-shadow:none}
         <img class="brand-logo" data-rdx-logo-light src="/assets/rendrax-logo.svg?v=20261025-fix3" alt="RENDRAX" width="520" height="120">
         <img class="brand-logo" data-rdx-logo-dark src="/assets/rendrax-logo-dark.svg?v=20261025-fix3" alt="" aria-hidden="true" width="520" height="120">
       </div>
-      <p class="rdx-eyebrow"><span class="rdx-live-dot" aria-hidden="true"></span> ATELIER DE RENDU · EN LIGNE</p>
+      <p class="rdx-eyebrow" id="rdx-service-status" data-state="checking" role="status" aria-live="polite"><span class="rdx-live-dot" aria-hidden="true"></span><span id="rdx-service-label">ATELIER DE RENDU · Vérification…</span></p>
       <h1>RENDRAX</h1>
       <p class="sub">Passe de l’animation HTML au MP4 prêt à publier.</p>
       <div class="rdx-hero-meta" aria-label="Les avantages de RENDRAX">
@@ -795,10 +795,28 @@ function loadTurnstileScript() {
     document.head.appendChild(script);
   });
 }
+function setRdxServiceStatus(state, label) {
+  const badge = $('#rdx-service-status');
+  const text = $('#rdx-service-label');
+  if (!badge || !text) return;
+  badge.dataset.state = state;
+  text.textContent = label;
+}
 async function initSecurity() {
   const statusEl = $('#securityStatus');
+  let configReceived = false;
   try {
     const config = await api('/config');
+    configReceived = true;
+    const serviceState = ['online', 'degraded', 'offline'].includes(config.status)
+      ? config.status
+      : (config.ready ? 'online' : 'degraded');
+    const serviceLabels = {
+      online: 'ATELIER DE RENDU · EN LIGNE',
+      degraded: 'ATELIER DE RENDU · Service dégradé',
+      offline: 'ATELIER DE RENDU · Service indisponible'
+    };
+    setRdxServiceStatus(serviceState, serviceLabels[serviceState]);
     if (!config.ready || !config.turnstileSiteKey) {
       const missing = Array.isArray(config.missing) ? config.missing : [];
       const details = missing.length ? 'Variables Vercel manquantes : ' + missing.join(', ') + '.' :
@@ -826,6 +844,11 @@ async function initSecurity() {
     statusEl.hidden = true;
   } catch (e) {
     securityReady = false;
+    if (!configReceived) {
+      setRdxServiceStatus('offline', 'ATELIER DE RENDU · Service indisponible');
+    } else {
+      setRdxServiceStatus('degraded', 'ATELIER DE RENDU · Service dégradé');
+    }
     securityMessage = e.message || 'Le serveur de rendu est indisponible.';
     statusEl.textContent = securityMessage;
     statusEl.className = 'mut';
