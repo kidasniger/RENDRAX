@@ -703,3 +703,25 @@ main.rdx-main label.checkline:focus-within {
     transition: none !important;
   }
 }
+
+
+/* États de la zone de dépôt */
+main.rdx-main .drop{position:relative;overflow:hidden}
+main.rdx-main .drop[data-state="drag"]{
+  border:2px dashed var(--ac);
+  background:color-mix(in srgb,var(--ac) 12%,var(--surf2));
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ac) 12%,transparent),0 0 0 4px color-mix(in srgb,var(--ac) 9%,transparent);
+}
+main.rdx-main .drop[data-state="drag"]::after{
+  content:"";position:absolute;inset:5px;border:1px dashed color-mix(in srgb,var(--ac) 65%,transparent);
+  border-radius:14px;pointer-events:none;animation:rdx-drop-dash 1.1s linear infinite;
+}
+@keyframes rdx-drop-dash{to{opacity:.45}}
+main.rdx-main .drop[data-state="accepted"]{border:2px solid #199b68;background:color-mix(in srgb,#199b68 7%,var(--surf2))}
+main.rdx-main .drop[data-state="accepted"] .ico{color:#199b68;border-color:color-mix(in srgb,#199b68 35%,var(--bd))}
+main.rdx-main .rdx-drop-feedback{display:block;max-width:100%;font:650 .8rem/1.5 var(--mono);overflow-wrap:anywhere}
+main.rdx-main .drop[data-state="accepted"] .rdx-drop-feedback{color:#16845a}
+main.rdx-main .drop[data-state="drag"] .rdx-drop-feedback{color:var(--ac)}
+main.rdx-main .drop-error{margin:8px 2px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--err) 40%,var(--bd));border-radius:12px;background:color-mix(in srgb,var(--err) 8%,var(--surf));color:var(--err);font-size:.84rem;line-height:1.5}
+main.rdx-main .drop-error[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){main.rdx-main .drop[data-state="drag"]::after{animation:none}}
