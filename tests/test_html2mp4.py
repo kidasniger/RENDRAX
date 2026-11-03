@@ -478,7 +478,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('id="rdx-paste-create"', page)
         self.assertIn('id="file"', page)
         self.assertIn("uploadPrivateBlobWithRecovery", page)
-        self.assertIn("p.srcdoc = fileText", page)
+        self.assertIn("frame.srcdoc = source", page)
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
