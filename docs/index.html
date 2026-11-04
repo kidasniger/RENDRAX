@@ -1122,7 +1122,7 @@ function initRenderPrefs() {
   const dialog = $('#resetPrefsDialog');
   $('#resetRenderPrefs').addEventListener('click', () => {
     if (typeof dialog.showModal === 'function') dialog.showModal();
-    else if (window.confirm('Réinitialiser les réglages personnalisés ?')) resetRenderPrefsToDefaults();
+    else status('La boîte de confirmation n’est pas prise en charge par ce navigateur.');
   });
   $('#cancelResetPrefs').addEventListener('click', () => dialog.close());
   $('#confirmResetPrefs').addEventListener('click', () => {
