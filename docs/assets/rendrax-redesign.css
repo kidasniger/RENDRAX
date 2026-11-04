@@ -813,3 +813,40 @@ main.rdx-main .drop-error[hidden]{display:none}
 #rdx-copy-status{margin:6px 0 0;font-size:.78rem}
 @media(max-width:380px){.rdx-resume-prompt,.rdx-inline-confirm{align-items:stretch}.rdx-resume-prompt button,.rdx-inline-confirm button{width:100%}}
 @media(prefers-reduced-motion:reduce){#renderProgressBar::-webkit-progress-value{transition:none}}
+
+
+/* Résultat MP4, partage et QR local */
+.rdx-result-player{margin:0;padding:12px;border:1px solid var(--bd);border-radius:18px;background:var(--surf2);min-width:0}
+.rdx-player-frame{width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:13px;background:#05070d;display:grid;place-items:center;contain:layout paint}
+.rdx-player-frame video{width:100%;height:100%;max-height:70vh;margin:0;object-fit:contain;border-radius:0}
+.rdx-result-player>small{margin:9px 2px 0!important}
+.rdx-result-meta{display:flex;flex-wrap:wrap;gap:7px 12px;margin:10px 2px 0;color:var(--mut);font-size:.78rem}
+.rdx-result-meta span{display:inline-flex;align-items:center;gap:5px}
+.rdx-expiry{margin:9px 2px 0;color:var(--ok);font-size:.8rem;font-weight:650}
+.rdx-expiry[data-alert="true"]{color:var(--err)}
+.rdx-download-name{display:grid;gap:5px;margin:12px 0 0;font-size:.82rem;font-weight:650;color:var(--tx)}
+.rdx-download-name input{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--bd);border-radius:11px;background:var(--surf);color:var(--tx);font:inherit}
+.rdx-result-actions{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rdx-result-actions>a,.rdx-result-actions>button{flex:1 1 130px;width:auto;min-height:48px;margin:0}
+.rdx-result-actions .rdx-download-primary{background:var(--ac);color:var(--on);border-color:var(--ac);font-weight:800}
+.rdx-result-actions .rdx-share-more{position:relative;flex:0 0 auto}
+.rdx-share-more summary{min-height:48px;display:flex;align-items:center;justify-content:center;padding:0 15px;border:1px solid var(--bd);border-radius:13px;background:var(--surf);color:var(--tx);font-size:.86rem;font-weight:700;cursor:pointer;list-style:none}
+.rdx-share-more summary::-webkit-details-marker{display:none}
+.rdx-share-menu{position:absolute;right:0;top:calc(100% + 7px);z-index:8;min-width:190px;padding:7px;border:1px solid var(--bd);border-radius:13px;background:var(--surf);box-shadow:var(--shadow);display:grid;gap:4px}
+.rdx-share-menu a,.rdx-share-menu button{display:block;width:100%;min-height:40px;margin:0;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:var(--tx);text-align:left;text-decoration:none;font:600 .84rem system-ui;cursor:pointer}
+.rdx-share-menu a:hover,.rdx-share-menu button:hover{background:var(--surf2)}
+.rdx-copy-status{min-height:1.2em;margin:5px 2px 0;color:var(--ok);font-size:.78rem}
+.rdx-result-next{margin-top:14px;padding:12px 13px;border:1px solid var(--bd);border-radius:14px;background:var(--surf)}
+.rdx-result-next strong{display:block;margin-bottom:8px;font-size:.82rem}
+.rdx-result-next .actions{margin-top:0;gap:7px}
+.rdx-result-next .actions button{width:auto;min-height:42px;flex:1 1 145px;margin:0;font-size:.82rem}
+.rdx-qr-dialog{width:min(92vw,380px);max-width:calc(100vw - 24px);padding:20px;border:1px solid var(--bd);border-radius:20px;background:var(--surf);color:var(--tx);box-shadow:0 24px 80px rgba(0,0,0,.3)}
+.rdx-qr-dialog::backdrop{background:rgba(5,10,22,.68);backdrop-filter:blur(3px)}
+.rdx-qr-dialog h2{margin:0 0 6px;font-size:1.05rem}
+.rdx-qr-dialog p{margin:0 0 14px;color:var(--mut);font-size:.82rem}
+.rdx-qr-code{display:grid;place-items:center;width:min(100%,280px);margin:0 auto;padding:12px;border-radius:14px;background:#fff}
+.rdx-qr-code svg{display:block;width:100%;height:auto;max-width:256px}
+.rdx-qr-dialog .actions{display:flex;gap:8px}
+.rdx-qr-dialog .actions button{min-height:44px;margin:0}
+@media(max-width:420px){.rdx-result-actions>a,.rdx-result-actions>button{flex-basis:100%}.rdx-result-actions .rdx-share-more{flex:1 1 100%}.rdx-share-more summary{width:100%}.rdx-share-menu{left:0;right:0}}
+@media(prefers-reduced-motion:reduce){.rdx-result-player,.rdx-result-actions>*{scroll-behavior:auto;transition:none}}
