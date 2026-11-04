@@ -737,10 +737,46 @@ ul#list button{box-shadow:none}
   <details class="card rdx-history-card" aria-labelledby="h-hist">
     <summary class="row"><h2 id="h-hist">Historique des vidéos</h2><span class="mut">Afficher</span></summary>
     <div class="row"><span class="mut">Vidéos générées</span><button class="sec" id="refresh" type="button">Actualiser</button></div>
+    <div class="rdx-history-tools">
+      <label class="rdx-history-search" for="rdxHistorySearch">Rechercher une vidéo</label>
+      <input id="rdxHistorySearch" type="search" placeholder="Nom de la vidéo…" autocomplete="off">
+      <div class="rdx-history-toolbar">
+        <label for="rdxHistorySort">Trier par</label>
+        <select id="rdxHistorySort">
+          <option value="recent">Plus récentes</option>
+          <option value="oldest">Plus anciennes</option>
+          <option value="size">Poids décroissant</option>
+        </select>
+        <button id="rdxSelectAll" class="sec" type="button">Tout sélectionner</button>
+      </div>
+      <div id="rdxBulkBar" class="rdx-bulk-bar" hidden>
+        <span id="rdxSelectedCount">0 sélectionnée</span>
+        <button id="rdxBulkDelete" class="danger" type="button">Supprimer la sélection</button>
+      </div>
+    </div>
+    <p id="rdxHistoryAnnounce" class="rdx-sr-only" role="status" aria-live="polite"></p>
     <ul id="list"><li class="empty">Chargement…</li></ul>
   </details>
 
 </main>
+
+<dialog id="rdxDeleteDialog" class="rdx-history-dialog" aria-labelledby="rdxDeleteTitle" aria-describedby="rdxDeleteDescription">
+  <div class="rdx-dialog-content">
+    <h2 id="rdxDeleteTitle">Supprimer cette vidéo ?</h2>
+    <p id="rdxDeleteDescription">Cette suppression est irréversible après validation du délai d’annulation.</p>
+    <p id="rdxDeleteName" class="rdx-dialog-video-name"></p>
+    <div class="rdx-dialog-actions">
+      <button id="rdxDeleteCancel" class="sec" type="button">Annuler</button>
+      <button id="rdxDeleteConfirm" class="danger" type="button">Supprimer</button>
+    </div>
+  </div>
+</dialog>
+<dialog id="rdxPlayerDialog" class="rdx-history-player-dialog" aria-labelledby="rdxPlayerTitle">
+  <div class="rdx-player-dialog-head"><h2 id="rdxPlayerTitle">Lecture vidéo</h2><button id="rdxPlayerClose" class="sec" type="button">Fermer</button></div>
+  <video id="rdxHistoryModalVideo" controls playsinline preload="metadata"></video>
+  <a id="rdxPlayerDownload" class="rdx-player-download" href="#" download>Télécharger</a>
+</dialog>
+<div id="rdxToastRegion" class="rdx-toast-region" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <footer class="rdx-tutorial-footer">
   <a id="rdxTutorialLink" href="#rdxTutorial">Revoir le tutoriel</a>
@@ -2402,14 +2438,28 @@ function showResult(rel) {
   });
   const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'sec danger'; remove.textContent = 'Supprimer cette vidéo';
   remove.addEventListener('click', async () => {
-    if (!videoId || !confirm('Supprimer définitivement cette vidéo ?')) return;
+    if (!videoId || !await openDeleteConfirmation(a.name || 'cette vidéo', remove)) return;
     remove.disabled = true;
-    try {
-      await api('/delete-video', { method: 'POST', body: { id: videoId } });
-      if (resultExpiryTimer) clearInterval(resultExpiryTimer);
-      box.textContent = 'Vidéo supprimée.';
-      loadList();
-    } catch (error) { remove.disabled = false; copyStatus.textContent = 'Suppression impossible : ' + explain(error); }
+    const original = box.innerHTML;
+    const token = 'result-' + videoId;
+    const toast = showToast('Vidéo supprimée · suppression dans 5 s', 'success', 'Annuler', () => {
+      clearTimeout(window.__rdxResultDeleteTimer);
+      remove.disabled = false;
+      showToast('Suppression annulée.', 'success');
+    });
+    window.__rdxResultDeleteTimer = setTimeout(async () => {
+      try {
+        await api('/delete-video', { method: 'POST', body: { id: videoId } });
+        if (resultExpiryTimer) clearInterval(resultExpiryTimer);
+        box.textContent = 'Vidéo supprimée.';
+        loadList();
+        showToast('Vidéo supprimée définitivement.', 'success');
+      } catch (error) {
+        remove.disabled = false;
+        copyStatus.textContent = 'Suppression impossible : ' + explain(error);
+        showToast('Suppression impossible : ' + explain(error), 'error');
+      }
+    }, 5000);
   });
   nextActions.append(newVideo, redo, remove); next.append(nextTitle, nextActions); box.append(next);
   if (typeof fileText === 'string' && fileText.trim()) {
@@ -2506,125 +2556,216 @@ function showResult(rel) {
 
   revealTransition(box);
 }
-async function closeHistoryPlayer() {
-  if (!openHistoryPlayer) return;
-  const { video, panel, button } = openHistoryPlayer;
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  panel.remove();
-  button.setAttribute('aria-expanded', 'false');
-  button.textContent = 'Regarder';
-  openHistoryPlayer = null;
+let historyItems = [];
+let pendingHistoryDeletes = new Map();
+let historyDeleteDialogResolve = null;
+let historyDeleteFocusTarget = null;
+let historyPlayerFocusTarget = null;
+let historyPlayerCurrent = null;
+
+function showToast(message, type = 'info', actionLabel = '', onAction = null) {
+  const region = $('#rdxToastRegion');
+  if (!region) return;
+  const toast = document.createElement('div');
+  toast.className = 'rdx-toast' + (type === 'error' ? ' is-error' : type === 'success' ? ' is-success' : '');
+  const text = document.createElement('span');
+  text.textContent = message;
+  toast.append(text);
+  if (actionLabel && typeof onAction === 'function') {
+    const action = document.createElement('button');
+    action.type = 'button'; action.className = 'rdx-toast-action'; action.textContent = actionLabel;
+    action.addEventListener('click', () => { onAction(); toast.remove(); });
+    toast.append(action);
+  }
+  const close = document.createElement('button');
+  close.type = 'button'; close.className = 'rdx-toast-close'; close.setAttribute('aria-label', 'Fermer la notification'); close.textContent = '×';
+  close.addEventListener('click', () => toast.remove());
+  toast.append(close); region.append(toast);
+  window.setTimeout(() => { toast.classList.add('is-leaving'); window.setTimeout(() => toast.remove(), 180); }, 4000);
+}
+
+function openDeleteConfirmation(name, trigger) {
+  const dialog = $('#rdxDeleteDialog');
+  $('#rdxDeleteName').textContent = name;
+  historyDeleteFocusTarget = trigger || document.activeElement;
+  return new Promise(resolve => {
+    historyDeleteDialogResolve = resolve;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    $('#rdxDeleteCancel').focus();
+  });
+}
+function finishDeleteConfirmation(confirmed) {
+  const dialog = $('#rdxDeleteDialog');
+  if (dialog.open && typeof dialog.close === 'function') dialog.close();
+  else dialog.removeAttribute('open');
+  const resolve = historyDeleteDialogResolve;
+  historyDeleteDialogResolve = null;
+  if (resolve) resolve(confirmed);
+  if (historyDeleteFocusTarget && historyDeleteFocusTarget.isConnected) historyDeleteFocusTarget.focus();
+  historyDeleteFocusTarget = null;
+}
+$('#rdxDeleteCancel').addEventListener('click', () => finishDeleteConfirmation(false));
+$('#rdxDeleteConfirm').addEventListener('click', () => finishDeleteConfirmation(true));
+$('#rdxDeleteDialog').addEventListener('cancel', event => { event.preventDefault(); finishDeleteConfirmation(false); });
+$('#rdxDeleteDialog').addEventListener('click', event => { if (event.target === event.currentTarget) finishDeleteConfirmation(false); });
+
+function updateBulkBar() {
+  const selected = document.querySelectorAll('#list input[data-video-select]:checked').length;
+  $('#rdxSelectedCount').textContent = selected + (selected > 1 ? ' vidéos sélectionnées' : ' vidéo sélectionnée');
+  $('#rdxBulkBar').hidden = selected === 0;
+  $('#rdxHistoryAnnounce').textContent = selected + ' vidéo(s) sélectionnée(s).';
+}
+function formatRelativeDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'Date inconnue';
+  const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const abs = Math.abs(seconds);
+  const units = [['an',31536000],['mois',2592000],['sem.',604800],['j',86400],['h',3600],['min',60]];
+  const unit = units.find(item => abs >= item[1]);
+  if (!unit) return 'à l’instant';
+  const amount = Math.round(abs / unit[1]);
+  const label = amount + ' ' + unit[0];
+  return seconds < 0 ? 'il y a ' + label : 'dans ' + label;
+}
+function expiryBadge(expiresAt) {
+  const time = Date.parse(expiresAt);
+  if (!Number.isFinite(time)) return null;
+  const days = Math.ceil((time - Date.now()) / 86400000);
+  const badge = document.createElement('span');
+  badge.className = 'rdx-expiry-badge' + (days <= 1 ? ' is-urgent' : days <= 3 ? ' is-soon' : '');
+  badge.textContent = days <= 0 ? 'Expire bientôt' : 'Expire dans ' + days + ' j';
+  badge.title = 'Expiration : ' + new Date(time).toLocaleString('fr-FR');
+  return badge;
+}
+function closeHistoryPlayer() {
+  const dialog = $('#rdxPlayerDialog');
+  const video = $('#rdxHistoryModalVideo');
+  video.pause(); video.removeAttribute('src'); video.load();
+  if (dialog.open && typeof dialog.close === 'function') dialog.close();
+  else dialog.removeAttribute('open');
+  historyPlayerCurrent = null;
+  if (historyPlayerFocusTarget && historyPlayerFocusTarget.isConnected) historyPlayerFocusTarget.focus();
+  historyPlayerFocusTarget = null;
+}
+$('#rdxPlayerClose').addEventListener('click', closeHistoryPlayer);
+$('#rdxPlayerDialog').addEventListener('cancel', event => { event.preventDefault(); closeHistoryPlayer(); });
+$('#rdxPlayerDialog').addEventListener('click', event => { if (event.target === event.currentTarget) closeHistoryPlayer(); });
+function openHistoryVideo(item, trigger) {
+  const asset = mp4Of(item);
+  if (!asset) return;
+  closeHistoryPlayer();
+  const video = $('#rdxHistoryModalVideo');
+  const dialog = $('#rdxPlayerDialog');
+  $('#rdxPlayerTitle').textContent = asset.name;
+  $('#rdxPlayerDownload').href = item.id ? '/api/videos?action=download&id=' + encodeURIComponent(item.id) : asset.browser_download_url;
+  $('#rdxPlayerDownload').setAttribute('download', asset.name || 'video.mp4');
+  if (asset.thumbnail_url) video.poster = asset.thumbnail_url;
+  video.src = item.id ? '/api/videos?action=stream&id=' + encodeURIComponent(item.id) : asset.browser_download_url;
+  historyPlayerFocusTarget = trigger;
+  historyPlayerCurrent = item.id;
+  if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+  $('#rdxPlayerClose').focus();
+}
+function scheduleHistoryDelete(records, label) {
+  const entries = records.map(({id,li}) => ({id,li,originalDisplay:li.style.display}));
+  entries.forEach(entry => { entry.li.hidden = true; });
+  const token = 'delete-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  const pending = {entries, timer:null};
+  pending.timer = window.setTimeout(async () => {
+    pendingHistoryDeletes.delete(token);
+    const results = await Promise.allSettled(entries.map(entry => api('/delete-video', {method:'POST',body:{id:entry.id}})));
+    const succeeded = results.filter(result => result.status === 'fulfilled').length;
+    entries.forEach((entry,index) => {
+      if (results[index].status === 'fulfilled' || results[index].reason?.status === 404) entry.li.remove();
+      else entry.li.hidden = false;
+    });
+    showToast(succeeded + ' / ' + entries.length + ' vidéo(s) supprimée(s).' + (succeeded < entries.length ? ' Certaines suppressions ont échoué.' : ''), succeeded === entries.length ? 'success' : 'error');
+    if (!$('#list').querySelector('li:not([hidden])')) renderHistoryEmpty();
+    updateBulkBar();
+  }, 5000);
+  pendingHistoryDeletes.set(token,pending);
+  showToast(label + ' · suppression dans 5 s', 'success', 'Annuler', () => {
+    window.clearTimeout(pending.timer);
+    pendingHistoryDeletes.delete(token);
+    entries.forEach(entry => { entry.li.hidden = false; entry.li.style.display = entry.originalDisplay; });
+    updateBulkBar();
+    showToast('Suppression annulée.', 'success');
+  });
+}
+function renderHistoryEmpty() {
+  const ul = $('#list'); ul.textContent = '';
+  const li = document.createElement('li'); li.className = 'empty rdx-history-empty';
+  const icon = document.createElement('span'); icon.className = 'rdx-empty-icon'; icon.setAttribute('aria-hidden','true'); icon.textContent = '▣';
+  const title = document.createElement('strong'); title.textContent = 'Ton historique est vide';
+  const copy = document.createElement('span'); copy.textContent = 'Les vidéos générées apparaîtront ici. Importe un fichier HTML pour créer ta première vidéo.';
+  const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Créer une vidéo'; button.addEventListener('click', () => $('#fileCard').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
+  li.append(icon,title,copy,button); ul.append(li);
+}
+function renderHistoryList() {
+  const ul=$('#list'); ul.textContent='';
+  const query=($('#rdxHistorySearch')?.value||'').trim().toLocaleLowerCase('fr');
+  const sort=$('#rdxHistorySort')?.value||'recent';
+  const items=historyItems.filter(item=>String(mp4Of(item)?.name||'').toLocaleLowerCase('fr').includes(query));
+  items.sort((a,b)=>sort==='oldest'?Date.parse(a.created_at)-Date.parse(b.created_at):sort==='size'?(Number(mp4Of(b)?.size)||0)-(Number(mp4Of(a)?.size)||0):Date.parse(b.created_at)-Date.parse(a.created_at));
+  if(!items.length){if(!historyItems.length)renderHistoryEmpty();else{const li=document.createElement('li');li.className='empty';li.textContent='Aucun résultat pour cette recherche.';ul.append(li);}$('#rdxHistoryAnnounce').textContent='0 résultat.';return;}
+  for(const r of items){
+    const a=mp4Of(r); if(!a)continue;
+    const li=document.createElement('li'); li.dataset.videoId=r.id||'';
+    const row=document.createElement('div');row.className='video-list-row';
+    const selectLabel=document.createElement('label');selectLabel.className='rdx-video-select';
+    const select=document.createElement('input');select.type='checkbox';select.dataset.videoSelect='';select.value=r.id||'';select.setAttribute('aria-label','Sélectionner '+a.name);select.addEventListener('change',updateBulkBar);
+    selectLabel.append(select);
+    const thumb=document.createElement('div');thumb.className='video-thumb';thumb.setAttribute('aria-hidden','true');
+    if(a.thumbnail_url){const image=document.createElement('img');image.src=a.thumbnail_url;image.alt='';image.loading='lazy';image.decoding='async';image.onerror=()=>{image.remove();const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);};thumb.append(image);}
+    else{const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);}
+    const meta=document.createElement('div');meta.className='meta';
+    const link=document.createElement('a');link.href=r.id?'/d/'+encodeURIComponent(r.id):a.browser_download_url;link.textContent=a.name;
+    const date=document.createElement('small');date.textContent=formatRelativeDate(r.created_at);date.title=new Date(r.created_at).toLocaleString('fr-FR');
+    const details=document.createElement('small');details.textContent=size(a.size);
+    const expiry=expiryBadge(r.expires_at);meta.append(link,date,details);if(expiry)meta.append(expiry);
+    const actions=document.createElement('div');actions.className='video-list-actions';
+    const watch=document.createElement('button');watch.type='button';watch.className='sec';watch.textContent='Regarder';watch.setAttribute('aria-label','Regarder la vidéo '+a.name);watch.addEventListener('click',()=>openHistoryVideo(r,watch));
+    const del=document.createElement('button');del.type='button';del.className='sec danger';del.textContent='Supprimer';del.setAttribute('aria-label','Supprimer la vidéo '+a.name);
+    del.addEventListener('click',async()=>{
+      if(!await openDeleteConfirmation(a.name,del))return;
+      if(r.id)scheduleHistoryDelete([{id:r.id,li}], 'Vidéo supprimée');
+      else showToast('Identifiant vidéo manquant : suppression impossible.','error');
+    });
+    actions.append(watch,del);row.append(selectLabel,thumb,meta,actions);li.append(row);ul.append(li);
+  }
+  $('#rdxHistoryAnnounce').textContent=items.length+' résultat(s).';
 }
 async function loadList() {
-  const ul = $('#list');
-  try {
-    const data = await api('/videos');
-    const generatedCount = $('#rdx-generated-count');
-    if (generatedCount && Number.isSafeInteger(data.generatedCount) && data.generatedCount >= 0) {
-      generatedCount.textContent = data.generatedCount.toLocaleString('fr-FR') + ' vidéos générées';
-      generatedCount.hidden = false;
-    } else if (generatedCount) {
-      generatedCount.textContent = '';
-      generatedCount.hidden = true;
-    }
-    closeHistoryPlayer();
-    ul.textContent = '';
-    const items = data.items || [];
-    if (!items.length) { ul.innerHTML = '<li class="empty">Aucune vidéo générée.</li>'; return; }
-    for (const r of items) {
-      const a = mp4Of(r);
-      if (!a) continue;
-      const li = document.createElement('li');
-      const row = document.createElement('div'); row.className = 'video-list-row';
-      const thumb = document.createElement('div'); thumb.className = 'video-thumb';
-      thumb.setAttribute('aria-hidden', 'true');
-      if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) {
-        const image = document.createElement('img');
-        image.src = a.thumbnail_url;
-        image.alt = 'Miniature de ' + a.name;
-        image.loading = 'lazy';
-        image.decoding = 'async';
-        image.onerror = () => {
-          image.remove();
-          const fallback = document.createElement('span');
-          fallback.className = 'video-thumb-fallback';
-          fallback.textContent = 'Aperçu indisponible';
-          thumb.append(fallback);
-        };
-        thumb.append(image);
-      } else {
-        const fallback = document.createElement('span');
-        fallback.className = 'video-thumb-fallback';
-        fallback.textContent = 'Aperçu indisponible';
-        thumb.append(fallback);
-      }
-      const meta = document.createElement('div'); meta.className = 'meta';
-      const l = document.createElement('a'); l.href = r.id ? '/d/' + encodeURIComponent(r.id) : a.browser_download_url; l.textContent = a.name;
-      const d = document.createElement('small');
-      const remainingDays = Number.isFinite(Date.parse(r.expires_at)) ? Math.max(0, Math.ceil((Date.parse(r.expires_at) - Date.now()) / 86400000)) : null;
-      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size) + (remainingDays === null ? '' : ' · ' + (remainingDays ? 'expire dans ' + remainingDays + ' j' : 'expiré'));
-      meta.append(l, d);
-      const actions = document.createElement('div'); actions.className = 'video-list-actions';
-      const watch = document.createElement('button'); watch.type = 'button'; watch.className = 'sec'; watch.textContent = 'Regarder';
-      watch.setAttribute('aria-expanded', 'false');
-      watch.setAttribute('aria-label', 'Regarder la vidéo ' + a.name);
-      watch.onclick = () => {
-        if (openHistoryPlayer && openHistoryPlayer.button === watch) {
-          closeHistoryPlayer();
-          return;
-        }
-        closeHistoryPlayer();
-        const panel = document.createElement('div'); panel.className = 'video-history-player';
-        const video = document.createElement('video');
-        video.className = 'rdx-player-video';
-        video.controls = true;
-        video.playsInline = true;
-        video.setAttribute('playsinline', '');
-        video.setAttribute('webkit-playsinline', '');
-        video.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
-        video.setAttribute('title', 'Lecteur vidéo : ' + a.name);
-        video.tabIndex = 0;
-        video.preload = 'metadata';
-        if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) video.poster = a.thumbnail_url;
-        video.addEventListener('error', () => addVideoLoadFallback(panel, a.browser_download_url, a.name), { once: true });
-        video.src = r.id ? '/api/videos?action=stream&id=' + encodeURIComponent(r.id) : a.browser_download_url;
-        panel.append(video);
-        li.append(panel);
-        watch.setAttribute('aria-expanded', 'true');
-        watch.textContent = 'Fermer';
-        openHistoryPlayer = { video, panel, button: watch };
-      };
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'sec danger'; del.textContent = 'Supprimer';
-      del.setAttribute('aria-label', 'Supprimer la vidéo ' + a.name);
-      del.onclick = async () => {
-        if (!confirm('Supprimer définitivement cette vidéo ?')) return;
-        del.disabled = true;
-        try {
-          if (openHistoryPlayer && openHistoryPlayer.panel.parentElement === li) closeHistoryPlayer();
-          await api('/delete-video', { method: 'POST', body: { id: r.id } });
-          li.remove();
-          if (!$('#list').children.length) $('#list').innerHTML = '<li class="empty">Aucune vidéo générée.</li>';
-          alert('Vidéo supprimée.');
-          loadList();
-        } catch (e) {
-          del.disabled = false;
-          if (e && e.status === 404) { li.remove(); alert('Cette vidéo était déjà supprimée.'); loadList(); }
-          else alert('Suppression impossible : ' + explain(e));
-        }
-      };
-      actions.append(watch, del);
-      row.append(thumb, meta, actions);
-      li.append(row);
-      ul.append(li);
-    }
-  } catch (e) {
-    closeHistoryPlayer();
-    ul.textContent = '';
-    const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Historique indisponible : ' + explain(e); ul.append(li);
+  const ul=$('#list');
+  try{
+    const data=await api('/videos');
+    const generatedCount=$('#rdx-generated-count');
+    if(generatedCount&&Number.isSafeInteger(data.generatedCount)&&data.generatedCount>=0){generatedCount.textContent=data.generatedCount.toLocaleString('fr-FR')+' vidéos générées';generatedCount.hidden=false;}
+    else if(generatedCount){generatedCount.textContent='';generatedCount.hidden=true;}
+    historyItems=Array.isArray(data.items)?data.items:[];
+    renderHistoryList();
+  }catch(error){
+    closeHistoryPlayer();ul.textContent='';
+    const li=document.createElement('li');li.className='empty';li.textContent='Historique indisponible : '+explain(error);ul.append(li);
+    showToast('Impossible de charger l’historique.','error');
   }
 }
+$('#rdxHistorySearch').addEventListener('input',renderHistoryList);
+$('#rdxHistorySort').addEventListener('change',renderHistoryList);
+$('#rdxSelectAll').addEventListener('click',()=>{
+  const boxes=[...document.querySelectorAll('#list input[data-video-select]')];
+  const all=boxes.length>0&&boxes.every(box=>box.checked);
+  boxes.forEach(box=>{box.checked=!all;});
+  updateBulkBar();
+});
+$('#rdxBulkDelete').addEventListener('click',async()=>{
+  const boxes=[...document.querySelectorAll('#list input[data-video-select]:checked')];
+  const records=boxes.map(box=>({id:box.value,li:box.closest('li'),name:box.closest('li')?.querySelector('.meta a')?.textContent||''})).filter(item=>item.id&&item.li);
+  if(!records.length)return;
+  if(!await openDeleteConfirmation(records.length+' vidéos sélectionnées', $('#rdxBulkDelete')))return;
+  scheduleHistoryDelete(records,'Suppression groupée de '+records.length+' vidéos');
+});
 async function waitJob(id, t0) {
   let polls = 0, lastWorkflowStep = '';
   const progressSamples = [];
