@@ -2680,12 +2680,14 @@ function scheduleHistoryDelete(records, label) {
     pendingHistoryDeletes.delete(token);
     const results = await Promise.allSettled(entries.map(entry => api('/delete-video', {method:'POST',body:{id:entry.id}})));
     const succeeded = results.filter(result => result.status === 'fulfilled').length;
+    const deletedIds=new Set();
     entries.forEach((entry,index) => {
-      if (results[index].status === 'fulfilled' || results[index].reason?.status === 404) entry.li.remove();
+      if (results[index].status === 'fulfilled' || results[index].reason?.status === 404) { entry.li.remove(); deletedIds.add(entry.id); }
       else entry.li.hidden = false;
     });
+    historyItems=historyItems.filter(item=>!deletedIds.has(item.id));
+    renderHistoryList();
     showToast(succeeded + ' / ' + entries.length + ' vidéo(s) supprimée(s).' + (succeeded < entries.length ? ' Certaines suppressions ont échoué.' : ''), succeeded === entries.length ? 'success' : 'error');
-    if (!$('#list').querySelector('li:not([hidden])')) renderHistoryEmpty();
     updateBulkBar();
   }, 5000);
   pendingHistoryDeletes.set(token,pending);
@@ -2693,6 +2695,7 @@ function scheduleHistoryDelete(records, label) {
     window.clearTimeout(pending.timer);
     pendingHistoryDeletes.delete(token);
     entries.forEach(entry => { entry.li.hidden = false; entry.li.style.display = entry.originalDisplay; });
+    renderHistoryList();
     updateBulkBar();
     showToast('Suppression annulée.', 'success');
   });
@@ -2710,7 +2713,8 @@ function renderHistoryList() {
   const ul=$('#list'); ul.textContent='';
   const query=($('#rdxHistorySearch')?.value||'').trim().toLocaleLowerCase('fr');
   const sort=$('#rdxHistorySort')?.value||'recent';
-  const items=historyItems.filter(item=>String(mp4Of(item)?.name||'').toLocaleLowerCase('fr').includes(query));
+  const pendingIds=new Set([...pendingHistoryDeletes.values()].flatMap(pending=>pending.entries.map(entry=>entry.id)));
+  const items=historyItems.filter(item=>!pendingIds.has(item.id)&&String(mp4Of(item)?.name||'').toLocaleLowerCase('fr').includes(query));
   items.sort((a,b)=>sort==='oldest'?Date.parse(a.created_at)-Date.parse(b.created_at):sort==='size'?(Number(mp4Of(b)?.size)||0)-(Number(mp4Of(a)?.size)||0):Date.parse(b.created_at)-Date.parse(a.created_at));
   if(!items.length){if(!historyItems.length)renderHistoryEmpty();else{const li=document.createElement('li');li.className='empty';li.textContent='Aucun résultat pour cette recherche.';ul.append(li);}$('#rdxHistoryAnnounce').textContent='0 résultat.';return;}
   for(const r of items){
