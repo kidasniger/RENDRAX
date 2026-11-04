@@ -65,7 +65,7 @@ async function sharePage(req, res, id) {
   const quality = width && height ? ' ' + width + ' × ' + height : '';
   const description = 'Regarde cette vidéo créée avec RENDRAX : ' + durationText + '.' + quality + ' Transforme tes propres animations HTML en MP4 sur RENDRAX.';
   const imageUrl = PUBLIC_ORIGIN + '/api/videos?action=thumbnail&id=' + id;
-  const videoUrl = PUBLIC_ORIGIN + '/api/videos?action=download&id=' + id;
+  const videoUrl = PUBLIC_ORIGIN + '/api/videos?action=stream&id=' + id;
   const safeTitle = htmlEscape(title);
   const safeDescription = htmlEscape(description);
   const safeName = htmlEscape(metadata.name || 'Vidéo RENDRAX');
@@ -103,7 +103,7 @@ async function sharePage(req, res, id) {
 
 
 
-async function signedRead(req, res, id, extension) {
+async function signedRead(req, res, id, extension, attachment = false) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Cette action n’est pas autorisée.' });
   if (!validJobId(id)) return send(res, 400, { error: 'Lien vidéo invalide.' });
   let metadata;
@@ -116,7 +116,9 @@ async function signedRead(req, res, id, extension) {
   if (metadata.id !== id || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
     return send(res, 410, { error: 'Ce lien de partage a expiré.' });
   }
-  const url = await b2PresignGet(`videos/${id}.${extension}`, SIGNED_LINK_TTL_SECONDS);
+  const baseName = safeName(String(req.query?.name || metadata.name || 'video'));
+  const disposition = extension === 'mp4' ? (attachment ? 'attachment; filename="' + baseName + '.mp4"' : 'inline') : 'inline';
+  const url = await b2PresignGet(`videos/${id}.${extension}`, SIGNED_LINK_TTL_SECONDS, disposition);
   return res.redirect(302, url);
 }
 
@@ -269,7 +271,8 @@ export default async function handler(req, res) {
     if (action === 'publish') return await publishVideo(req, res);
     if (action === 'share') return await sharePage(req, res, String(req.query?.id || ''));
     if (action === 'metadata') return await metadataResponse(req, res, String(req.query?.id || ''));
-    if (action === 'download') return await signedRead(req, res, String(req.query?.id || ''), 'mp4');
+    if (action === 'download') return await signedRead(req, res, String(req.query?.id || ''), 'mp4', true);
+    if (action === 'stream') return await signedRead(req, res, String(req.query?.id || ''), 'mp4', false);
     if (action === 'thumbnail') return await signedRead(req, res, String(req.query?.id || ''), 'jpg');
     if (action === 'cleanup-expired') return await cleanupExpired(req, res);
     if (!action && req.method === 'GET') return await listVideos(res);
