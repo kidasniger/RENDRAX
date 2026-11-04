@@ -339,9 +339,8 @@ class Html2Mp4Tests(unittest.TestCase):
         # Explicitly delegate media playback but keep untrusted HTML isolated.
         self.assertIn('sandbox="allow-scripts" allow="autoplay"', page)
         self.assertNotIn('sandbox="allow-scripts allow-same-origin"', page)
-        self.assertIn("Chargement de l’aperçu…", page)
-        self.assertIn("p.addEventListener('load', reveal", page)
-        self.assertIn("p.srcdoc = fileText", page)
+        self.assertIn("function renderPreview(source)", page)
+        self.assertIn("frame.srcdoc = source", page)
 
     def test_watermark_is_optional_from_ui_through_workflow(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -350,7 +349,7 @@ class Html2Mp4Tests(unittest.TestCase):
         cli = (ROOT / "html2mp4.py").read_text(encoding="utf-8")
         self.assertIn('id="watermark" type="checkbox">', page)
         self.assertNotIn('id="watermark" type="checkbox" checked', page)
-        self.assertIn("Optionnel. Active cette option", page)
+        self.assertIn("Laisse cette option désactivée pour ne pas l’afficher.", page)
         self.assertIn("watermark: $('#watermark').checked", page)
         self.assertIn("watermark = true", api)
         self.assertIn("watermark: String(watermarkEnabled)", api)
@@ -432,7 +431,8 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("counts.image + ' image(s)", page)
         self.assertIn("counts.script + ' script(s)", page)
         self.assertIn("counts.audio + ' audio", page)
-        self.assertIn("tu peux choisir une autre page", page)
+        self.assertIn("Choisir le HTML principal", page)
+        self.assertIn("Sélectionne celle à convertir.", page)
 
     def test_integrated_preview_keeps_sandbox_and_updates_aspect_ratio(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -442,7 +442,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('id="format"', page)
         self.assertIn('sandbox="allow-scripts"', page)
         self.assertIn("function applyPreviewFormat()", page)
-        self.assertIn("frame.dataset.format = format === 'auto' ? 'portrait' : format", page)
+        self.assertIn("$('#previewFrame').dataset.format = resolvedFormat", page)
         self.assertIn('data-format="landscape"', styles)
         self.assertIn('aspect-ratio:16/9', styles)
         self.assertIn('aspect-ratio:1/1', styles)
@@ -478,7 +478,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('id="rdx-paste-create"', page)
         self.assertIn('id="file"', page)
         self.assertIn("uploadPrivateBlobWithRecovery", page)
-        self.assertIn("p.srcdoc = fileText", page)
+        self.assertIn("frame.srcdoc = source", page)
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
