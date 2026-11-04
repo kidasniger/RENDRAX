@@ -131,10 +131,15 @@ export default async function handler(req, res) {
             name: metadata.name,
             created_at: metadata.created_at,
             expires_at: metadata.expires_at,
+            width: metadata.width,
+            height: metadata.height,
+            duration: metadata.duration,
+            fps: metadata.fps,
+            watermark: metadata.watermark,
             assets: [{
               name: `${metadata.name || 'video'}.mp4`,
               size: metadata.size,
-              browser_download_url: `/d/${id}`,
+              browser_download_url: `/api/videos?action=download&id=${id}`,
               thumbnail_url: `/api/videos?action=thumbnail&id=${id}`
             }]
           };
