@@ -3002,7 +3002,6 @@ async function offerResumeIfAvailable() {
   try {
     const job = await api('/job?id=' + encodeURIComponent(saved.id));
     if (!job || job.found !== true) { store.set('kidas_job', null); return false; }
-    if (job.status === 'completed' && job.release) return false;
     $('#rdx-resume-prompt').hidden = false; return true;
   } catch (e) { $('#rdx-resume-prompt').hidden = false; return true; }
 }
