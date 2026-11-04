@@ -48,7 +48,7 @@
 <title>HTML → MP4 · RENDRAX</title>
 <style>
 :root{
-  --bg:#f3f6ff;--surf:#ffffff;--surf2:#f4f6ff;--tx:#11162b;--mut:#65708b;--bd:#dfe6f7;
+  --bg:#f3f6ff;--surf:#ffffff;--surf2:#f4f6ff;--tx:#11162b;--mut:#58677f;--bd:#dfe6f7;
   --ac:#316bff;--ac2:#6d49ef;--on:#ffffff;--ok:#0e956a;--err:#cc3655;--warn:#98600a;
   --r:22px;--rs:14px;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--shadow:0 12px 34px rgba(34,62,130,.065);color-scheme:light
 }
@@ -430,6 +430,7 @@ ul#list button{box-shadow:none}
 </script>
 </head>
 <body>
+<a class="rdx-skip-link" href="#rdx-top">Aller au contenu principal</a>
 <div id="rdx-splash" class="rdx-splash" aria-hidden="true">
   <div class="rdx-splash-inner">
     <div class="rdx-splash-mark"><img src="/favicon-32x32.png?v=20261025-rendrax4" alt=""></div>
@@ -448,7 +449,7 @@ ul#list button{box-shadow:none}
           <img class="brand-logo" data-rdx-logo-dark src="/assets/rendrax-logo-dark.svg?v=20261025-fix3" alt="" aria-hidden="true" width="520" height="120">
         </a>
       </div>
-      <p class="rdx-eyebrow" id="rdx-service-status" data-state="checking" role="status" aria-live="polite"><span class="rdx-live-dot" aria-hidden="true"></span><span id="rdx-service-label">ATELIER DE RENDU · Vérification…</span></p>
+      <p class="rdx-eyebrow" id="rdx-service-status" data-state="checking" role="status"><span class="rdx-live-dot" aria-hidden="true"></span><span id="rdx-service-label">ATELIER DE RENDU · Vérification…</span></p>
       <h1>Convertir HTML en MP4</h1>
       <p class="sub">Passe de l’animation HTML au MP4 prêt à publier.</p>
       <div class="rdx-hero-meta" aria-label="Les avantages de RENDRAX">
@@ -670,7 +671,7 @@ ul#list button{box-shadow:none}
       </div>
     </dialog>
     <p class="mut" role="note">RENDRAX reconnaît automatiquement le type d’animation et règle sa fluidité ainsi que la qualité de la vidéo. Il active aussi l’écran de démarrage lorsqu’il est présent. Le fichier HTML d’origine reste intact.</p>
-    <p id="securityStatus" role="status" class="mut" aria-live="polite" hidden></p>
+    <p id="securityStatus" role="status" class="mut" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <p id="preRenderSummary" class="pre-render-summary" aria-live="polite">Fichier : en attente · Format : Automatique · Qualité : Complète · Durée estimée : —</p>
     <button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button>
@@ -705,7 +706,7 @@ ul#list button{box-shadow:none}
       <li data-s="pending" data-icon="▣"><span class="step-icon" aria-hidden="true">▣</span><span class="step-label">Création de la vidéo</span></li>
       <li data-s="pending" data-icon="✓"><span class="step-icon" aria-hidden="true">✓</span><span class="step-label">Terminé</span></li>
     </ol>
-    <p id="st" class="mut" aria-live="polite">Prêt.</p>
+    <p id="st" class="mut" role="status" aria-live="polite">Prêt.</p>
     <p id="hint" class="mut" hidden></p>
     <div id="renderProgress" hidden aria-live="off">
       <div class="render-progress-head">
@@ -786,7 +787,7 @@ ul#list button{box-shadow:none}
   <a id="rdxTutorialLink" href="#rdxTutorial">Revoir le tutoriel</a>
 </footer>
 
-<dialog id="rdxTutorial" class="rdx-tutorial" aria-labelledby="rdxTutorialTitle" aria-describedby="rdxTutorialDescription">
+<dialog id="rdxTutorial" class="rdx-tutorial" role="dialog" aria-modal="true" aria-labelledby="rdxTutorialTitle" aria-describedby="rdxTutorialDescription">
   <div class="rdx-tutorial-shell">
     <div class="rdx-tutorial-topline">
       <span class="rdx-tutorial-brand">RENDRAX · GUIDE RAPIDE</span>
@@ -2724,8 +2725,8 @@ function renderHistoryList() {
     const selectLabel=document.createElement('label');selectLabel.className='rdx-video-select';
     const select=document.createElement('input');select.type='checkbox';select.dataset.videoSelect='';select.value=r.id||'';select.setAttribute('aria-label','Sélectionner '+a.name);select.addEventListener('change',updateBulkBar);
     selectLabel.append(select);
-    const thumb=document.createElement('div');thumb.className='video-thumb';thumb.setAttribute('aria-hidden','true');
-    if(a.thumbnail_url){const image=document.createElement('img');image.src=a.thumbnail_url;image.alt='';image.loading='lazy';image.decoding='async';image.onerror=()=>{image.remove();const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);};thumb.append(image);}
+    const thumb=document.createElement('div');thumb.className='video-thumb';
+    if(a.thumbnail_url){const image=document.createElement('img');image.src=a.thumbnail_url;image.alt='Aperçu de la vidéo : '+a.name;image.loading='lazy';image.decoding='async';image.onerror=()=>{image.remove();const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);};thumb.append(image);}
     else{const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);}
     const meta=document.createElement('div');meta.className='meta';
     const link=document.createElement('a');link.href=r.id?'/d/'+encodeURIComponent(r.id):a.browser_download_url;link.textContent=a.name;
