@@ -56,7 +56,7 @@ class ResultSharingTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "Node.js absent")
     def test_inline_and_vendored_qr_javascript_parse(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-        start = page.index("<script>\\nconst API = '/api';") + len("<script>")
+        start = page.index("<script>\nconst API = '/api';") + len("<script>")
         end = page.index("</script>", start)
         main_script = page[start:end]
         qr_script = (ROOT / "docs" / "assets" / "rendrax-qr.js").read_text(encoding="utf-8")
