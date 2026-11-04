@@ -2620,7 +2620,7 @@ async function waitJob(id, t0) {
 }
 async function finish(rel, testOnly = false) {
   releaseWakeLock();
-  showResult(rel); setSteps(4); status('Terminé ✓', 'ok'); hint('');
+  showResult(rel); setSteps(5); status('Terminé ✓', 'ok'); hint('');
   document.title = '✅ Vidéo prête · RENDRAX';
   if ('Notification' in window && Notification.permission === 'granted') {
     try { new Notification('RENDRAX · Vidéo prête', { body: 'Ton rendu MP4 est terminé.' }); } catch (e) {}
@@ -2634,8 +2634,7 @@ async function finish(rel, testOnly = false) {
 }
 function fail(e, step) {
   releaseWakeLock();
-  setSteps(0, step);
-  [...$('#steps').children].forEach((li, i) => { if (i < step) li.dataset.s = 'done'; if (i > step) li.dataset.s = 'pending'; });
+  setSteps(step, step);
   status((e.cancelled ? '' : '✗ ') + explain(e), e.cancelled ? 'mut' : 'err', e.url);
   if (!e.cancelled) renderErrorActions(e);
   hint(''); resetRenderProgress(); store.set('kidas_job', null);
@@ -3006,7 +3005,7 @@ async function offerResumeIfAvailable() {
   } catch (e) { $('#rdx-resume-prompt').hidden = false; return true; }
 }
 $('#rdx-resume-button').onclick = async () => { $('#rdx-resume-prompt').hidden = true; await resume(); };
-$('#rdx-resume-dismiss').onclick = () => { $('#rdx-resume-prompt').hidden = true; $('#rdx-resume-button').focus(); };
+$('#rdx-resume-dismiss').onclick = () => { $('#rdx-resume-prompt').hidden = true; $('#file').focus(); };
 $('#cancel').onclick = () => {
   const prompt = $('#rdx-cancel-confirm'); prompt.hidden = !prompt.hidden;
   $('#cancel').setAttribute('aria-expanded', String(!prompt.hidden));
