@@ -2498,7 +2498,7 @@ function showResult(rel) {
         sourceFrame.hidden = true;
         sourceFrame.removeAttribute('srcdoc');
         v.pause();
-        box.insertBefore(v, info);
+        frame.append(v);
       }
     });
     box.append(compareBtn, compareView);
