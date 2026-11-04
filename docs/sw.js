@@ -1,6 +1,7 @@
-const CACHE_NAME = 'rendrax-shell-v3';
+const CACHE_NAME = 'rendrax-shell-v4';
 const SHELL_URLS = [
   '/',
+  '/offline.html',
   '/assets/rendrax-redesign.css',
   '/assets/rendrax-motion.js',
   '/assets/rendrax-qr.js',
@@ -58,6 +59,8 @@ async function precacheShell() {
   }));
 }
 
+self.addEventListener('message', event => { if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting(); });
+
 self.addEventListener('install', event => {
   event.waitUntil(precacheShell().then(() => self.skipWaiting()));
 });
@@ -105,10 +108,11 @@ self.addEventListener('fetch', event => {
     } catch (error) {
       const cached = await cache.match(cacheKey);
       if (!cached) {
-        return new Response(
-          'Connexion requise pour convertir. Reconnecte-toi à Internet pour utiliser RENDRAX.',
-          { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
-        );
+        if (request.mode === 'navigate') {
+          const offline = await cache.match(new Request(new URL('/offline.html', self.location.origin).href));
+          if (offline) return offline;
+        }
+        return new Response('Connexion requise pour convertir. Reconnecte-toi à Internet pour utiliser RENDRAX.', {status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});
       }
       if (request.mode === 'navigate') return withOfflineNotice(cached);
       return cached;
