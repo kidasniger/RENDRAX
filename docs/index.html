@@ -1173,8 +1173,10 @@ function renderErrorActions(e) {
   const cause = document.createElement('p'); cause.textContent = explain(e);
   const actions = document.createElement('div'); actions.className = 'actions';
   if (e.status !== 413) {
-    const same = document.createElement('button'); same.type = 'button'; same.className = 'sec'; same.textContent = 'Réessayer avec les mêmes réglages'; same.addEventListener('click', () => go(lastAttemptTestOnly, false));
-    const light = document.createElement('button'); light.type = 'button'; light.className = 'sec'; light.textContent = 'Réessayer en qualité allégée'; light.addEventListener('click', () => go(lastAttemptTestOnly, true)); actions.append(same, light);
+    const same = document.createElement('button'); same.type = 'button'; same.className = 'sec'; same.textContent = 'Réessayer avec les mêmes réglages'; same.addEventListener('click', () => go(lastAttemptTestOnly, false)); actions.append(same);
+    if (!lastAttemptTestOnly) {
+      const light = document.createElement('button'); light.type = 'button'; light.className = 'sec'; light.textContent = 'Réessayer en qualité allégée'; light.addEventListener('click', () => go(false, true)); actions.append(light);
+    }
   } else {
     const optimize = document.createElement('button'); optimize.type = 'button'; optimize.className = 'sec'; optimize.textContent = 'Vérifier le fichier'; optimize.addEventListener('click', () => $('#file').focus()); actions.append(optimize);
   }
