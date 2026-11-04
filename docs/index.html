@@ -2412,19 +2412,6 @@ function showResult(rel) {
     } catch (error) { remove.disabled = false; copyStatus.textContent = 'Suppression impossible : ' + explain(error); }
   });
   nextActions.append(newVideo, redo, remove); next.append(nextTitle, nextActions); box.append(next);
-  if (lastSourceForRetry && lastSourceForRetry.id) {
-    const retry = document.createElement('button');
-    retry.type = 'button';
-    retry.className = 'sec';
-    retry.textContent = "Refaire avec d'autres réglages";
-    retry.addEventListener('click', () => {
-      $('#settingsCard').hidden = false;
-      $('#settingsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      $('#mode').focus({ preventScroll: true });
-    });
-    box.append(retry);
-  }
-
   if (typeof fileText === 'string' && fileText.trim()) {
     const compareBtn = document.createElement('button');
     compareBtn.type = 'button';
