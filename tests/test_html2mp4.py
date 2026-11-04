@@ -502,6 +502,15 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('src="/favicon-32x32.png?v=20261025-rendrax4"', page)
         self.assertIn('src="/_vercel/insights/script.js"', page)
 
+    def test_render_progress_resume_and_recovery_controls(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
+        for marker in ('id="rdx-resume-prompt"', 'Reprendre le suivi du rendu', 'aria-current', 'rdx-cancel-confirm', 'Estimation en cours', 'Notification.requestPermission', 'new Notification(', 'requestWakeLock()', 'releaseWakeLock()', 'Réessayer avec les mêmes réglages', 'Réessayer en qualité allégée', 'Détails techniques', 'Copier le journal', 'Math.max(state.maxPercent'):
+            self.assertIn(marker, page)
+        self.assertIn('.rdx-resume-prompt', styles)
+        self.assertIn('prefers-reduced-motion:reduce', styles)
+        self.assertIn("try { return localStorage.getItem(k); } catch (e) { return null; }", page)
+
     def test_animated_watermark_defaults_and_filter(self):
         from h2m.watermark import _overlay_filter, _make_apng, validate_watermark
         self.assertEqual(validate_watermark(), ("RENDRAX", "pulse", "right-center", 0.45, 0.07))
