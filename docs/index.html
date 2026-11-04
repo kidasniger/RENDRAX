@@ -1164,7 +1164,7 @@ function explain(e) {
 }
 function technicalErrorText(e) {
   const r = e && e.response ? e.response : {};
-  return ['RENDRAX — diagnostic du rendu','Date : ' + new Date().toISOString(),'HTTP : ' + (e.status || 'non disponible'),'Message : ' + (e.message || String(e)),'Code : ' + (r.code || 'non fourni'),'Request ID : ' + (r.requestId || 'non fourni'),'Détails : ' + (r.details || 'non fournis'),'Workflow : ' + (e.url || 'non disponible')].join('\\n');
+  return ['RENDRAX — diagnostic du rendu','Date : ' + new Date().toISOString(),'HTTP : ' + (e.status || 'non disponible'),'Message : ' + (e.message || String(e)),'Code : ' + (r.code || 'non fourni'),'Request ID : ' + (r.requestId || 'non fourni'),'Détails : ' + (r.details || 'non fournis'),'Workflow : ' + (e.url || 'non disponible')].join('\n');
 }
 function renderErrorActions(e) {
   const box = $('#res'); box.textContent = '';
