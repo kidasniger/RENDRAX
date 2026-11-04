@@ -791,3 +791,25 @@ main.rdx-main .drop-error[hidden]{display:none}
 .mode-native-select{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;opacity:0!important;pointer-events:none!important}
 @media(max-width:420px){.mode-cards{grid-template-columns:1fr;gap:8px}.mode-card{min-height:0;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:3px}.mode-card strong,.mode-card .mode-resolution,.mode-card .mode-detail{grid-column:1}.mode-card .mode-detail{min-height:0}.mode-card .mode-meta{grid-column:2;grid-row:1;align-self:start;text-align:right}.mode-card .mode-meta+.mode-meta{grid-row:2}.mode-card.is-selected{padding:11px}}
 @media(prefers-reduced-motion:reduce){.mode-card{transition:none}}
+
+/* progression du rendu : reprise, confirmation, diagnostic */
+#renderProgressBar::-webkit-progress-value{transition:width .45s ease}
+.rdx-resume-prompt,.rdx-inline-confirm,.rdx-error-panel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:13px;border:1px solid var(--bd);border-radius:14px;background:var(--surf2);color:var(--tx)}
+.rdx-resume-prompt>div{display:grid;gap:3px;flex:1 1 180px}
+.rdx-resume-prompt>div span{color:var(--mut);font-size:.82rem}
+.rdx-resume-prompt button,.rdx-inline-confirm button{width:auto;min-height:42px;margin:0;padding:8px 13px}
+.rdx-inline-confirm{border-color:color-mix(in srgb,var(--err) 40%,var(--bd))}
+.rdx-inline-confirm>span{flex:1 1 150px;font-size:.88rem;font-weight:650}
+.rdx-error-panel{display:block;border-color:color-mix(in srgb,var(--err) 40%,var(--bd));background:color-mix(in srgb,var(--err) 5%,var(--surf))}
+.rdx-error-panel h3{margin:0 0 5px;font-size:1rem}
+.rdx-error-panel p{margin:0;color:var(--mut);font-size:.86rem;line-height:1.5}
+.rdx-error-panel .actions{display:flex;gap:8px;flex-wrap:wrap}
+.rdx-error-panel .actions button{flex:1 1 180px;width:auto;margin:0;min-height:44px}
+.rdx-technical-details{margin:12px 0 0;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--surf2)}
+.rdx-technical-details summary{cursor:pointer;font-size:.86rem;font-weight:700;color:var(--tx)}
+#rdx-technical-log{max-height:220px;overflow:auto;margin:10px 0;padding:10px;border-radius:8px;background:var(--bg);color:var(--mut);font:.75rem/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.rdx-technical-details .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rdx-technical-details .actions button,.rdx-technical-details .actions a{width:auto;min-height:40px;margin:0}
+#rdx-copy-status{margin:6px 0 0;font-size:.78rem}
+@media(max-width:380px){.rdx-resume-prompt,.rdx-inline-confirm{align-items:stretch}.rdx-resume-prompt button,.rdx-inline-confirm button{width:100%}}
+@media(prefers-reduced-motion:reduce){#renderProgressBar::-webkit-progress-value{transition:none}}
