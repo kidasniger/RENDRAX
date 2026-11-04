@@ -808,6 +808,7 @@ ul#list button{box-shadow:none}
   </div>
 </dialog>
 
+<script defer src="/assets/rendrax-qr.js?v=20261104"></script>
 <script>
 const API = '/api';
 const MODES = {
@@ -1111,6 +1112,7 @@ function resetRenderPrefsToDefaults() {
 }
 
 let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null, lastAttemptTestOnly = false;
+let resultExpiryTimer = null;
 let openHistoryPlayer = null;
 let localSource = null, lastSourceForRetry = null;
 let zipSelection = null, zipLoading = false, zipInspectToken = 0, zipMainToken = 0;
@@ -2235,6 +2237,27 @@ async function uploadPrivateBlobWithRecovery(url, id, file, type_fichier = 'html
   throw lastError || new Error('Le transfert du HTML a échoué.');
 }
 function mp4Of(rel) { return (rel.assets || []).find(x => x.name.toLowerCase().endsWith('.mp4')); }
+function safeDownloadName(value) {
+  const base = String(value || 'video').normalize('NFKC')
+    .replace(/[<>:"|?*]/g, '-').replaceAll('/', '-').replaceAll(String.fromCharCode(92), '-')
+    .replace(/[\u0000-\u001f]/g, '').replace(/\s+/g, ' ')
+    .replace(/[. ]+$/g, '').replace(/\.mp4$/i, '').slice(0, 100).trim();
+  return (base || 'video') + '.mp4';
+}
+function setResultExpiry(target, expiresAt) {
+  if (resultExpiryTimer) clearInterval(resultExpiryTimer);
+  const expiry = Date.parse(expiresAt || '');
+  if (!Number.isFinite(expiry)) { target.hidden = true; return; }
+  const update = () => {
+    const remaining = expiry - Date.now();
+    const days = Math.max(0, Math.ceil(remaining / 86400000));
+    target.hidden = false;
+    target.dataset.alert = String(remaining <= 3 * 86400000);
+    target.textContent = remaining <= 0 ? 'Lien expiré' : 'Disponible encore ' + days + (days > 1 ? ' jours' : ' jour');
+  };
+  update();
+  resultExpiryTimer = setInterval(update, 60000);
+}
 function addVideoLoadFallback(container, url, name) {
   if (container.querySelector('.video-load-error')) return;
   const fallback = document.createElement('div');
@@ -2259,87 +2282,130 @@ function showResult(rel) {
     revealTransition(box);
     return;
   }
+  const videoId = String(rel.id || rel.tag_name || '').match(/^v[a-z0-9]{12,40}$/)?.[0] || '';
+  const downloadUrl = a.browser_download_url || (videoId ? '/api/videos?action=download&id=' + encodeURIComponent(videoId) : '');
+  const shareUrl = videoId ? new URL('/d/' + videoId, window.location.origin).href : new URL(downloadUrl, window.location.origin).href;
+  const playerCard = document.createElement('section'); playerCard.className = 'rdx-result-player';
+  const frame = document.createElement('div'); frame.className = 'rdx-player-frame';
+  const width = Number(rel.width), height = Number(rel.height);
+  if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) frame.style.aspectRatio = width + ' / ' + height;
   const v = document.createElement('video');
-  v.className = 'rdx-player-video';
-  v.controls = true;
-  v.playsInline = true;
-  v.setAttribute('playsinline', '');
-  v.setAttribute('webkit-playsinline', '');
-  v.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name);
-  v.setAttribute('title', 'Lecteur vidéo : ' + a.name);
-  v.tabIndex = 0;
-  v.preload = 'metadata';
+  v.className = 'rdx-player-video'; v.controls = true; v.playsInline = true;
+  v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+  v.setAttribute('aria-label', 'Lecteur vidéo : ' + a.name); v.setAttribute('title', 'Lecteur vidéo : ' + a.name);
+  v.tabIndex = 0; v.preload = 'metadata';
   if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) v.poster = a.thumbnail_url;
-  v.addEventListener('error', () => addVideoLoadFallback(box, a.browser_download_url, a.name), { once: true });
-  v.src = a.browser_download_url;
-  const bar = document.createElement('div'); bar.className = 'actions';
-  const dl = document.createElement('a');
-  dl.className = 'btn'; dl.href = a.browser_download_url; dl.download = a.name;
-  dl.textContent = 'Télécharger (' + size(a.size) + ')';
-  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
-  cp.onclick = async () => {
-    try { await navigator.clipboard.writeText(shareUrl); cp.textContent = 'Lien copié ✓'; }
-    catch (e) { window.prompt('Copie ce lien :', a.browser_download_url); }
-    setTimeout(() => { cp.textContent = 'Copier le lien'; }, 2000);
-  };
-  bar.append(dl, cp);
-  if (navigator.share) {
-    const sh = document.createElement('button'); sh.type = 'button'; sh.className = 'sec'; sh.textContent = 'Partager';
-    sh.onclick = () => navigator.share({ title: a.name, url: a.browser_download_url }).catch(() => {});
-    bar.append(sh);
-  }
-
-  const shareText = 'Regarde cette vidéo créée avec RENDRAX :';
-  const shareUrl = new URL(a.browser_download_url, window.location.origin).href;
-  const shareLinks = [
-    {
-      label: 'WhatsApp',
-      href: 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl),
-      svg: '<path d="M20.2 11.7a8.2 8.2 0 0 1-12.1 7.2L4 20l1.1-4a8.2 8.2 0 1 1 15.1-4.3Z"/><path d="M8.3 7.9c.2-.5.4-.5.7-.5h.5c.2 0 .4.1.5.4l.8 1.8c.1.2.1.4 0 .6l-.5.7c-.2.2-.2.4 0 .6.5.8 1.2 1.5 2 2 .2.1.4.1.6-.1l.8-.9c.2-.2.4-.2.6-.1l1.7.8c.3.1.4.3.4.5 0 .3-.2 1.2-.8 1.6-.5.4-1.1.6-1.8.4-1-.2-2.3-.8-3.7-2.1-1.1-1-1.9-2.3-2.1-3.2-.2-.7 0-1.4.3-1.9Z"/>'
-    },
-    {
-      label: 'Telegram',
-      href: 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText),
-      svg: '<path d="m21 3-7.2 18-3.5-7.1L3 10.4 21 3Z"/><path d="m10.3 13.9 4.8-4.7"/>'
-    },
-    {
-      label: 'Facebook',
-      href: 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl),
-      svg: '<path d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5h1.7V3.9c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3V10H7.3v3h2.8v8h3.4Z"/>'
-    }
-  ];
-  for (const item of shareLinks) {
-    const link = document.createElement('a');
-    link.className = 'btn';
-    link.href = item.href;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.setAttribute('aria-label', 'Partager la vidéo sur ' + item.label);
-
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    icon.setAttribute('viewBox', '0 0 24 24');
-    icon.setAttribute('width', '18');
-    icon.setAttribute('height', '18');
-    icon.setAttribute('fill', 'none');
-    icon.setAttribute('stroke', 'currentColor');
-    icon.setAttribute('stroke-width', '1.8');
-    icon.setAttribute('stroke-linecap', 'round');
-    icon.setAttribute('stroke-linejoin', 'round');
-    icon.setAttribute('aria-hidden', 'true');
-    icon.setAttribute('focusable', 'false');
-    icon.innerHTML = item.svg;
-
-    const label = document.createElement('span');
-    label.textContent = item.label;
-    link.append(icon, label);
-    bar.append(link);
-  }
-  const info = document.createElement('small');
   v.addEventListener('loadedmetadata', () => {
-    info.textContent = 'Durée ' + mmss(v.duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
+    if (!(width > 0 && height > 0) && v.videoWidth > 0 && v.videoHeight > 0) frame.style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight;
+    const duration = Number.isFinite(Number(rel.duration)) && Number(rel.duration) > 0 ? Number(rel.duration) : v.duration;
+    info.textContent = 'Durée ' + mmss(duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
   });
-  box.append(v, info, bar);
-
+  v.addEventListener('error', () => addVideoLoadFallback(box, downloadUrl, a.name), { once: true });
+  v.src = downloadUrl; frame.append(v);
+  const info = document.createElement('small'); info.textContent = 'Chargement des informations vidéo…';
+  playerCard.append(frame, info);
+  const quality = document.createElement('div'); quality.className = 'rdx-result-meta';
+  const addMeta = value => { const item = document.createElement('span'); item.textContent = value; quality.append(item); };
+  if (width > 0 && height > 0) addMeta('Résolution ' + width + ' × ' + height);
+  if (Number.isFinite(Number(rel.duration)) && Number(rel.duration) > 0) addMeta('Durée ' + mmss(Number(rel.duration) * 1000));
+  if (Number.isFinite(Number(rel.fps)) && Number(rel.fps) > 0) addMeta('FPS ' + Number(rel.fps).toLocaleString('fr-FR', { maximumFractionDigits: 3 }));
+  addMeta(size(a.size));
+  addMeta(rel.watermark === true ? 'Avec filigrane RENDRAX' : 'Sans filigrane');
+  const nameLabel = document.createElement('label'); nameLabel.className = 'rdx-download-name';
+  nameLabel.textContent = 'Nom du fichier';
+  const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.maxLength = 100;
+  nameInput.autocomplete = 'off'; nameInput.spellcheck = false;
+  nameInput.value = String(a.name || 'video.mp4').replace(/\.mp4$/i, '');
+  nameInput.setAttribute('aria-label', 'Nom du fichier MP4 téléchargé');
+  nameLabel.append(nameInput);
+  const actions = document.createElement('div'); actions.className = 'rdx-result-actions';
+  const dl = document.createElement('a'); dl.className = 'btn rdx-download-primary';
+  dl.href = downloadUrl; dl.download = safeDownloadName(nameInput.value); dl.textContent = 'Télécharger le MP4';
+  nameInput.addEventListener('input', () => { dl.download = safeDownloadName(nameInput.value); });
+  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
+  const copyStatus = document.createElement('p'); copyStatus.className = 'rdx-copy-status'; copyStatus.setAttribute('role', 'status'); copyStatus.setAttribute('aria-live', 'polite');
+  cp.addEventListener('click', async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('Clipboard indisponible');
+      await navigator.clipboard.writeText(shareUrl);
+      cp.textContent = 'Lien copié ✓'; copyStatus.textContent = 'Lien de partage copié.';
+    } catch (e) {
+      window.prompt('Copie ce lien de partage :', shareUrl);
+      copyStatus.textContent = 'Le lien est prêt à être copié.';
+    }
+    setTimeout(() => { cp.textContent = 'Copier le lien'; copyStatus.textContent = ''; }, 2000);
+  });
+  const shareBtn = document.createElement('button'); shareBtn.type = 'button'; shareBtn.className = 'sec'; shareBtn.textContent = 'Partager';
+  const more = document.createElement('details'); more.className = 'rdx-share-more';
+  const moreSummary = document.createElement('summary'); moreSummary.textContent = 'Plus';
+  const menu = document.createElement('div'); menu.className = 'rdx-share-menu';
+  const shareText = 'Regarde cette vidéo créée avec RENDRAX :';
+  const social = [
+    { label: 'WhatsApp', href: 'https://wa.me/?text=' + encodeURIComponent(shareText + ' ' + shareUrl) },
+    { label: 'Telegram', href: 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareText) },
+    { label: 'Facebook', href: 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl) }
+  ];
+  social.forEach(item => {
+    const link = document.createElement('a'); link.href = item.href; link.target = '_blank'; link.rel = 'noopener';
+    link.textContent = item.label; menu.append(link);
+  });
+  const qrBtn = document.createElement('button'); qrBtn.type = 'button'; qrBtn.textContent = 'Afficher le QR code';
+  menu.append(qrBtn); more.append(moreSummary, menu);
+  shareBtn.addEventListener('click', async () => {
+    if (typeof navigator.share === 'function') {
+      try { await navigator.share({ title: a.name || 'Vidéo RENDRAX', text: shareText, url: shareUrl }); }
+      catch (error) { if (error && error.name !== 'AbortError') { more.open = true; moreSummary.focus(); } }
+    } else { more.open = true; moreSummary.focus(); }
+  });
+  actions.append(dl, cp, shareBtn, more);
+  const expiry = document.createElement('p'); expiry.className = 'rdx-expiry'; expiry.hidden = true;
+  setResultExpiry(expiry, rel.expires_at);
+  box.append(playerCard, quality, nameLabel, actions, copyStatus, expiry);
+  const qrDialog = document.createElement('dialog'); qrDialog.className = 'rdx-qr-dialog';
+  qrDialog.setAttribute('aria-labelledby', 'rdx-qr-title');
+  const qrTitle = document.createElement('h2'); qrTitle.id = 'rdx-qr-title'; qrTitle.textContent = 'QR code de partage';
+  const qrDescription = document.createElement('p'); qrDescription.textContent = 'Scanne ce code avec ton téléphone pour ouvrir la page de la vidéo.';
+  const qrCode = document.createElement('div'); qrCode.className = 'rdx-qr-code';
+  const qrStatus = document.createElement('p'); qrStatus.className = 'rdx-copy-status'; qrStatus.setAttribute('role', 'status');
+  const qrActions = document.createElement('div'); qrActions.className = 'actions';
+  const qrClose = document.createElement('button'); qrClose.type = 'button'; qrClose.className = 'sec'; qrClose.textContent = 'Fermer';
+  qrActions.append(qrClose); qrDialog.append(qrTitle, qrDescription, qrCode, qrStatus, qrActions); box.append(qrDialog);
+  const closeQr = () => { if (typeof qrDialog.close === 'function' && qrDialog.open) qrDialog.close(); else qrDialog.removeAttribute('open'); qrBtn.focus(); };
+  qrClose.addEventListener('click', closeQr);
+  qrDialog.addEventListener('click', event => { if (event.target === qrDialog) closeQr(); });
+  qrBtn.addEventListener('click', () => {
+    try {
+      if (!window.qrgen || !window.qrgen.QrCode) throw new Error('Bibliothèque QR indisponible');
+      const qr = window.qrgen.QrCode.encodeText(shareUrl, window.qrgen.QrCode.Ecc.MEDIUM);
+      qrCode.innerHTML = qr.toSvgString(4);
+      qrStatus.textContent = 'QR code généré localement sur cet appareil.';
+      if (typeof qrDialog.showModal === 'function') qrDialog.showModal(); else qrDialog.setAttribute('open', '');
+      qrClose.focus();
+    } catch (error) { qrStatus.textContent = 'Impossible de générer le QR code sur ce navigateur.'; }
+  });
+  const next = document.createElement('section'); next.className = 'rdx-result-next';
+  const nextTitle = document.createElement('strong'); nextTitle.textContent = 'Que veux-tu faire ensuite ?';
+  const nextActions = document.createElement('div'); nextActions.className = 'actions';
+  const newVideo = document.createElement('button'); newVideo.type = 'button'; newVideo.className = 'sec'; newVideo.textContent = 'Nouvelle vidéo';
+  newVideo.addEventListener('click', () => window.location.reload());
+  const redo = document.createElement('button'); redo.type = 'button'; redo.className = 'sec'; redo.textContent = "Refaire avec d'autres réglages";
+  redo.addEventListener('click', () => {
+    $('#settingsCard').hidden = false;
+    $('#settingsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#mode').focus({ preventScroll: true });
+  });
+  const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'sec danger'; remove.textContent = 'Supprimer cette vidéo';
+  remove.addEventListener('click', async () => {
+    if (!videoId || !confirm('Supprimer définitivement cette vidéo ?')) return;
+    remove.disabled = true;
+    try {
+      await api('/delete-video', { method: 'POST', body: { id: videoId } });
+      if (resultExpiryTimer) clearInterval(resultExpiryTimer);
+      box.textContent = 'Vidéo supprimée.';
+      loadList();
+    } catch (error) { remove.disabled = false; copyStatus.textContent = 'Suppression impossible : ' + explain(error); }
+  });
+  nextActions.append(newVideo, redo, remove); next.append(nextTitle, nextActions); box.append(next);
   if (lastSourceForRetry && lastSourceForRetry.id) {
     const retry = document.createElement('button');
     retry.type = 'button';
@@ -2502,9 +2568,10 @@ async function loadList() {
         thumb.append(fallback);
       }
       const meta = document.createElement('div'); meta.className = 'meta';
-      const l = document.createElement('a'); l.href = a.browser_download_url; l.textContent = a.name;
+      const l = document.createElement('a'); l.href = r.id ? '/d/' + encodeURIComponent(r.id) : a.browser_download_url; l.textContent = a.name;
       const d = document.createElement('small');
-      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size);
+      const remainingDays = Number.isFinite(Date.parse(r.expires_at)) ? Math.max(0, Math.ceil((Date.parse(r.expires_at) - Date.now()) / 86400000)) : null;
+      d.textContent = new Date(r.created_at).toLocaleString('fr-FR') + ' · ' + size(a.size) + (remainingDays === null ? '' : ' · ' + (remainingDays ? 'expire dans ' + remainingDays + ' j' : 'expiré'));
       meta.append(l, d);
       const actions = document.createElement('div'); actions.className = 'video-list-actions';
       const watch = document.createElement('button'); watch.type = 'button'; watch.className = 'sec'; watch.textContent = 'Regarder';
