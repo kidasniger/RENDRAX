@@ -828,7 +828,24 @@ main.rdx-main .drop-error[hidden]{display:none}
 .rdx-download-name input{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--bd);border-radius:11px;background:var(--surf);color:var(--tx);font:inherit}
 .rdx-result-actions{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin-top:12px}
 .rdx-result-actions>a,.rdx-result-actions>button{flex:1 1 130px;width:auto;min-height:48px;margin:0}
-.rdx-result-actions .rdx-download-primary{background:var(--ac);color:var(--on);border-color:var(--ac);font-weight:800}
+.rdx-result-actions .rdx-download-primary{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:48px;padding:11px 18px;border:1px solid var(--ac);border-radius:13px;
+  background:var(--ac);color:var(--on);font:750 .9rem/1.2 system-ui,sans-serif;
+  text-align:center;text-decoration:none;white-space:normal;cursor:pointer;
+  box-shadow:0 5px 14px color-mix(in srgb,var(--ac) 22%,transparent);
+  transition:background-color .16s,border-color .16s,color .16s,box-shadow .16s,transform .16s
+}
+.rdx-result-actions .rdx-download-primary:hover{
+  background:color-mix(in srgb,var(--ac) 88%,#000);
+  border-color:color-mix(in srgb,var(--ac) 88%,#000);
+  color:var(--on);box-shadow:0 7px 19px color-mix(in srgb,var(--ac) 30%,transparent)
+}
+.rdx-result-actions .rdx-download-primary:active{transform:translateY(1px);box-shadow:0 2px 7px color-mix(in srgb,var(--ac) 20%,transparent)}
+.rdx-result-actions .rdx-download-primary:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--ac) 42%,transparent);outline-offset:3px
+}
+.rdx-result-actions .rdx-download-primary:visited{color:var(--on)}
 .rdx-result-actions .rdx-share-more{position:relative;flex:0 0 auto}
 .rdx-share-more summary{min-height:48px;display:flex;align-items:center;justify-content:center;padding:0 15px;border:1px solid var(--bd);border-radius:13px;background:var(--surf);color:var(--tx);font-size:.86rem;font-weight:700;cursor:pointer;list-style:none}
 .rdx-share-more summary::-webkit-details-marker{display:none}
