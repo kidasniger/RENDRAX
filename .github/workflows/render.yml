@@ -286,6 +286,7 @@ jobs:
         env:
           VIDEO_ID: ${{ inputs.tag }}
           VIDEO_NAME: ${{ inputs.nom }}
+          WATERMARK: ${{ inputs.watermark }}
         run: |
           set -euo pipefail
           [[ "$VIDEO_ID" =~ ^v[a-z0-9]{12,40}$ ]] || { echo "::error::Identifiant vidéo RENDRAX invalide."; exit 1; }
@@ -305,6 +306,13 @@ jobs:
 
           video_size="$(stat -c '%s' "$video")"
           thumbnail_size="$(stat -c '%s' "$thumbnail")"
+          probe="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -show_entries format=duration -of json "$video")"
+          width="$(jq -er '.streams[0].width' <<< "$probe")"
+          height="$(jq -er '.streams[0].height' <<< "$probe")"
+          duration="$(jq -er '.format.duration' <<< "$probe")"
+          fps_raw="$(jq -er '.streams[0].r_frame_rate' <<< "$probe")"
+          fps="$(awk -F/ 'NF == 2 && $2 + 0 > 0 { printf "%.3f", $1 / $2 }' <<< "$fps_raw")"
+          [[ "$width" =~ ^[1-9][0-9]{0,4}$ && "$height" =~ ^[1-9][0-9]{0,4}$ && -n "$fps" ]] || { echo "::error::Métadonnées vidéo invalides."; exit 1; }
           upload="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" --argjson video_size "$video_size" --argjson thumbnail_size "$thumbnail_size" '{id:$id,run_id:$run_id,video_size:$video_size,thumbnail_size:$thumbnail_size}')"
           urls="$(curl --fail --silent --show-error --retry 2 \
             -X POST "https://rendrax.vercel.app/api/videos?action=upload-url" \
@@ -318,7 +326,7 @@ jobs:
           curl --fail --silent --show-error --location --retry 2 \
             -X PUT "$thumbnail_url" -H "Content-Type: image/jpeg" --data-binary "@$thumbnail"
 
-          publish="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" --arg name "${VIDEO_NAME:-video}" '{id:$id,run_id:$run_id,name:$name}')"
+          publish="$(jq -cn --arg id "$VIDEO_ID" --arg run_id "$GITHUB_RUN_ID" --arg name "${VIDEO_NAME:-video}" --argjson width "$width" --argjson height "$height" --argjson duration "$duration" --argjson fps "$fps" --arg watermark "$WATERMARK" '{id:$id,run_id:$run_id,name:$name,width:$width,height:$height,duration:$duration,fps:$fps,watermark:($watermark=="true")}')"
           curl --fail --silent --show-error --retry 2 \
             -X POST "https://rendrax.vercel.app/api/videos?action=publish" \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
