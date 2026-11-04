@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rendrax-shell-v1';
+const CACHE_NAME = 'rendrax-shell-v2';
 const SHELL_URLS = [
   '/',
   '/assets/rendrax-redesign.css',
