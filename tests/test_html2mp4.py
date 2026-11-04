@@ -511,7 +511,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('prefers-reduced-motion:reduce', styles)
         self.assertIn("try { return localStorage.getItem(k); } catch (e) { return null; }", page)
         service_worker = (ROOT / "docs" / "sw.js").read_text(encoding="utf-8")
-        self.assertIn("rendrax-shell-v2", service_worker)
+        self.assertIn("rendrax-shell-v3", service_worker)
 
     def test_animated_watermark_defaults_and_filter(self):
         from h2m.watermark import _overlay_filter, _make_apng, validate_watermark
