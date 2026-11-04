@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -49,6 +52,23 @@ class ResultSharingTests(unittest.TestCase):
                        "--argjson width", "--argjson height", "--argjson duration",
                        "--argjson fps", "watermark:($watermark==\"true\")"):
             self.assertIn(marker, workflow)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js absent")
+    def test_inline_and_vendored_qr_javascript_parse(self):
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        start = page.index("<script>\\nconst API = '/api';") + len("<script>")
+        end = page.index("</script>", start)
+        main_script = page[start:end]
+        qr_script = (ROOT / "docs" / "assets" / "rendrax-qr.js").read_text(encoding="utf-8")
+        for source in (main_script, qr_script):
+            result = subprocess.run(
+                ["node", "--check", "-"],
+                input=source,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":
