@@ -2284,6 +2284,7 @@ function showResult(rel) {
   }
   const videoId = String(rel.id || rel.tag_name || '').match(/^v[a-z0-9]{12,40}$/)?.[0] || '';
   const downloadUrl = a.browser_download_url || (videoId ? '/api/videos?action=download&id=' + encodeURIComponent(videoId) : '');
+  const streamUrl = videoId ? '/api/videos?action=stream&id=' + encodeURIComponent(videoId) : downloadUrl;
   const shareUrl = videoId ? new URL('/d/' + videoId, window.location.origin).href : new URL(downloadUrl, window.location.origin).href;
   const playerCard = document.createElement('section'); playerCard.className = 'rdx-result-player';
   const frame = document.createElement('div'); frame.className = 'rdx-player-frame';
@@ -2301,7 +2302,7 @@ function showResult(rel) {
     info.textContent = 'Durée ' + mmss(duration * 1000) + ' · ' + v.videoWidth + '×' + v.videoHeight + ' · ' + size(a.size);
   });
   v.addEventListener('error', () => addVideoLoadFallback(box, downloadUrl, a.name), { once: true });
-  v.src = downloadUrl; frame.append(v);
+  v.src = streamUrl; frame.append(v);
   const info = document.createElement('small'); info.textContent = 'Chargement des informations vidéo…';
   playerCard.append(frame, info);
   const quality = document.createElement('div'); quality.className = 'rdx-result-meta';
@@ -2310,7 +2311,7 @@ function showResult(rel) {
   if (Number.isFinite(Number(rel.duration)) && Number(rel.duration) > 0) addMeta('Durée ' + mmss(Number(rel.duration) * 1000));
   if (Number.isFinite(Number(rel.fps)) && Number(rel.fps) > 0) addMeta('FPS ' + Number(rel.fps).toLocaleString('fr-FR', { maximumFractionDigits: 3 }));
   addMeta(size(a.size));
-  addMeta(rel.watermark === true ? 'Avec filigrane RENDRAX' : 'Sans filigrane');
+  addMeta(typeof rel.watermark === 'boolean' ? (rel.watermark ? 'Avec filigrane RENDRAX' : 'Sans filigrane') : 'Filigrane non renseigné');
   const nameLabel = document.createElement('label'); nameLabel.className = 'rdx-download-name';
   nameLabel.textContent = 'Nom du fichier';
   const nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.maxLength = 100;
@@ -2320,8 +2321,13 @@ function showResult(rel) {
   nameLabel.append(nameInput);
   const actions = document.createElement('div'); actions.className = 'rdx-result-actions';
   const dl = document.createElement('a'); dl.className = 'btn rdx-download-primary';
-  dl.href = downloadUrl; dl.download = safeDownloadName(nameInput.value); dl.textContent = 'Télécharger le MP4';
-  nameInput.addEventListener('input', () => { dl.download = safeDownloadName(nameInput.value); });
+  const updateDownloadName = () => {
+    const filename = safeDownloadName(nameInput.value);
+    dl.download = filename;
+    dl.href = downloadUrl + (downloadUrl.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(filename.replace(/\\.mp4$/i, ''));
+  };
+  dl.download = safeDownloadName(nameInput.value); dl.textContent = 'Télécharger le MP4'; updateDownloadName();
+  nameInput.addEventListener('input', updateDownloadName);
   const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'sec'; cp.textContent = 'Copier le lien';
   const copyStatus = document.createElement('p'); copyStatus.className = 'rdx-copy-status'; copyStatus.setAttribute('role', 'status'); copyStatus.setAttribute('aria-live', 'polite');
   cp.addEventListener('click', async () => {
@@ -2596,7 +2602,7 @@ async function loadList() {
         video.preload = 'metadata';
         if (typeof a.thumbnail_url === 'string' && a.thumbnail_url) video.poster = a.thumbnail_url;
         video.addEventListener('error', () => addVideoLoadFallback(panel, a.browser_download_url, a.name), { once: true });
-        video.src = a.browser_download_url;
+        video.src = r.id ? '/api/videos?action=stream&id=' + encodeURIComponent(r.id) : a.browser_download_url;
         panel.append(video);
         li.append(panel);
         watch.setAttribute('aria-expanded', 'true');
