@@ -2324,7 +2324,7 @@ function showResult(rel) {
   const updateDownloadName = () => {
     const filename = safeDownloadName(nameInput.value);
     dl.download = filename;
-    dl.href = downloadUrl + (downloadUrl.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(filename.replace(/\\.mp4$/i, ''));
+    dl.href = downloadUrl + (downloadUrl.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(filename.replace(/\.mp4$/i, ''));
   };
   dl.download = safeDownloadName(nameInput.value); dl.textContent = 'Télécharger le MP4'; updateDownloadName();
   nameInput.addEventListener('input', updateDownloadName);
