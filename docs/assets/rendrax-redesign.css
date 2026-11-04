@@ -7,7 +7,7 @@
   --rdx-cyan:#63d8ee;
   --rdx-mist:#f5f8fc;
   --rdx-line:#dfe7f0;
-  --rdx-muted:#65748b;
+  --rdx-muted:#59677d;
 }
 html,body{min-height:100%;scroll-behavior:smooth}
 body{
@@ -944,3 +944,20 @@ ul#list .meta small[title]{cursor:help}
  .rdx-player-dialog-head{align-items:flex-start}
 }
 @media(prefers-reduced-motion:reduce){.rdx-toast,.rdx-toast.is-leaving{animation:none;transition:none}}
+
+/* Accessibilité — navigation clavier, contrastes et cibles tactiles */
+.rdx-skip-link{position:fixed;z-index:20000;top:10px;left:10px;transform:translateY(calc(-100% - 16px));padding:12px 16px;border:2px solid var(--ac);border-radius:12px;background:var(--surf);color:var(--tx);font-weight:800;text-decoration:none;box-shadow:0 8px 28px rgba(0,0,0,.2)}
+.rdx-skip-link:focus,.rdx-skip-link:focus-visible{transform:translateY(0)}
+:where(a,button,input,select,textarea,summary,[tabindex]:not([tabindex="-1"]),.rdx-primary-link):focus-visible{outline:2px solid var(--ac)!important;outline-offset:3px!important;box-shadow:0 0 0 2px var(--bg),0 0 0 5px color-mix(in srgb,var(--ac) 65%,transparent)!important}
+button,.rdx-primary-link,select,.rdx-tutorial-footer a,.rdx-player-download{min-height:44px}
+input[type="checkbox"],input[type="radio"]{width:20px;height:20px;min-width:20px;min-height:20px}
+.rdx-video-select{min-width:44px;min-height:44px}
+.video-list-actions{gap:8px}
+.rdx-history-tools,.rdx-history-toolbar{row-gap:8px}
+:root{--rdx-muted:#59677d}
+:root[data-theme="dark"]{--rdx-muted:#aab6d0}
+@media(prefers-reduced-motion:reduce){
+ html,body{scroll-behavior:auto!important}
+ *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0ms!important}
+ #rdx-splash{display:none!important}
+}
