@@ -755,7 +755,11 @@ ul#list button{box-shadow:none}
       </div>
     </div>
     <p id="rdxHistoryAnnounce" class="rdx-sr-only" role="status" aria-live="polite"></p>
-    <ul id="list"><li class="empty">Chargement…</li></ul>
+    <ul id="list" aria-busy="true">
+      <li class="rdx-history-skeleton" aria-hidden="true"><span class="rdx-skeleton-thumb"></span><span class="rdx-skeleton-copy"><i class="rdx-skeleton-line"></i><i class="rdx-skeleton-line short"></i></span><span class="rdx-skeleton-line rdx-skeleton-actions"></span></li>
+      <li class="rdx-history-skeleton" aria-hidden="true"><span class="rdx-skeleton-thumb"></span><span class="rdx-skeleton-copy"><i class="rdx-skeleton-line"></i><i class="rdx-skeleton-line short"></i></span><span class="rdx-skeleton-line rdx-skeleton-actions"></span></li>
+      <li class="rdx-history-skeleton" aria-hidden="true"><span class="rdx-skeleton-thumb"></span><span class="rdx-skeleton-copy"><i class="rdx-skeleton-line"></i><i class="rdx-skeleton-line short"></i></span><span class="rdx-skeleton-line rdx-skeleton-actions"></span></li>
+    </ul>
   </details>
 
 </main>
@@ -2581,7 +2585,7 @@ function showToast(message, type = 'info', actionLabel = '', onAction = null) {
   close.type = 'button'; close.className = 'rdx-toast-close'; close.setAttribute('aria-label', 'Fermer la notification'); close.textContent = '×';
   close.addEventListener('click', () => toast.remove());
   toast.append(close); region.append(toast);
-  window.setTimeout(() => { toast.classList.add('is-leaving'); window.setTimeout(() => toast.remove(), 180); }, 4000);
+  window.setTimeout(() => { toast.classList.add('is-leaving'); window.setTimeout(() => toast.remove(), 180); }, actionLabel ? 5500 : 4000);
 }
 
 function openDeleteConfirmation(name, trigger) {
@@ -2744,9 +2748,10 @@ async function loadList() {
     if(generatedCount&&Number.isSafeInteger(data.generatedCount)&&data.generatedCount>=0){generatedCount.textContent=data.generatedCount.toLocaleString('fr-FR')+' vidéos générées';generatedCount.hidden=false;}
     else if(generatedCount){generatedCount.textContent='';generatedCount.hidden=true;}
     historyItems=Array.isArray(data.items)?data.items:[];
+    ul.setAttribute('aria-busy','false');
     renderHistoryList();
   }catch(error){
-    closeHistoryPlayer();ul.textContent='';
+    closeHistoryPlayer();ul.setAttribute('aria-busy','false');ul.textContent='';
     const li=document.createElement('li');li.className='empty';li.textContent='Historique indisponible : '+explain(error);ul.append(li);
     showToast('Impossible de charger l’historique.','error');
   }
