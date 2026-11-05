@@ -23,16 +23,19 @@ test.beforeEach(async ({ page }) => {
     return route.fulfill({ contentType: 'application/javascript', body: 'const React={createElement(){return null;}}; export default React; export function useEffect(){}; export function useState(){return [0,()=>{}];}' });
   });
   await page.goto('/');
+  const skipTutorial = page.locator('#rdxTutorialSkip');
+  if (await skipTutorial.isVisible().catch(() => false)) await skipTutorial.click();
+  await expect(page.locator('#list li')).toHaveCount(1);
 });
 test('accepte un fichier HTML', async ({ page }) => {
   await page.locator('#file').setInputFiles({ name: 'animation-test.html', mimeType: 'text/html', buffer: Buffer.from('<!doctype html><html><body><h1>Test RENDRAX</h1></body></html>') });
   await expect(page.locator('#fileinfo')).toContainText('animation-test.html');
 });
 test('les réglages restent modifiables', async ({ page }) => {
-  await page.locator('#mode').selectOption('half');
-  await page.locator('#format').selectOption('landscape');
+  await page.locator('#modeCards [data-mode="half"]').click();
   await expect(page.locator('#mode')).toHaveValue('half');
-  await expect(page.locator('#format')).toHaveValue('landscape');
+  await page.locator('#watermark').check();
+  await expect(page.locator('#watermark')).toBeChecked();
 });
 test('la suppression affiche un toast annulable', async ({ page }) => {
   await expect(page.locator('#list li')).toHaveCount(1);
