@@ -532,9 +532,9 @@ async function initSecurity() {
       ? config.status
       : (config.ready ? 'online' : 'degraded');
     const serviceLabels = {
-      online: 'ATELIER DE RENDU · EN LIGNE',
-      degraded: 'ATELIER DE RENDU · Service dégradé',
-      offline: 'ATELIER DE RENDU · Service indisponible'
+      online: window.rdxT ? window.rdxT('service.online', 'ATELIER DE RENDU · EN LIGNE') : 'ATELIER DE RENDU · EN LIGNE',
+      degraded: window.rdxT ? window.rdxT('service.degraded', 'ATELIER DE RENDU · Service dégradé') : 'ATELIER DE RENDU · Service dégradé',
+      offline: window.rdxT ? window.rdxT('service.offline', 'ATELIER DE RENDU · Service indisponible') : 'ATELIER DE RENDU · Service indisponible'
     };
     setRdxServiceStatus(serviceState, serviceLabels[serviceState]);
     if (!config.ready || !config.turnstileSiteKey) {
