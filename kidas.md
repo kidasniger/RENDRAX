@@ -1,15 +1,16 @@
 ---
 name: "RENDRAX"
 slug: "rendrax"
-version: "À renseigner"
+version: "Version web continue — aucun numéro de version public déclaré"
 status: "En ligne"
 category: "Outil de développement"
 author: "KIDAS"
-license: "À renseigner"
+license: "Propriétaire — voir LICENSE"
 platforms:
   - "Web"
+  - "PWA installable sur les appareils compatibles"
   - "Linux (moteur CLI, selon dépendances)"
-  - "Android via Termux (moteur CLI, selon dépendances)"
+  - "Android via navigateur ou installation PWA ; moteur CLI via Termux, selon dépendances"
 technologies:
   - "HTML"
   - "CSS"
@@ -26,9 +27,13 @@ github: "https://github.com/kidasniger/RENDRAX"
 demo: "https://rendrax.vercel.app"
 website: "https://rendrax.vercel.app"
 documentation: "https://rendrax.vercel.app/preparer-html.html"
-download: "À renseigner"
-icon: "À vérifier"
-cover: "À renseigner"
+download: "Application web et PWA ; aucun installateur autonome ni APK publié"
+icon: "https://rendrax.vercel.app/favicon-32x32.png"
+pwa_icons:
+  - "https://rendrax.vercel.app/pwa-192.png"
+  - "https://rendrax.vercel.app/pwa-512.png"
+  - "https://rendrax.vercel.app/pwa-maskable-512.png"
+cover: "Aucune image Open Graph dédiée configurée"
 ---
 
 # Description
@@ -79,6 +84,7 @@ RENDRAX convertit des animations HTML en vidéos MP4. Importe un fichier HTML ou
 
 - Interface disponible en français et en anglais, avec changement de langue sans rechargement.
 - Interface web adaptée aux écrans mobiles et aux ordinateurs.
+- Application web progressive (PWA), installable depuis les navigateurs compatibles.
 - FAQ intégrée.
 - Guide de préparation des fichiers HTML.
 - Pages d'information sur la confidentialité et les conditions d'utilisation.
@@ -111,8 +117,20 @@ La durée de conservation effective des fichiers entrants et les détails de pur
 # Plateformes
 
 - **Web** : application complète hébergée sur Vercel.
+- **PWA** : installation possible depuis un navigateur compatible ; la disponibilité des fonctions dépend du navigateur et de l'appareil.
+- **Android** : utilisation dans le navigateur ou installation comme PWA. Aucun APK natif autonome n'est publié.
 - **Linux** : certains composants du moteur peuvent être exécutés en ligne de commande si les dépendances nécessaires sont installées.
 - **Android via Termux** : exécution du moteur en ligne de commande possible sous réserve de la disponibilité et de la compatibilité de Python, Chromium et FFmpeg. L'interface complète reste une application web.
+
+# Licence et propriété
+
+RENDRAX est un projet propriétaire. Il n'est publié sous aucune licence open source.
+
+La copie, la modification, l'adaptation, la redistribution, la création d'œuvres dérivées et l'exploitation non autorisée sont interdites sans accord écrit préalable du titulaire des droits.
+
+Le texte complet de la licence, en anglais et en français, se trouve dans le fichier [LICENSE](https://github.com/kidasniger/RENDRAX/blob/main/LICENSE).
+
+Copyright : © 2026 KIDAS. Tous droits réservés.
 
 # Guide de préparation HTML
 
@@ -122,53 +140,46 @@ Le guide couvre notamment la structure du document HTML, le choix du fichier pri
 
 # Captures d'écran
 
-- À renseigner
+Aucune capture d'écran dédiée n'est actuellement référencée dans le dépôt. Cette rubrique sera complétée lorsque des captures réelles de l'application seront publiées.
 
-# Vidéos
+# Vidéos de présentation
 
-- À renseigner
+Aucune vidéo de présentation officielle n'est actuellement référencée.
 
-# Téléchargements
+# Téléchargements et installation
 
-RENDRAX est actuellement distribué comme application web. Aucun paquet Android, Windows, Linux ou macOS autonome n'est renseigné dans ce fichier.
+RENDRAX est distribué sous forme d'application web et de PWA. Il n'existe actuellement aucun paquet autonome publié pour Android, Windows, Linux ou macOS.
 
-## Android
+- **Application web** : https://rendrax.vercel.app
+- **Installation PWA** : utiliser la fonction « Installer l'application » ou « Ajouter à l'écran d'accueil » du navigateur compatible.
+- **APK Android** : non publié.
+- **Installateur Windows** : non publié.
+- **Paquet Linux** : non publié.
+- **Application macOS** : non publiée.
 
-- URL : À renseigner
-- Version : À renseigner
-- Architecture : À renseigner
-- Taille : À renseigner
+# Icônes
 
-## Windows
+- Favicon 16 × 16 : https://rendrax.vercel.app/favicon-16x16.png
+- Favicon 32 × 32 : https://rendrax.vercel.app/favicon-32x32.png
+- Icône PWA 192 × 192 : https://rendrax.vercel.app/pwa-192.png
+- Icône PWA 512 × 512 : https://rendrax.vercel.app/pwa-512.png
+- Icône PWA maskable 512 × 512 : https://rendrax.vercel.app/pwa-maskable-512.png
+- Icône Apple Touch : https://rendrax.vercel.app/apple-touch-icon.png
 
-- URL : À renseigner
-- Version : À renseigner
-- Architecture : À renseigner
-- Taille : À renseigner
-
-## Linux
-
-- URL : À renseigner
-- Version : À renseigner
-- Architecture : À renseigner
-- Taille : À renseigner
-
-## macOS
-
-- URL : À renseigner
-- Version : À renseigner
-- Architecture : À renseigner
-- Taille : À renseigner
-
-# Liens
+# Liens officiels
 
 - Application : https://rendrax.vercel.app
 - Dépôt GitHub : https://github.com/kidasniger/RENDRAX
+- Licence : https://github.com/kidasniger/RENDRAX/blob/main/LICENSE
 - Guide HTML : https://rendrax.vercel.app/preparer-html.html
 - Informations et conditions : https://rendrax.vercel.app/legal.html
-- Documentation complémentaire : À renseigner
-- YouTube : À renseigner
-- Vidéo de présentation : À renseigner
+- Documentation complémentaire : aucune documentation distincte publiée à ce jour.
+- YouTube : aucune chaîne ou vidéo officielle renseignée.
+- Réseaux sociaux : aucun lien officiel renseigné.
+
+# Version et mises à jour
+
+RENDRAX est actuellement déployé comme application web à mise à jour continue. Aucun numéro de version applicative public ni paquet de version téléchargeable n'est déclaré dans le dépôt. Les mises à jour de l'application web sont publiées via le déploiement Vercel depuis le dépôt GitHub.
 
 # Nouveautés
 
@@ -202,6 +213,7 @@ RENDRAX est actuellement distribué comme application web. Aucun paquet Android,
 - Ajout de la FAQ, du guide HTML et des pages d'information légales.
 - Ajout du signalement de problème depuis l'application.
 - Mise à jour de la documentation du projet et de son architecture de stockage.
+- Ajout de la licence propriétaire bilingue.
 
 # SEO
 
@@ -227,7 +239,7 @@ Convertis tes animations HTML en vidéos MP4 avec RENDRAX. Importe un fichier HT
 
 ## Open Graph Image
 
-À renseigner
+Aucune image Open Graph dédiée n'est configurée dans les métadonnées actuelles de la page d'accueil.
 
 ## Canonical URL
 
@@ -240,5 +252,7 @@ https://rendrax.vercel.app/
 - Les transferts de fichiers entrants utilisent Backblaze B2 et des URL signées ; les secrets de stockage restent configurés dans les variables d'environnement et ne sont pas documentés ici.
 - Le workflow de rendu est déclenché via GitHub Actions.
 - Le déploiement de production des modifications documentées le 5 novembre 2026 a été signalé comme READY sur Vercel.
-- La version applicative, la licence, les captures, les téléchargements autonomes et les coordonnées officielles de l'exploitant restent à compléter.
+- Le projet est propriétaire et sa licence est disponible dans le fichier LICENSE.
+- Aucun numéro de version public, APK, installateur autonome, capture d'écran dédiée, vidéo de présentation, chaîne YouTube ou lien de réseau social officiel n'est actuellement déclaré dans le dépôt.
+- L'identité juridique complète et les coordonnées officielles de l'exploitant ne sont pas précisées dans les fichiers du projet.
 - Les pages légales constituent une information générale et doivent être complétées par les informations officielles de l'exploitant si une conformité juridique complète est requise.
