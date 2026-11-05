@@ -331,7 +331,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertEqual(select_quality("high", scale=0.5, test=10), "high")
 
     def test_frontend_detects_specialized_audio_profiles_without_manual_fps_control(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         self.assertNotIn('<select id="fps">', page)
         self.assertIn("const gsapvideo =", page)
         self.assertIn("const musicpro =", page)
@@ -343,7 +343,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("frame.srcdoc = source", page)
 
     def test_watermark_is_optional_from_ui_through_workflow(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         api = (ROOT / "api" / "render.js").read_text(encoding="utf-8")
         workflow = (ROOT / ".github" / "workflows" / "render.yml").read_text(encoding="utf-8")
         cli = (ROOT / "html2mp4.py").read_text(encoding="utf-8")
@@ -372,7 +372,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertNotIn("kidasniger/Kidas", server + render_api)
 
     def test_paste_html_creates_client_file_and_uses_shared_validation(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
         self.assertIn('id="rdx-paste-tab"', page)
         self.assertIn('id="rdx-paste-html"', page)
@@ -385,7 +385,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn(".rdx-paste-html", styles)
 
     def test_upload_progress_supports_speed_cancel_and_cleanup(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
         self.assertIn('id="rdx-upload-progress"', page)
         self.assertIn('id="rdx-upload-percent"', page)
@@ -399,7 +399,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("#rdx-upload-bar::-webkit-progress-value", styles)
 
     def test_file_drop_has_specific_validation_messages(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         self.assertIn("Formats acceptés : .html, .htm et .zip.", page)
         self.assertIn("Fichier trop volumineux : ' + actualSize + ' (limite : 50 Mo).", page)
         self.assertIn("Ce ZIP ne contient aucune page HTML ou HTM.", page)
@@ -407,7 +407,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("Ajoute le code HTML puis sélectionne à nouveau le fichier.", page)
 
     def test_compatibility_report_has_three_groups_help_links_and_collapsed_ok_group(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         self.assertIn('id="rdx-compat-blocking"', page)
         self.assertIn('id="compatFindings"', page)
         self.assertIn('id="compatPassed"', page)
@@ -421,7 +421,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("compatHelpUrl(finding)", page)
 
     def test_zip_inspector_presets_index_and_shows_candidate_sizes_and_resource_counts(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         self.assertIn("configureZipMainPicker(htmlPaths, chosen, entries)", page)
         self.assertIn("$('#zipMainPicker').hidden = htmlPaths.length < 2", page)
         self.assertIn("path + (entry ? ' · ' + size(entry.size) : '')", page)
@@ -435,7 +435,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("Sélectionne celle à convertir.", page)
 
     def test_integrated_preview_keeps_sandbox_and_updates_aspect_ratio(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
         self.assertIn('id="previewPanel"', page)
         self.assertIn('id="previewFrame"', page)
@@ -450,7 +450,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("renderPreview(selection.mainText)", page)
 
     def test_examples_load_directly_into_the_existing_file_validation_flow(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         examples = (
             "10-technologies-motion.html",
             "bak-power-services-rendrax-paysage-v4-musique-v2.html",
@@ -470,7 +470,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertNotIn('download="10-technologies-motion.html"', page)
 
     def test_url_import_is_removed_and_local_html_workflows_remain(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         for removed in ('importUrl', 'url-import', 'importFromUrl', 'validateImportUrl',
                         'importedSource', 'importingUrl', '/import-url'):
             self.assertNotIn(removed, page)
@@ -481,7 +481,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn("frame.srcdoc = source", page)
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         for filename in ("favicon.ico", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
             self.assertTrue((ROOT / "docs" / filename).is_file(), filename)
         for link in (
@@ -503,7 +503,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('src="/_vercel/insights/script.js"', page)
 
     def test_render_progress_resume_and_recovery_controls(self):
-        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
         for marker in ('id="rdx-resume-prompt"', 'Reprendre le suivi du rendu', 'aria-current', 'rdx-cancel-confirm', 'Estimation en cours', 'Notification.requestPermission', 'new Notification(', 'requestWakeLock()', 'releaseWakeLock()', 'Réessayer avec les mêmes réglages', 'Réessayer en qualité allégée', 'Détails techniques', 'Copier le journal', 'Math.max(state.maxPercent'):
             self.assertIn(marker, page)
