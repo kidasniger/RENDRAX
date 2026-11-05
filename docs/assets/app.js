@@ -65,6 +65,32 @@ const MAX_ZIP_UNCOMPRESSED_BYTES = 250e6;
 const MAX_ZIP_LIST_ITEMS = 500;
 const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
 const $ = s => document.querySelector(s);
+window.RDXButton = {
+  create({ label, variant = 'secondary', size = 'md', type = 'button', disabled = false } = {}) {
+    const button = document.createElement('button');
+    button.type = type;
+    button.className = 'rdx-btn rdx-btn--' + variant + (size !== 'md' ? ' rdx-btn--' + size : '');
+    button.textContent = String(label || '');
+    button.disabled = Boolean(disabled);
+    return button;
+  },
+  setLoading(button, loading, label) {
+    if (!button) return;
+    if (loading) {
+      if (!button.dataset.rdxOriginalLabel) button.dataset.rdxOriginalLabel = button.textContent;
+      button.dataset.loading = 'true';
+      button.setAttribute('aria-busy', 'true');
+      button.disabled = true;
+      if (label) button.textContent = label;
+    } else {
+      delete button.dataset.loading;
+      button.removeAttribute('aria-busy');
+      button.disabled = false;
+      if (button.dataset.rdxOriginalLabel) button.textContent = button.dataset.rdxOriginalLabel;
+      delete button.dataset.rdxOriginalLabel;
+    }
+  }
+};
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const mmss = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const size = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' Mo' : Math.max(1, Math.round(n / 1024)) + ' Ko';
@@ -712,8 +738,18 @@ function hasBlockingFinding(v) {
 }
 function syncGoButton() {
   const disabled = busy || !securityReady || hasBlockingFinding(verdict);
-  $('#go').disabled = disabled;
-  $('#testRender').disabled = disabled;
+  const reason = busy ? 'Un rendu est déjà en cours.' : !securityReady ? 'Le service de rendu n’est pas prêt.' : hasBlockingFinding(verdict) ? 'Corrige les éléments bloquants du rapport de compatibilité.' : '';
+  ['#go', '#testRender'].forEach(selector => {
+    const button = $(selector);
+    button.disabled = disabled;
+    if (reason) {
+      button.setAttribute('aria-describedby', 'rdx-render-disabled-help');
+      button.title = reason;
+    } else {
+      button.removeAttribute('aria-describedby');
+      button.removeAttribute('title');
+    }
+  });
 }
 function setBusy(b) {
   busy = b;
@@ -1406,8 +1442,7 @@ async function tryExample(button) {
   if (!button || button.disabled) return;
   const path = button.dataset.examplePath;
   const originalLabel = button.textContent;
-  button.disabled = true;
-  button.textContent = 'Chargement…';
+  window.RDXButton.setLoading(button, true, 'Chargement…');
   try {
     if (!path || !path.startsWith('exemples/')) throw new Error('Chemin de l’exemple invalide.');
     const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store' });
@@ -1433,7 +1468,7 @@ async function tryExample(button) {
     setDropState('error', error && error.message ? error.message : 'Impossible de charger cet exemple. Réessaie.');
     $('#fileCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   } finally {
-    button.disabled = false;
+    window.RDXButton.setLoading(button, false);
     button.textContent = originalLabel;
   }
 }
@@ -2379,11 +2414,16 @@ function createFileFromPastedHtml() {
   transfer.items.add(file);
   $('#file').files = transfer.files;
   setSourceTab('file');
+  const createButton = $('#rdx-paste-create');
+  window.RDXButton.setLoading(createButton, true, 'Analyse en cours…');
   checkFile().then(() => {
     if (verdict && verdict.kind !== 'invalid' && !hasBlockingFinding(verdict)) {
       $('#settingsCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     }
-  });
+  }).catch(error => {
+    $('#rdx-paste-error').textContent = error && error.message ? error.message : 'Impossible d’analyser ce code.';
+    $('#rdx-paste-error').hidden = false;
+  }).finally(() => window.RDXButton.setLoading(createButton, false));
 }
 $('#rdx-file-tab').addEventListener('click', () => setSourceTab('file'));
 $('#rdx-paste-tab').addEventListener('click', () => setSourceTab('paste'));
@@ -2568,6 +2608,61 @@ drop.addEventListener('drop', e => {
 });
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
+
+/* Proposition 100 — rapport de problème sans pièce jointe ni contenu utilisateur. */
+(function initFeedback() {
+  const link = document.getElementById('rdxFeedback');
+  if (!link) return;
+  link.addEventListener('click', () => {
+    let jobId = '';
+    try {
+      const raw = store.get('kidas_job');
+      const saved = raw ? JSON.parse(raw) : null;
+      if (saved && typeof saved.id === 'string') jobId = saved.id;
+    } catch (_) {}
+    const quality = document.getElementById('mode');
+    const format = document.getElementById('format');
+    const duration = document.getElementById('duration');
+    const lines = [
+      'Décris le problème rencontré :',
+      '',
+      '--- Diagnostic automatique ---',
+      'Identifiant de tâche : ' + (jobId || 'non disponible'),
+      'Navigateur : ' + String(navigator.userAgent || 'non disponible').slice(0, 300),
+      'Qualité : ' + (quality ? quality.value : 'non disponible'),
+      'Format : ' + (format ? format.value : 'non disponible'),
+      'Durée : ' + (duration ? duration.value : 'non disponible'),
+      '',
+      'Aucun fichier HTML/ZIP ni contenu utilisateur n’est joint automatiquement.'
+    ];
+    link.href = 'https://github.com/kidasniger/RENDRAX/issues/new?title=' +
+      encodeURIComponent('[RENDRAX] Signalement de problème') + '&body=' + encodeURIComponent(lines.join('\n'));
+  });
+})();
+
+/* Proposition 94 — numérotation continue des sections affichées. */
+(function initSectionNumbers() {
+  const selectors = ['#fileCard', '#settingsCard', '#progCard', '.examples-card', '.rdx-history-card'];
+  const update = () => {
+    let number = 0;
+    selectors.forEach(selector => {
+      const section = document.querySelector(selector);
+      if (!section || section.hidden || getComputedStyle(section).display === 'none') return;
+      const marker = section.querySelector('[data-section-number]');
+      if (marker) marker.textContent = String(++number).padStart(2, '0');
+    });
+  };
+  update();
+  if ('MutationObserver' in window) {
+    const observer = new MutationObserver(update);
+    selectors.forEach(selector => {
+      const section = document.querySelector(selector);
+      if (section) observer.observe(section, { attributes: true, attributeFilter: ['hidden', 'open', 'class'] });
+    });
+  }
+  window.addEventListener('resize', update, { passive: true });
+})();
+
 initAdvancedSettings();
 initRenderPrefs();
 initModeCards();
