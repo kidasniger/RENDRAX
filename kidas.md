@@ -113,7 +113,54 @@ RENDRAX convertit des animations HTML en vidéos MP4. Importe un fichier HTML ou
 - Un nettoyage planifié traite les ressources obsolètes.
 - La suppression d'une vidéo peut être demandée depuis l'interface.
 
-La durée de conservation effective des fichiers entrants et les détails de purge peuvent dépendre du workflow et de la configuration du stockage.
+Le workflow tente de supprimer les fichiers sources à la fin du traitement. Un nettoyage planifié cible les imports de plus de deux heures (cron Vercel quotidien à 03:17 UTC). Les vidéos publiées expirent après 30 jours ; un workflow GitHub Actions lancé toutes les six heures supprime les vidéos, miniatures et métadonnées expirées, avec une limite de 250 vidéos par exécution.
+
+# Documentation technique détaillée
+
+Documentation complète du moteur, des profils, des limites, de la sécurité, du traitement GitHub Actions et de la conservation des fichiers : https://rendrax.vercel.app/technique.html
+
+## Profils d'animation détectés
+
+Le moteur reconnaît cinq profils spécialisés par signatures de code :
+- **KIDAS** : structure React attendue, scène `.stage`, audio intégré et durée déclarée.
+- **EditPro** : canvas, fonction `render(t)` et voix encodée en base64.
+- **MusicPro** : canvas, rendu piloté par le temps, voix et musique Web Audio.
+- **Vidéo React** : API `window.__video`, méthode `seek()`, piste audio intégrée et durée déclarée.
+- **Vidéo GSAP** : timeline GSAP en pause, progression temporelle pilotable, audio intégré et données de sous-titres.
+
+Les autres pages exploitables passent en **mode universel**, avec capture en temps réel ; la synchronisation audio/vidéo n'est pas garantie.
+
+## Bibliothèques JavaScript
+
+Aucune liste générale de bibliothèques n'est certifiée compatible. Les scripts distants peuvent fonctionner s'ils sont accessibles depuis Chromium et compatibles avec ses API. GSAP, React, Canvas et Web Audio disposent de chemins spécialisés uniquement lorsque la structure de la page correspond aux signatures détectées ; les autres intégrations passent en mode universel.
+
+## Paramètres et limites techniques
+
+- HTML/ZIP importé : 50 Mo maximum.
+- ZIP : 2 000 entrées maximum, 250 Mo décompressés au total et 100 Mo par fichier.
+- Fréquence automatique : 60 i/s pour les profils synchronisés et 30 i/s pour le mode universel ; moteur CLI réglable de 1 à 120 i/s.
+- Durée proposée dans l'interface : jusqu'à 5 minutes. En mode universel, 60 secondes sont utilisées par défaut si aucune durée n'est détectée.
+- Décalage audio : −2 000 à +2 000 ms.
+- MP4 publié : 500 Mo maximum ; miniature : 60 Ko maximum.
+- Workflow GitHub Actions : délai maximal de 90 minutes.
+
+Les performances varient selon la résolution, la durée, la complexité de l'animation, les ressources réseau et la charge du runner. Aucune vitesse de rendu fixe n'est garantie.
+
+## Erreurs et reprise
+
+Le moteur relance une fois certaines erreurs transitoires de Chromium, DevTools ou réseau. Les erreurs permanentes et les échecs FFmpeg ne sont pas automatiquement corrigés. L'interface peut reprendre le suivi d'un workflow existant, mais le rendu ne reprend pas à la dernière image : aucun système de checkpoint n'est implémenté.
+
+## Sécurité et ressources externes
+
+Les ZIP sont contrôlés contre les chemins dangereux, liens symboliques, fichiers spéciaux, doublons et dépassements de limites. Les imports par URL exigent HTTPS sur le port 443, refusent les adresses locales/privées, suivent au plus trois redirections, appliquent un délai de 20 secondes et une limite de 50 Mo.
+
+Le HTML importé exécute du JavaScript dans Chromium : il doit être considéré comme du code actif. Le moteur Chromium est lancé avec `--no-sandbox` ; l'isolation n'est donc pas une garantie complète contre un contenu malveillant. Ne pas importer de fichiers non fiables ni de données sensibles. Les ressources externes peuvent échouer en raison du réseau, de CORS, d'une authentification ou d'une indisponibilité distante.
+
+## Conservation et suppression
+
+Les sources HTML/ZIP sont supprimées à la fin du job lorsque le nettoyage aboutit ; un nettoyage Vercel quotidien cible les sources de plus de deux heures. Les vidéos et miniatures expirent après 30 jours et le workflow de nettoyage s'exécute toutes les six heures (maximum 250 vidéos par exécution). La suppression manuelle retire la vidéo, sa miniature, ses métadonnées et les fichiers temporaires associés.
+
+Les URL signées d'envoi expirent après 10 minutes et les URL signées de lecture/téléchargement après 5 minutes. Voir aussi les [conditions d'utilisation](https://rendrax.vercel.app/legal.html#terms).
 
 # Plateformes
 
