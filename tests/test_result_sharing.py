@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class ResultSharingTests(unittest.TestCase):
     def test_result_ui_supports_download_sharing_and_local_qr(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        app = (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         styles = (ROOT / "docs" / "assets" / "rendrax-redesign.css").read_text(encoding="utf-8")
         service_worker = (ROOT / "docs" / "sw.js").read_text(encoding="utf-8")
         qr_library = ROOT / "docs" / "assets" / "rendrax-qr.js"
@@ -23,7 +24,7 @@ class ResultSharingTests(unittest.TestCase):
             'Avec filigrane RENDRAX', 'Nouvelle vidéo',
             "Refaire avec d'autres réglages", 'Supprimer cette vidéo'
         ):
-            self.assertIn(marker, page)
+            self.assertTrue(marker in page or marker in app, marker)
         for marker in ('.rdx-result-player', '.rdx-download-primary', '.rdx-qr-dialog', '.rdx-expiry[data-alert="true"]'):
             self.assertIn(marker, styles)
         self.assertTrue(qr_library.is_file())
@@ -56,11 +57,9 @@ class ResultSharingTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "Node.js absent")
     def test_inline_and_vendored_qr_javascript_parse(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-        start = page.index("<script>\nconst API = '/api';") + len("<script>")
-        end = page.index("</script>", start)
-        main_script = page[start:end]
+        app_script = (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
         qr_script = (ROOT / "docs" / "assets" / "rendrax-qr.js").read_text(encoding="utf-8")
-        for source in (main_script, qr_script):
+        for source in (app_script, qr_script):
             result = subprocess.run(
                 ["node", "--check", "-"],
                 input=source,

@@ -1,5 +1,5 @@
 // Previous cache identifier: rendrax-shell-v3 (removed during activation).
-const CACHE_NAME = 'rendrax-shell-v4';
+const CACHE_NAME = 'rendrax-shell-v5';
 const SHELL_URLS = [
   '/',
   '/offline.html',
@@ -7,12 +7,15 @@ const SHELL_URLS = [
   '/pwa-512.png',
   '/pwa-maskable-512.png',
   '/assets/rendrax-redesign.css',
+  '/assets/app.css',
+  '/assets/app.js',
+  '/assets/analytics-init.js',
+  '/assets/theme-init.js',
   '/assets/rendrax-motion.js',
   '/assets/rendrax-qr.js',
   '/assets/rendrax-logo.svg',
   '/assets/rendrax-logo-dark.svg',
   '/favicon.ico',
-  '/favicon.png',
   '/favicon-16x16.png',
   '/favicon-32x32.png',
   '/apple-touch-icon.png'

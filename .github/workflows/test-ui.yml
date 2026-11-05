@@ -1,0 +1,29 @@
+name: Tests interface Playwright
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: rendrax-playwright-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installer Playwright
+        run: npm install --no-save @playwright/test
+      - name: Installer Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exécuter les parcours UI
+        run: npx playwright test
