@@ -80,8 +80,8 @@ svg{flex:none}
         </a>
       </div>
       <p class="rdx-eyebrow" id="rdx-service-status" data-state="checking" role="status"><span class="rdx-live-dot" aria-hidden="true"></span><span id="rdx-service-label">ATELIER DE RENDU · Vérification…</span></p>
-      <h1>Convertir HTML en MP4</h1>
-      <p class="sub">Passe de l’animation HTML au MP4 prêt à publier.</p>
+      <h1 data-i18n="hero.title">Convertir HTML en MP4</h1>
+      <p class="sub" data-i18n="hero.subtitle">Passe de l’animation HTML au MP4 prêt à publier.</p>
       <div class="rdx-hero-meta" aria-label="Les avantages de RENDRAX">
         <span>1080 × 1920</span>
         <span>Son intégré</span>
@@ -90,7 +90,7 @@ svg{flex:none}
       <div class="rdx-hero-actions">
         <button type="button" class="sec rdx-language-toggle" id="rdxLanguageToggle" aria-label="Changer la langue">EN</button>
         <button type="button" class="rdx-primary-link" id="rdx-hero-file-cta" aria-controls="fileCard">
-          Choisir mon fichier HTML <span aria-hidden="true">→</span>
+          <span data-i18n="hero.choose">Choisir mon fichier HTML →</span>
         </button>
       </div>
     </div>
@@ -131,8 +131,8 @@ svg{flex:none}
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
     <div class="head"><span class="num" aria-hidden="true" data-section-number>01</span><h2 id="h-file" data-i18n="file.title">Choisir un fichier</h2></div>
     <div class="rdx-source-tabs" role="tablist" aria-label="Méthode d’import HTML">
-      <button class="sec rdx-source-tab is-active" id="rdx-file-tab" type="button" role="tab" aria-selected="true" aria-controls="rdx-file-panel">Choisir un fichier</button>
-      <button class="sec rdx-source-tab" id="rdx-paste-tab" type="button" role="tab" aria-selected="false" aria-controls="rdx-paste-panel">Coller du code</button>
+      <button class="sec rdx-source-tab is-active" id="rdx-file-tab" type="button" role="tab" aria-selected="true" aria-controls="rdx-file-panel" data-i18n="file.tab">Choisir un fichier</button>
+      <button class="sec rdx-source-tab" id="rdx-paste-tab" type="button" role="tab" aria-selected="false" aria-controls="rdx-paste-panel" data-i18n="paste.tab">Coller du code</button>
     </div>
     <div id="rdx-file-panel" role="tabpanel" aria-labelledby="rdx-file-tab">
     <label class="drop" id="drop" tabindex="-1" data-state="idle" aria-describedby="rdx-drop-error">
@@ -148,7 +148,7 @@ svg{flex:none}
       <textarea id="rdx-paste-html" class="rdx-paste-html" rows="12" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="<!doctype html>\n<html>\n  ...\n</html>"></textarea>
       <div class="rdx-paste-footer">
         <small id="rdx-paste-size">0 octet · 50 Mo maximum</small>
-        <button class="go" id="rdx-paste-create" type="button">Utiliser ce code</button>
+        <button class="go" id="rdx-paste-create" type="button" data-i18n="paste.submit">Utiliser ce code</button>
       </div>
       <p id="rdx-paste-error" class="rdx-drop-error" role="alert" hidden></p>
     </div>
@@ -306,10 +306,10 @@ svg{flex:none}
     <p id="securityStatus" role="status" class="mut" hidden></p>
     <div id="captchaMount" aria-hidden="true"></div>
     <p id="preRenderSummary" class="pre-render-summary" aria-live="polite">Fichier : en attente · Format : Automatique · Qualité : Complète · Durée estimée : —</p>
-    <div class="rdx-sticky-generate"><button id="go" class="go" type="button"><span class="dot" aria-hidden="true"></span>Générer MP4</button></div>
+    <div class="rdx-sticky-generate"><button id="go" class="go" type="button" data-i18n="render.generate"><span class="dot" aria-hidden="true"></span>Générer MP4</button></div>
     <div class="test-render-recommendation" id="testRenderRecommendation">
       <p>Vérifier en 10 s avant le rendu complet</p>
-      <button id="testRender" class="sec" type="button">Rendu test de 10 s <span class="test-render-badge" id="testRenderBadge">Recommandé</span></button>
+      <button id="testRender" class="sec" type="button" data-i18n="render.test">Rendu test de 10 s <span class="test-render-badge" id="testRenderBadge">Recommandé</span></button>
     </div>
     <button id="cancel" class="danger" type="button" hidden aria-controls="rdx-cancel-confirm" aria-expanded="false">Annuler le rendu</button>
     <div id="rdx-cancel-confirm" class="rdx-inline-confirm" hidden role="group" aria-label="Confirmer l’annulation">
@@ -355,7 +355,7 @@ svg{flex:none}
   </section>
 
   <details class="card examples-card" aria-labelledby="h-examples">
-    <summary class="examples-toggle"><span class="head" style="margin:0"><span class="num" aria-hidden="true" data-section-number>04</span><span><h2 id="h-examples">Exemples HTML complets</h2></span></span></summary>
+    <summary class="examples-toggle"><span class="head" style="margin:0"><span class="num" aria-hidden="true" data-section-number>04</span><span><h2 id="h-examples" data-i18n="examples.title">Exemples HTML complets</h2></span></span></summary>
     <p class="examples-intro">Voici cinq fichiers HTML complets déjà présents dans le dépôt. Leurs animations, scripts et pistes audio intégrées sont conservés : ce ne sont pas des modèles recréés ou simplifiés.</p>
     <ul class="example-list">
       <li class="example-row"><span class="example-copy"><strong>10 Technologies pour créer ton site web</strong><span>Portrait 1080 × 1920 · 69,96 s · GSAP · audio MP3 intégré.</span></span><button class="example-try" type="button" data-example-path="exemples/10-technologies-motion.html">Essayer cet exemple</button></li>
@@ -368,7 +368,7 @@ svg{flex:none}
   </details>
 
   <details class="card rdx-history-card" aria-labelledby="h-hist">
-    <summary class="row"><span class="num" aria-hidden="true" data-section-number>05</span><h2 id="h-hist">Historique des vidéos</h2><span class="mut">Afficher</span></summary>
+    <summary class="row"><span class="num" aria-hidden="true" data-section-number>05</span><h2 id="h-hist" data-i18n="history.title">Historique des vidéos</h2><span class="mut">Afficher</span></summary>
     <div class="row"><span class="mut">Vidéos générées</span><button class="sec" id="refresh" type="button">Actualiser</button></div>
     <div class="rdx-history-tools">
       <label class="rdx-history-search" for="rdxHistorySearch">Rechercher une vidéo</label>
