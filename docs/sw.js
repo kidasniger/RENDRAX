@@ -1,3 +1,4 @@
+// Previous cache identifier: rendrax-shell-v3 (removed during activation).
 const CACHE_NAME = 'rendrax-shell-v4';
 const SHELL_URLS = [
   '/',
