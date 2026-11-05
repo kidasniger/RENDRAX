@@ -380,7 +380,7 @@ function resetRenderPrefsToDefaults() {
   if (typeof syncAudioOffsetControls === 'function') syncAudioOffsetControls();
 }
 
-let busy = false, cancelled = false, currentRunId = null, currentUploadXhr = null, fileText = '', verdict = null, lastAttemptTestOnly = false;
+let busy = false, cancelled = false, currentRunId = null, currentRenderId = null, currentUploadXhr = null, fileText = '', verdict = null, lastAttemptTestOnly = false;
 let resultExpiryTimer = null;
 let openHistoryPlayer = null;
 let localSource = null, lastSourceForRetry = null;
@@ -2226,6 +2226,7 @@ async function go(testOnly = false, reducedQuality = false) {
   const needsUpload = !localSource;
   const sourceId = localSource ? localSource.id : newRenderId();
   const id = newRenderId();
+  currentRenderId = id;
   const htmlPrincipal = isZip ? zipSelection.mainPath : '';
   const t0 = Date.now();
   cancelled = false; currentRunId = null; setBusy(true); $('#res').textContent = ''; resetTransition($('#res')); hint(''); resetRenderProgress();
@@ -2305,6 +2306,7 @@ async function resume() {
   let job;
   try { job = JSON.parse(raw); }
   catch (e) { store.set('kidas_job', null); return false; }
+  currentRenderId = job.id;
   if (!job.id || !Number.isFinite(job.t0) || Date.now() - job.t0 > 95 * 60000) {
     store.set('kidas_job', null);
     return false;
@@ -2622,11 +2624,11 @@ window.addEventListener('drop', e => e.preventDefault());
   const link = document.getElementById('rdxFeedback');
   if (!link) return;
   link.addEventListener('click', () => {
-    let jobId = '';
+    let jobId = currentRenderId || '';
     try {
       const raw = store.get('kidas_job');
       const saved = raw ? JSON.parse(raw) : null;
-      if (saved && typeof saved.id === 'string') jobId = saved.id;
+      if (!jobId && saved && typeof saved.id === 'string') jobId = saved.id;
     } catch (_) {}
     const quality = document.getElementById('mode');
     const format = document.getElementById('format');
