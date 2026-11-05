@@ -25,24 +25,24 @@ code{padding:2px 5px;border-radius:5px;background:var(--surf2)}
 <body><main>
 <div class="topline"><a href="/">← RENDRAX</a><button id="rdxLanguageToggle" type="button">EN</button></div>
 <header><p>RENDRAX · AIDE</p><h1 data-i18n="guide.title">Préparer son HTML</h1><p data-i18n="guide.intro">Quelques vérifications pour obtenir un rendu fidèle.</p></header>
-<section class="card"><h2>1. Structure de la page</h2><ul>
+<section class="card"><h2 data-i18n="guide.s1">1. Structure de la page</h2><ul>
 <li>Utilise une page HTML complète avec ses styles et scripts correctement chargés.</li>
 <li>Place les éléments à animer dans le document dès le départ et évite les dépendances à des interactions manuelles.</li>
 <li>Définis explicitement la taille de la scène et vérifie le cadrage dans l’aperçu RENDRAX.</li>
 <li>Pour un projet avec plusieurs fichiers, regroupe la page principale et ses ressources dans un ZIP. Sélectionne le HTML principal si plusieurs pages sont présentes.</li>
 </ul></section>
-<section class="card"><h2>2. Durée et animation</h2><ul>
+<section class="card"><h2 data-i18n="guide.s2">2. Durée et animation</h2><ul>
 <li>Choisis une durée maîtrisée et teste d’abord le mode Aperçu de 10 secondes.</li>
 <li>Évite les animations qui dépendent uniquement du temps réel, d’une interaction ou d’un événement aléatoire.</li>
 <li>Pour GSAP, vérifie que les timelines démarrent correctement et que tous les éléments sont initialisés avant leur animation.</li>
 <li>Pour Canvas, assure-toi que le dessin est effectivement mis à jour pendant toute la séquence et que les dimensions du canvas correspondent au cadrage attendu.</li>
 </ul></section>
-<section class="card"><h2>3. Audio</h2><ul>
+<section class="card"><h2 data-i18n="guide.s3">3. Audio</h2><ul>
 <li>Utilise des formats audio lisibles par Chromium et vérifie que les fichiers référencés sont présents.</li>
 <li>Les ressources audio externes peuvent dépendre du réseau, des autorisations CORS et de la disponibilité du serveur distant.</li>
 <li>Vérifie le démarrage, la durée et la synchronisation de la piste ; ajuste le décalage audio dans les réglages si nécessaire.</li>
 </ul></section>
-<section class="card"><h2>4. GSAP, Canvas et ressources distantes</h2><ul>
+<section class="card"><h2 data-i18n="guide.s4">4. GSAP, Canvas et ressources distantes</h2><ul>
 <li>Les exemples existants du dépôt montrent notamment des pages avec GSAP, React, Canvas et audio intégré.</li>
 <li>Les images, polices, scripts et bibliothèques chargés depuis un autre domaine peuvent échouer si le serveur distant bloque leur accès.</li>
 <li>Quand c’est possible, intègre les ressources indispensables dans ton ZIP pour limiter les dépendances réseau.</li>
