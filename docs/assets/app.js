@@ -35,13 +35,15 @@ const API = '/api';
 function rdxTrack(name, data = {}) {
   try { if (typeof window.va === 'function') window.va('event', { name, data }); } catch (error) {}
 }
+function rdxTrackFile(file, source = 'upload') {
+  if (!file) return;
+  const type = source === 'example' ? 'example' : file.name.toLowerCase().endsWith('.zip') ? 'zip' : 'html';
+  const sizeBucket = file.size < 1048576 ? 'lt_1mb' : file.size < 10485760 ? '1_10mb' : 'gt_10mb';
+  rdxTrack('file_selected', { type, size_bucket: sizeBucket });
+}
 document.addEventListener('change', event => {
   const target = event.target;
-  if (target && target.id === 'file' && target.files && target.files[0]) {
-    const file = target.files[0];
-    const type = file.name.toLowerCase().endsWith('.zip') ? 'zip' : 'html';
-    rdxTrack('file_selected', { type, size_bucket: file.size < 1048576 ? 'lt_1mb' : file.size < 10485760 ? '1_10mb' : 'gt_10mb' });
-  } else if (target && ['mode','format','duration','watermark','loudnorm','audioOffset'].includes(target.id)) {
+  if (target && ['mode','format','duration','watermark','loudnorm','audioOffset'].includes(target.id)) {
     rdxTrack('settings_changed', { setting: target.id });
   }
 }, true);
@@ -1395,6 +1397,7 @@ function setFile(files) {
     setDropState('error', 'Fichier trop volumineux : ' + actualSize + ' (limite : 50 Mo). Réduis sa taille ou compresse ses ressources, puis réessaie.');
     return;
   }
+  rdxTrackFile(file);
   const dt = new DataTransfer(); dt.items.add(file); $('#file').files = dt.files;
   if (localSource && localSource.file !== file) localSource = null;
   checkFile();
@@ -1413,6 +1416,7 @@ async function tryExample(button) {
     const filename = path.split('/').pop();
     const file = new File([blob], filename, { type: 'text/html;charset=utf-8', lastModified: Date.now() });
     if (file.size > MAX_BYTES) throw new Error('Cet exemple dépasse la limite de 50 Mo.');
+    rdxTrackFile(file, 'example');
     const transfer = new DataTransfer();
     transfer.items.add(file);
     localSource = null;

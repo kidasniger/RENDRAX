@@ -1,5 +1,5 @@
 // Previous cache identifier: rendrax-shell-v3 (removed during activation).
-const CACHE_NAME = 'rendrax-shell-v7';
+const CACHE_NAME = 'rendrax-shell-v8';
 const SHELL_URLS = [
   '/',
   '/offline.html',

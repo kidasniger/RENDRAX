@@ -34,6 +34,9 @@ test('accepte un fichier HTML', async ({ page }) => {
     element.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
   });
   await expect(page.locator('#fileinfo')).toContainText('animation-test.html');
+  await expect.poll(() => page.evaluate(() =>
+    (window.vaq || []).some(args => args[0] === 'event' && args[1] && args[1].name === 'file_selected')
+  )).toBe(true);
 });
 test('les réglages restent modifiables', async ({ page }) => {
   await page.locator('#modeCards [data-mode="half"]').evaluate(element => element.dispatchEvent(new MouseEvent('click', { bubbles: true })));
@@ -77,4 +80,18 @@ test('exécute le HTML dans un aperçu isolé', async ({ page }) => {
     frame.src = '/preview.html';
   });
   await expect.poll(() => page.frameLocator('#previewIsolationTest').frameLocator('#content').locator('body').getAttribute('data-preview-ok')).toBe('yes');
+});
+
+test('applique la CSP stricte et le cache HTTP', async ({ request }) => {
+  const main = await request.get('/');
+  const mainHeaders = main.headers();
+  const csp = mainHeaders['content-security-policy'] || '';
+  expect(csp).toContain("frame-ancestors 'none'");
+  expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+  expect(mainHeaders['cache-control']).toContain('no-cache');
+  const asset = await request.get('/assets/app.js');
+  expect(asset.headers()['cache-control']).toContain('immutable');
+  const preview = await request.get('/preview.html');
+  expect(preview.headers()['content-security-policy']).toContain("'unsafe-inline'");
+  expect(preview.headers()['x-frame-options']).toBe('SAMEORIGIN');
 });

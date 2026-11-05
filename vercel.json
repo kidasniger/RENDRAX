@@ -97,7 +97,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; img-src * data: blob:; font-src * data: blob:; connect-src * data: blob:; media-src * data: blob:; frame-src * data: blob:; frame-ancestors 'self'"
+          "value": "default-src * data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline' data: blob:; img-src * data: blob:; font-src * data: blob:; connect-src * data: blob:; media-src * data: blob:; frame-src * data: blob:"
         }
       ]
     },
