@@ -76,8 +76,8 @@ test('exécute le HTML dans un aperçu isolé', async ({ page }) => {
       type: 'RENDRAX_PREVIEW_HTML',
       html: '<!doctype html><html><body><script>document.body.dataset.previewOk="yes"</script></body></html>'
     }, '*'), { once: true });
-    document.body.append(frame);
     frame.src = '/preview.html';
+    document.body.append(frame);
   });
   await expect.poll(() => page.frameLocator('#previewIsolationTest').frameLocator('#content').locator('body').getAttribute('data-preview-ok')).toBe('yes');
 });
