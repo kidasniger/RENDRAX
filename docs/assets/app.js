@@ -469,14 +469,15 @@ function waitForVisiblePoll(delay) {
 }
 
 function explain(e) {
-  if (e.cancelled) return 'Rendu annulé.';
-  if (e.status === 0) return 'Connexion interrompue. Vérifie le réseau puis réessaie.';
-  if (e.status === 408 || /timeout|timed out|délai dépassé/i.test(e.message || '')) return 'Le délai de réponse est dépassé. Le serveur ou le transfert a probablement été interrompu.';
-  if (e.status === 413) return 'Fichier trop volumineux (limite : 50 Mo). Réduis les ressources intégrées ou utilise un ZIP optimisé.';
-  if (e.status === 429) return 'Trop de demandes ont été envoyées. Attends quelques instants avant de réessayer.';
-  if (e.status === 502) return 'La passerelle a reçu une réponse invalide du service de rendu. Le service est peut-être temporairement indisponible.';
-  if (e.status === 503) return 'Le service de rendu est momentanément indisponible ou en maintenance.';
-  if (e.status === 401 || e.status === 403) return 'La vérification de sécurité a échoué. Recharge la page puis relance la vérification.';
+  const t = (key, fallback) => window.rdxT ? window.rdxT(key, fallback) : fallback;
+  if (e.cancelled) return t('error.cancelled', 'Rendu annulé.');
+  if (e.status === 0) return t('error.network', 'Connexion interrompue. Vérifie le réseau puis réessaie.');
+  if (e.status === 408 || /timeout|timed out|délai dépassé/i.test(e.message || '')) return t('error.timeout', 'Le délai de réponse est dépassé. Le serveur ou le transfert a probablement été interrompu.');
+  if (e.status === 413) return t('error.fileSize', 'Fichier trop volumineux (limite : 50 Mo). Réduis les ressources intégrées ou utilise un ZIP optimisé.');
+  if (e.status === 429) return t('error.rateLimit', 'Trop de demandes ont été envoyées. Attends quelques instants avant de réessayer.');
+  if (e.status === 502) return t('error.gateway', 'La passerelle a reçu une réponse invalide du service de rendu. Le service est peut-être temporairement indisponible.');
+  if (e.status === 503) return t('error.unavailable', 'Le service de rendu est momentanément indisponible ou en maintenance.');
+  if (e.status === 401 || e.status === 403) return t('error.security', 'La vérification de sécurité a échoué. Recharge la page puis relance la vérification.');
   return e.message || 'Une erreur inattendue a interrompu le rendu.';
 }
 function technicalErrorText(e) {
