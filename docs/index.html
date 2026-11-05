@@ -23,6 +23,14 @@
 @media(max-width:700px){.rdx-mobile-steps{position:sticky;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:30;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px;border:1px solid var(--bd);border-radius:14px;background:color-mix(in srgb,var(--surf) 94%,transparent);backdrop-filter:blur(14px)}.rdx-mobile-steps a{display:flex;align-items:center;justify-content:center;min-width:0;min-height:40px;padding:6px 3px;border-radius:9px;color:var(--mut);font-size:.72rem;font-weight:700;text-decoration:none;text-align:center}.rdx-mobile-steps a[aria-current=step]{background:color-mix(in srgb,var(--ac) 12%,var(--surf));color:var(--ac)}.rdx-main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}}
 @supports not (height:100svh){body{min-height:100vh}}@supports not (height:100dvh){body{min-height:100svh}}
 
+
+.rdx-row-actions-dialog{width:min(100% - 24px,420px);margin:auto;padding:0;border:1px solid var(--bd);border-radius:20px;background:var(--surf);color:var(--tx);box-shadow:0 22px 70px rgba(0,0,0,.28)}
+.rdx-row-actions-dialog::backdrop{background:rgba(4,8,18,.55);backdrop-filter:blur(3px)}
+.rdx-row-actions-sheet{padding:18px}.rdx-row-actions-sheet h2{margin:0 0 12px}
+#rdxRowActionsButtons{display:grid;gap:8px}#rdxRowActionsButtons button{margin:0;width:100%;justify-content:flex-start}
+.rdx-row-menu{display:none;flex:0 0 44px;width:44px;min-height:44px;margin:0;padding:0;border:1px solid var(--bd);background:var(--surf2);color:var(--tx);font-size:1.35rem}
+@media(max-width:600px){.video-list-actions{display:none!important}.rdx-row-menu{display:inline-flex}.rdx-row-actions-dialog{position:fixed;inset:auto 0 0;width:100%;max-width:none;margin:0;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px)}.rdx-row-actions-sheet{padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px))}}
+
 </style></noscript>
 <!-- Vercel Web Analytics -->
 <script>
@@ -786,6 +794,7 @@ ul#list button{box-shadow:none}
     </div>
   </div>
 </dialog>
+<dialog id="rdxRowActionsDialog" class="rdx-row-actions-dialog" aria-labelledby="rdxRowActionsTitle"><div class="rdx-row-actions-sheet"><h2 id="rdxRowActionsTitle">Actions de la vidéo</h2><div id="rdxRowActionsButtons"></div><button id="rdxRowActionsClose" class="sec" type="button">Fermer</button></div></dialog>
 <dialog id="rdxPlayerDialog" class="rdx-history-player-dialog" aria-labelledby="rdxPlayerTitle">
   <div class="rdx-player-dialog-head"><h2 id="rdxPlayerTitle">Lecture vidéo</h2><button id="rdxPlayerClose" class="sec" type="button">Fermer</button></div>
   <video id="rdxHistoryModalVideo" controls playsinline preload="metadata"></video>
@@ -2751,7 +2760,16 @@ function renderHistoryList() {
       if(r.id)scheduleHistoryDelete([{id:r.id,li}], 'Vidéo supprimée');
       else showToast('Identifiant vidéo manquant : suppression impossible.','error');
     });
-    actions.append(watch,del);row.append(selectLabel,thumb,meta,actions);li.append(row);ul.append(li);
+    actions.append(watch,del);
+    const menu=document.createElement('button');menu.type='button';menu.className='rdx-row-menu';menu.textContent='⋯';menu.setAttribute('aria-label','Actions pour '+a.name);
+    menu.addEventListener('click',()=>{
+      const dialog=$('#rdxRowActionsDialog'),buttons=$('#rdxRowActionsButtons');
+      $('#rdxRowActionsTitle').textContent=a.name;buttons.textContent='';
+      [[watch,'Regarder'],[del,'Supprimer']].forEach(([original,label])=>{const action=document.createElement('button');action.type='button';action.className=original.className;action.textContent=label;action.addEventListener('click',()=>{dialog.close();original.click();});buttons.append(action);});
+      if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
+      $('#rdxRowActionsClose').focus();
+    });
+    row.append(selectLabel,thumb,meta,actions,menu);li.append(row);ul.append(li);
   }
   $('#rdxHistoryAnnounce').textContent=items.length+' résultat(s).';
 }
@@ -3295,6 +3313,12 @@ offerResumeIfAvailable().then(hasJob => {
 });
 </script>
 <script type="module" src="/assets/rendrax-motion.js?v=20261025-fix3"></script>
+<script>
+(function(){
+const dialog=document.getElementById('rdxRowActionsDialog'),close=document.getElementById('rdxRowActionsClose');
+if(dialog&&close){close.addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});dialog.addEventListener('cancel',e=>{e.preventDefault();dialog.close()});}
+})();
+</script>
 <script>
 (function(){
 const offline=document.getElementById('rdxOfflineBanner'),update=document.getElementById('rdxUpdateBanner'),install=document.getElementById('rdxInstallPrompt');
