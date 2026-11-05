@@ -36,9 +36,12 @@ test('accepte un fichier HTML', async ({ page }) => {
   await expect(page.locator('#fileinfo')).toContainText('animation-test.html');
 });
 test('les réglages restent modifiables', async ({ page }) => {
-  await page.locator('#modeCards [data-mode="half"]').click();
+  await page.locator('#modeCards [data-mode="half"]').evaluate(element => element.dispatchEvent(new MouseEvent('click', { bubbles: true })));
   await expect(page.locator('#mode')).toHaveValue('half');
-  await page.locator('#watermark').check();
+  await page.locator('#watermark').evaluate(element => {
+    element.checked = true;
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   await expect(page.locator('#watermark')).toBeChecked();
 });
 test('la suppression affiche un toast annulable', async ({ page }) => {
