@@ -23,11 +23,11 @@ body{background:var(--bg);color:var(--tx);font:16px/1.6 system-ui,sans-serif}mai
 <h3>Fichiers importés et vidéos</h3>
 <ul>
 <li data-i18n="legal.source1">Les fichiers HTML et ZIP sont transférés vers un stockage objet privé afin de permettre le rendu.</li>
-<li data-i18n="legal.source2">Les fichiers sources temporaires sont soumis à un nettoyage automatique distinct ; le mécanisme de nettoyage des imports anciens cible les fichiers de plus de deux heures.</li>
-<li data-i18n="legal.source3">Les vidéos générées et leurs métadonnées sont prévues pour expirer au bout de 30 jours. Tu peux aussi demander leur suppression depuis le résultat ou l’historique.</li>
+<li data-i18n="legal.source2">Le workflow tente de supprimer les sources à la fin du rendu. Un nettoyage automatique quotidien cible les fichiers entrants de plus de deux heures ; ce délai est une règle de purge, pas une garantie de suppression instantanée.</li>
+<li data-i18n="legal.source3">Les vidéos, miniatures et métadonnées expirent au bout de 30 jours. Un traitement automatique s’exécute toutes les six heures pour supprimer les éléments expirés. Tu peux aussi demander leur suppression depuis le résultat ou l’historique.</li>
 <li data-i18n="legal.source4">La suppression d’une vidéo retire également les ressources associées connues du service, dont la miniature et le fichier source lié.</li>
 </ul>
-<h3>Informations techniques</h3>
+<h3>Sécurité des fichiers importés</h3><p>Les fichiers HTML exécutent du JavaScript pendant l’aperçu et le rendu. Ils doivent être considérés comme du code actif. Les archives ZIP font l’objet de contrôles de chemins, de types de fichiers et de tailles. L’import par URL est limité aux liens HTTPS publics et soumis à des contrôles de redirection, de taille et de délai. Ces protections ne garantissent pas une isolation complète d’un HTML malveillant : n’importe pas de contenu dont la provenance n’est pas fiable ni de données sensibles.</p><p>Le moteur Chromium du runner est lancé avec une option qui désactive son sandbox. Le rendu dans un runner temporaire et les contrôles d’import ne doivent donc pas être interprétés comme une garantie de sécurité absolue.</p><h3>Informations techniques</h3>
 <p data-i18n="legal.tech">Le service traite les paramètres nécessaires au rendu, les identifiants de tâche et des informations techniques de fonctionnement. Le bouton « Signaler un problème » prépare un rapport contenant l’identifiant de tâche disponible, le navigateur et la qualité choisie. Il n’ajoute pas ton fichier HTML, ton ZIP ni son contenu.</p>
 <h3>Services externes</h3>
 <p data-i18n="legal.external">Le fonctionnement peut faire appel à l’hébergement Vercel, au stockage Backblaze, à la vérification anti-robot Cloudflare et aux ressources externes référencées par ton HTML. Ces services appliquent leurs propres conditions et politiques de confidentialité.</p>
@@ -37,11 +37,11 @@ body{background:var(--bg);color:var(--tx);font:16px/1.6 system-ui,sans-serif}mai
 <li data-i18n="legal.rights">Tu dois disposer des droits nécessaires sur les pages HTML, scripts, images, polices, musiques et autres ressources que tu importes.</li>
 <li data-i18n="legal.responsible">Tu restes responsable du contenu que tu fournis et des usages de la vidéo générée.</li>
 <li data-i18n="legal.sensitive">N’importe pas de données personnelles ou confidentielles dont le traitement par les services techniques utilisés n’est pas autorisé.</li>
-<li data-i18n="legal.compat">Le rendu dépend de la compatibilité du contenu avec Chromium, de la disponibilité des ressources distantes et de l’état des services tiers. Un résultat identique à tous les navigateurs ou à toutes les exécutions ne peut pas être garanti.</li>
+<li data-i18n="legal.compat">Le rendu dépend de la compatibilité du contenu avec Chromium, de la disponibilité des ressources distantes et de l’état des services tiers. Les bibliothèques JavaScript ne sont pas toutes certifiées ; un résultat identique à tous les navigateurs ou à toutes les exécutions ne peut pas être garanti.</li><li>Tu ne dois pas importer de code malveillant, de contenu dont tu ne possèdes pas les droits ou de données confidentielles dont le traitement par les prestataires techniques n’est pas autorisé.</li>
 <li data-i18n="legal.expiry">Les vidéos peuvent expirer après 30 jours ou être supprimées plus tôt par leur propriétaire.</li>
 <li data-i18n="legal.service">Le service peut évoluer, être temporairement indisponible ou limiter certaines opérations pour protéger son infrastructure.</li>
 </ul>
 <p data-i18n="legal.accept">En utilisant RENDRAX, tu acceptes ces règles d’utilisation. Les présentes informations sont générales ; elles ne prétendent pas définir une juridiction ou des mentions légales d’entreprise qui n’ont pas été fournies.</p>
 </section>
-<footer><a href="/">Retour à RENDRAX</a> · <a href="/preparer-html.html">Guide HTML</a> · <a href="https://github.com/kidasniger/RENDRAX/issues/new" target="_blank" rel="noopener">Contact</a></footer>
+<footer><a href="/">Retour à RENDRAX</a> · <a href="/preparer-html.html">Guide HTML</a> · <a href="/technique.html">Documentation technique</a> · <a href="https://github.com/kidasniger/RENDRAX/issues/new" target="_blank" rel="noopener">Contact</a></footer>
 </main><script defer src="/assets/rendrax-i18n.js?v=20261105-design102"></script></body></html>
