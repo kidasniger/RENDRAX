@@ -51,7 +51,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://esm.sh https://challenges.cloudflare.com https://cdn.jsdelivr.net 'sha256-1SOxLfFy42CIM65llSTd+m82wwk/9BTcHwgAU0ZJKck='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://esm.sh; connect-src 'self' https://esm.sh https://challenges.cloudflare.com https://cloudflareinsights.com https://vitals.vercel-insights.com; media-src 'self' blob: data: https:; frame-src 'self' https://challenges.cloudflare.com blob:; worker-src 'self' blob: https://challenges.cloudflare.com; manifest-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' https://esm.sh https://challenges.cloudflare.com https://cdn.jsdelivr.net 'sha256-1SOxLfFy42CIM65llSTd+m82wwk/9BTcHwgAU0ZJKck='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://esm.sh; connect-src 'self' https://esm.sh https://challenges.cloudflare.com https://cloudflareinsights.com https://vitals.vercel-insights.com https://*.backblazeb2.com; media-src 'self' blob: data: https:; frame-src 'self' https://challenges.cloudflare.com blob:; worker-src 'self' blob: https://challenges.cloudflare.com; manifest-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'"
         }
       ]
     },
@@ -68,7 +68,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://esm.sh https://challenges.cloudflare.com https://cdn.jsdelivr.net 'sha256-1SOxLfFy42CIM65llSTd+m82wwk/9BTcHwgAU0ZJKck='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://esm.sh; connect-src 'self' https://esm.sh https://challenges.cloudflare.com https://cloudflareinsights.com https://vitals.vercel-insights.com; media-src 'self' blob: data: https:; frame-src 'self' https://challenges.cloudflare.com blob:; worker-src 'self' blob: https://challenges.cloudflare.com; manifest-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' https://esm.sh https://challenges.cloudflare.com https://cdn.jsdelivr.net 'sha256-1SOxLfFy42CIM65llSTd+m82wwk/9BTcHwgAU0ZJKck='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://esm.sh; connect-src 'self' https://esm.sh https://challenges.cloudflare.com https://cloudflareinsights.com https://vitals.vercel-insights.com https://*.backblazeb2.com; media-src 'self' blob: data: https:; frame-src 'self' https://challenges.cloudflare.com blob:; worker-src 'self' blob: https://challenges.cloudflare.com; manifest-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'"
         }
       ]
     },
