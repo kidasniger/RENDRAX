@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Documentation technique du moteur RENDRAX : profils reconnus, Chromium, FFmpeg, limites, sécurité et conservation des fichiers.">
+<title>Documentation technique · RENDRAX</title>
+<link rel="stylesheet" href="/assets/app.css?v=20261105-perf81">
+<link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261105-design100">
+<style>
+:root{--bg:#f3f6ff;--surf:#fff;--surf2:#f4f6ff;--tx:#11162b;--mut:#58677f;--bd:#dfe6f7;--ac:#316bff;--r:20px}
+:root[data-theme="dark"]{--bg:#080b18;--surf:#11172a;--surf2:#161e35;--tx:#f2f5ff;--mut:#9ca9c8;--bd:#273353;--ac:#50c8ff;color-scheme:dark}
+body{background:var(--bg);color:var(--tx);font:16px/1.65 system-ui,sans-serif}
+main{width:min(100% - 32px,900px);margin:auto;padding:28px 0 64px}
+.card{background:var(--surf);border:1px solid var(--bd);border-radius:var(--r);padding:clamp(18px,4vw,30px);margin:16px 0}
+h1{font-size:clamp(2rem,6vw,3.2rem);line-height:1.1;letter-spacing:-.04em}
+h2{font-size:1.35rem;margin-top:0}h3{font-size:1.05rem}
+p,li{max-width:76ch;color:var(--mut)}a{color:var(--ac)}
+code{background:var(--surf2);padding:2px 5px;border-radius:5px;overflow-wrap:anywhere}
+.topline{display:flex;justify-content:space-between;gap:12px}
+.notice{border-left:4px solid var(--ac);padding:12px 16px;background:var(--surf2);border-radius:8px}
+table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}
+th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid var(--bd);min-width:140px}
+th{color:var(--tx)}footer{padding:24px 0;color:var(--mut)}
+</style>
+<script src="/assets/theme-init.js?v=20261105-perf81"></script>
+</head>
+<body><main>
+<div class="topline"><a href="/">← RENDRAX</a><a href="/legal.html#terms">Conditions d’utilisation</a></div>
+<header><p>RENDRAX · DOCUMENTATION TECHNIQUE</p><h1>Comment fonctionne le moteur de rendu</h1><p>Cette page décrit le comportement constaté dans le code du dépôt. Les performances dépendent du contenu HTML, des ressources distantes et de la charge du runner ; aucun temps de rendu fixe n’est garanti.</p></header>
+
+<section class="card">
+<h2>1. Profils d’animation reconnus</h2>
+<p>Le moteur examine le HTML et cherche des signatures précises. Un profil reconnu peut être piloté image par image : le moteur fixe le temps de l’animation, capture chaque image et synchronise les pistes audio prises en charge.</p>
+<table><thead><tr><th>Profil</th><th>Éléments caractéristiques détectés</th><th>Traitement</th></tr></thead><tbody>
+<tr><td><strong>KIDAS</strong></td><td>Structure React attendue, scène <code>.stage</code>, audio intégré en data URI et durée déclarée.</td><td>Contrôle manuel du temps, capture image par image et extraction des pistes prévues par le profil.</td></tr>
+<tr><td><strong>EditPro</strong></td><td>Fonction <code>render(t)</code>, boucle d’animation attendue, canvas <code>IM</code> et voix encodée en base64.</td><td>La boucle temps réel est neutralisée ; la voix intégrée est extraite et la scène est rendue à des instants déterminés.</td></tr>
+<tr><td><strong>MusicPro</strong></td><td>Canvas et <code>render(t)</code>, décodage <code>VOICE</code>, fonctions audio <code>music</code>/<code>go</code>, boucle <code>lp</code> et variables de durée/voix/musique attendues.</td><td>Le moteur pilote le rendu image par image et récupère les pistes voix/musique décodées par le navigateur.</td></tr>
+<tr><td><strong>Vidéo React</strong></td><td>API <code>window.__video</code> avec <code>seek()</code>, audio intégré et durée <code>DUR</code>.</td><td>La boucle pilotée par l’audio est neutralisée ; l’API de la page sert au positionnement temporel.</td></tr>
+<tr><td><strong>Vidéo GSAP</strong></td><td>Audio intégré, déclaration de durée ou tableau de temps, sous-titres <code>SUB</code>, timeline GSAP en pause et appel à <code>tl.time(..., false)</code>.</td><td>La timeline est pilotée directement image par image pour préserver la synchronisation prévue par ce profil.</td></tr>
+</tbody></table>
+<p>Les tests de détection reposent sur des signatures de code, pas uniquement sur le nom d’une bibliothèque. Une page qui ressemble visuellement à un exemple mais dont le code diffère peut ne pas être reconnue.</p>
+<p class="notice"><strong>Mode universel :</strong> toute page HTML exploitable qui ne correspond pas à l’un des cinq profils est traitée en mode générique. Chromium est capturé en temps réel. La synchronisation audio/vidéo n’est alors pas garantie et certaines animations peuvent perdre en fluidité si les captures prennent trop de temps.</p>
+</section>
+
+<section class="card">
+<h2>2. Bibliothèques JavaScript externes</h2>
+<p>RENDRAX ne maintient pas de liste blanche garantissant la compatibilité de toutes les bibliothèques JavaScript. Le principe est de charger la page dans Chromium : une bibliothèque peut fonctionner si son script est accessible, si ses API sont compatibles avec Chromium et si elle ne dépend pas d’une interaction ou d’un service indisponible pendant le rendu.</p>
+<ul>
+<li><strong>GSAP :</strong> des animations GSAP peuvent être rendues en mode synchronisé lorsque leur structure correspond exactement au profil GSAP détecté. Les autres intégrations GSAP passent en mode générique.</li>
+<li><strong>React :</strong> certaines structures React spécifiques sont reconnues par les profils KIDAS ou Vidéo React. Cela ne constitue pas une garantie pour toute application React.</li>
+<li><strong>Canvas et Web Audio :</strong> pris en charge par certains profils identifiés ; les autres implémentations sont traitées selon les possibilités du mode générique.</li>
+<li><strong>Autres bibliothèques :</strong> elles ne sont pas certifiées individuellement. Leur comportement dépend de Chromium, de leur initialisation, de leurs dépendances réseau et de leur mode d’animation.</li>
+</ul>
+<p>Les scripts, polices, images et sons hébergés sur un CDN ou un autre domaine doivent rester accessibles depuis le runner. Les erreurs CORS, les restrictions du serveur distant, les changements d’URL ou une connexion indisponible peuvent empêcher leur chargement. Pour fiabiliser un projet, place les ressources essentielles dans l’archive ZIP lorsque c’est possible.</p>
+</section>
+
+<section class="card">
+<h2>3. Chaîne Chromium et FFmpeg</h2>
+<h3>Chromium</h3>
+<ol>
+<li>Le runner prépare un répertoire temporaire et sert le projet par un petit serveur HTTP local lié à <code>127.0.0.1</code>.</li>
+<li>Chromium démarre en mode headless avec un profil temporaire et des extensions désactivées.</li>
+<li>Le moteur communique avec Chromium au moyen du protocole Chrome DevTools (CDP) pour charger la page, régler la fenêtre, piloter le temps des profils compatibles et capturer des images JPEG.</li>
+<li>Pour les profils synchronisés, le moteur demande chaque image à un instant calculé. En mode générique, il capture la page pendant la durée réelle, puis remet les images à cadence constante.</li>
+</ol>
+<h3>FFmpeg</h3>
+<p>Les images capturées sont assemblées en MP4. Le chemin d’encodage principal utilise H.264 (libx264) ; si cet encodeur n’est pas disponible, le moteur utilise MPEG-4. La vidéo est produite en pixels <code>yuv420p</code>. Quand une piste audio est disponible, elle est encodée en AAC stéréo à 48 kHz, avec un débit cible de 192 kbit/s. Le conteneur est optimisé pour le démarrage rapide de la lecture (<code>faststart</code>).</p>
+<table><thead><tr><th>Qualité</th><th>Réglages vidéo</th><th>Usage</th></tr></thead><tbody>
+<tr><td>Rapide</td><td>CRF 24, preset ultrafast, capture JPEG qualité 80</td><td>Aperçu, test ou échelle réduite lorsque la qualité est automatique.</td></tr>
+<tr><td>Standard</td><td>CRF 18, preset veryfast, capture JPEG qualité 90</td><td>Réglage automatique habituel pour un rendu complet.</td></tr>
+<tr><td>Élevée</td><td>CRF 15, preset slow, capture JPEG qualité 95</td><td>Option disponible dans le moteur CLI ; le workflow web utilise le choix automatique.</td></tr>
+</tbody></table>
+<p>Lorsque l’audio est présent, le moteur vérifie les durées des pistes avec ffprobe et signale les écarts. Pour les profils synchronisés, un écart trop important peut invalider le MP4.</p>
+</section>
+
+<section class="card">
+<h2>4. GitHub Actions et cycle d’un rendu</h2>
+<ol>
+<li>L’application envoie le HTML ou le ZIP dans le stockage privé Backblaze B2 avec une URL signée temporaire. La taille du fichier source est limitée à 50 Mo.</li>
+<li>Une exécution GitHub Actions est déclenchée manuellement par l’API avec les paramètres du rendu. Le workflow s’exécute sur <code>ubuntu-24.04</code>, installe Python 3.12, FFmpeg/ffprobe et les dépendances Python nécessaires.</li>
+<li>Le runner récupère le fichier temporaire au moyen d’un jeton GitHub OIDC vérifié par l’API. Pour un ZIP, il extrait le projet après validation de l’archive.</li>
+<li>Le script Python lance Chromium, effectue les captures, puis FFmpeg encode le MP4.</li>
+<li>Le workflow crée une miniature, contrôle les métadonnées, envoie le MP4 et la miniature dans B2, puis publie les métadonnées de la vidéo.</li>
+<li>Les journaux et la progression sont relayés à l’interface lorsque l’identifiant de tâche est valide. Le workflow conserve aussi un enregistrement de génération dans le dépôt.</li>
+<li>Une étape exécutée avec la condition <code>always()</code> supprime les fichiers temporaires du runner et demande la suppression du fichier source privé.</li>
+</ol>
+<p>Le workflow de rendu possède une limite d’exécution de 90 minutes. Ce délai est une limite de sécurité du job, pas une promesse qu’un rendu sera terminé dans ce temps.</p>
+</section>
+
+<section class="card">
+<h2>5. Limites de traitement et performances</h2>
+<table><thead><tr><th>Paramètre</th><th>Limite ou valeur du code</th></tr></thead><tbody>
+<tr><td>Fichier HTML ou ZIP importé</td><td>50 Mo maximum.</td></tr>
+<tr><td>Entrées d’une archive ZIP</td><td>2 000 éléments maximum.</td></tr>
+<tr><td>Archive décompressée</td><td>250 Mo cumulés maximum ; 100 Mo maximum par fichier.</td></tr>
+<tr><td>Fréquence d’images automatique</td><td>60 i/s pour les profils synchronisés ; 30 i/s pour le mode générique.</td></tr>
+<tr><td>Fréquence d’images CLI</td><td>Valeur réglable de 1 à 120 i/s.</td></tr>
+<tr><td>Durée</td><td>Les réglages de l’interface proposent jusqu’à 5 minutes. Le mode générique utilise 60 secondes si aucune durée n’est détectée et qu’aucune durée n’est fournie ; les profils spécialisés utilisent la durée déclarée par leur page, éventuellement plafonnée par le paramètre du rendu.</td></tr>
+<tr><td>Décalage audio manuel</td><td>De −2 000 à +2 000 ms.</td></tr>
+<tr><td>MP4 publié</td><td>500 Mo maximum ; miniature JPEG de 60 Ko maximum.</td></tr>
+<tr><td>Durée maximale d’un job GitHub Actions</td><td>90 minutes.</td></tr>
+</tbody></table>
+<p>Le temps de traitement varie selon la résolution, le nombre d’images, la complexité JavaScript, les effets Canvas, les polices, les ressources distantes et la disponibilité du runner. Une fréquence élevée, une grande résolution ou une longue durée augmentent le volume de calcul et de données. Le mode générique peut prendre plus longtemps que la durée de la vidéo, car il capture en temps réel puis assemble les images.</p>
+<p>Si le journal signale des captures trop lentes, réduire la fréquence ou l’échelle peut améliorer la réussite du rendu, au prix d’une fluidité ou d’une définition inférieure.</p>
+</section>
+
+<section class="card">
+<h2>6. Erreurs, relance et reprise</h2>
+<ul>
+<li>Le démarrage de Chromium et le chargement de la page disposent de délais d’attente. Les erreurs de chargement des ressources, de connexion DevTools ou de fermeture/crash du navigateur sont identifiées comme potentiellement transitoires.</li>
+<li>Le moteur peut relancer une fois le rendu après une erreur Chromium/réseau reconnue, avec une courte attente. Les erreurs permanentes, les fichiers invalides et les échecs d’encodage ne sont pas automatiquement réparés par cette relance.</li>
+<li>Si FFmpeg échoue, le workflow échoue et les détails disponibles sont inscrits dans les journaux. Une vidéo incomplète n’est pas considérée comme publiée.</li>
+<li>L’interface peut reprendre le suivi d’une tâche existante. Cela reprend le suivi des statuts et journaux, pas le calcul à partir de la dernière image : aucun mécanisme de checkpoint image par image n’est implémenté.</li>
+<li>À la fin ou à l’échec du job, le nettoyage des fichiers temporaires est tenté. Si l’authentification OIDC ou l’appel de nettoyage échoue, le nettoyage planifié des sources anciennes constitue un filet de sécurité.</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>7. Import d’URL et ressources distantes</h2>
+<p>L’import direct depuis une URL est plus restrictif que le chargement des ressources d’une page pendant le rendu :</p>
+<ul>
+<li>l’adresse d’import doit utiliser HTTPS sur le port standard 443, sans identifiant ni mot de passe intégré ;</li>
+<li>la longueur de l’URL est limitée à 2 048 caractères ;</li>
+<li>les adresses locales, privées ou non publiques sont refusées après résolution DNS ; les réponses DNS sont vérifiées et épinglées pour la connexion ;</li>
+<li>trois redirections au maximum sont suivies ; le téléchargement est soumis à un délai maximal de 20 secondes et à une limite de 50 Mo ;</li>
+<li>les URL GitHub de type fichier « blob » et les Gist sont normalisées vers leurs points de téléchargement brut ;</li>
+<li>le chemin de la ressource importée doit désigner un fichier HTML/HTM compatible.</li>
+</ul>
+<p>Ces règles protègent l’endpoint d’import contre les destinations locales et les téléchargements excessifs. Elles ne garantissent pas que toutes les ressources référencées à l’intérieur du HTML seront accessibles au moteur de rendu. Les ressources distantes peuvent être bloquées, lentes, supprimées, protégées par authentification ou soumises à CORS.</p>
+</section>
+
+<section class="card">
+<h2>8. Sécurité des fichiers HTML et ZIP</h2>
+<ul>
+<li>Le stockage Backblaze B2 utilisé pour les sources et les vidéos est privé ; les transferts s’appuient sur des URL signées à durée limitée.</li>
+<li>Les échanges du runner avec les API sont authentifiés par GitHub OIDC et liés à l’identifiant d’exécution attendu.</li>
+<li>Les archives ZIP sont vérifiées : chemins absolus ou sortant du dossier, liens symboliques, fichiers spéciaux, doublons et archives dépassant les limites sont refusés.</li>
+<li>Les contrôles d’origine, les validations d’identifiants et de tailles, ainsi que Cloudflare Turnstile protègent plusieurs opérations sensibles de l’API.</li>
+<li>Le moteur exécute toutefois le JavaScript fourni dans Chromium. Les fichiers importés doivent donc être considérés comme du code actif, et non comme de simples documents. N’importe pas de fichier dont la provenance ou le contenu n’est pas fiable.</li>
+</ul>
+<p class="notice"><strong>Limite de sécurité à connaître :</strong> le Chromium du moteur est lancé avec l’option <code>--no-sandbox</code> dans l’environnement de rendu. Les contrôles d’import et l’exécution dans un runner temporaire ne constituent pas une garantie d’isolation complète contre un HTML malveillant. La page d’aperçu utilise également une politique de contenu permissive pour permettre l’exécution des animations. Évite les contenus non fiables et les données sensibles ; une isolation renforcée du navigateur doit être considérée comme une amélioration de sécurité distincte.</p>
+</section>
+
+<section class="card">
+<h2>9. Conservation et suppression</h2>
+<ul>
+<li><strong>Sources HTML/ZIP :</strong> le workflow tente de les supprimer à la fin du job. Un nettoyage planifié sur Vercel cible les fichiers entrants âgés de plus de deux heures ; il s’exécute chaque jour à 03:17 UTC. Il s’agit d’un délai de nettoyage, pas d’une garantie de suppression à la seconde près.</li>
+<li><strong>Vidéos et miniatures :</strong> les métadonnées définissent une expiration à 30 jours après publication. Un workflow GitHub Actions de nettoyage s’exécute toutes les six heures et supprime les vidéos, miniatures et métadonnées expirées ; chaque exécution traite au plus 250 vidéos.</li>
+<li><strong>Suppression manuelle :</strong> l’action de suppression retire la vidéo, sa miniature, ses métadonnées, le fichier source associé et l’enregistrement de progression. Le code de stockage parcourt également les versions d’objets B2 pour supprimer les versions et marqueurs correspondants.</li>
+<li><strong>Liens signés :</strong> les URL de téléversement expirent après 10 minutes ; les URL de lecture/téléchargement signées expirent après 5 minutes.</li>
+</ul>
+<p>La suppression dépend de la disponibilité des services tiers et de la réussite des tâches de maintenance. Les journaux GitHub Actions et les métadonnées techniques nécessaires au suivi peuvent exister séparément des fichiers vidéo.</p>
+</section>
+
+<section class="card">
+<h2>10. Conditions d’utilisation essentielles</h2>
+<ul>
+<li>Tu dois posséder les droits ou autorisations nécessaires sur le HTML, les scripts, images, polices, musiques et autres ressources importées.</li>
+<li>Tu es responsable du contenu transmis et de l’usage de la vidéo produite.</li>
+<li>N’importe pas de données personnelles ou confidentielles dont le traitement par les prestataires techniques utilisés n’est pas autorisé.</li>
+<li>Le rendu dépend de Chromium, des ressources distantes et des services tiers ; une compatibilité universelle, une synchronisation parfaite ou une disponibilité permanente ne sont pas garanties.</li>
+<li>Les vidéos expirent au bout de 30 jours au maximum et peuvent être supprimées plus tôt par leur propriétaire.</li>
+</ul>
+<p>La page <a href="/legal.html#privacy">Confidentialité et conditions d’utilisation</a> présente les règles destinées aux utilisateurs. Cette documentation technique ne remplace pas un avis juridique ni des mentions légales complètes de l’exploitant.</p>
+</section>
+
+<footer><a href="/">Application</a> · <a href="/preparer-html.html">Guide de préparation HTML</a> · <a href="/legal.html">Confidentialité et conditions</a> · <a href="https://github.com/kidasniger/RENDRAX" target="_blank" rel="noopener">Code source</a></footer>
+</main></body></html>
