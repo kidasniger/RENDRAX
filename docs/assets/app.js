@@ -1075,6 +1075,22 @@ function updateWatermarkPreview() {
     $('#watermarkPreviewFrame').dataset.format = format === 'auto' ? 'portrait' : format;
   }
 }
+function loadIsolatedPreview(frame, source) {
+  if (!frame) return;
+  const html = String(source || '');
+  const send = () => {
+    if (frame.contentWindow) frame.contentWindow.postMessage({ type: 'RENDRAX_PREVIEW_HTML', html }, '*');
+  };
+  if (frame.dataset.rdxPreviewReady === '1' && frame.contentWindow) {
+    send();
+    return;
+  }
+  frame.addEventListener('load', () => {
+    frame.dataset.rdxPreviewReady = '1';
+    send();
+  }, { once: true });
+  frame.src = '/preview.html';
+}
 function renderPreview(source) {
   if (!source) return;
   const frame = $('#prev');
@@ -1082,12 +1098,13 @@ function renderPreview(source) {
   $('#prevBtn').hidden = false;
   applyPreviewFormat();
   frame.hidden = false;
-  frame.srcdoc = source;
+  loadIsolatedPreview(frame, source);
 }
 function resetPreview() {
   const frame = $('#prev');
   frame.hidden = true;
-  frame.removeAttribute('srcdoc');
+  frame.src = 'about:blank';
+  delete frame.dataset.rdxPreviewReady;
   $('#previewPanel').hidden = true;
   $('#prevBtn').textContent = 'Actualiser l’aperçu';
 }
@@ -1775,7 +1792,7 @@ function showResult(rel) {
       playBothBtn.disabled = true;
       compareStatus.textContent = 'Redémarrage des deux lectures…';
       sourceFrame.hidden = false;
-      sourceFrame.srcdoc = fileText;
+      loadIsolatedPreview(sourceFrame, fileText);
       try { v.currentTime = 0; } catch (_) {}
       const playback = v.play();
       if (playback && typeof playback.then === 'function') {
@@ -1803,10 +1820,11 @@ function showResult(rel) {
       compareBtn.textContent = opening ? 'Fermer la comparaison' : 'Comparer';
       if (opening) {
         sourceFrame.hidden = false;
-        sourceFrame.srcdoc = fileText;
+        loadIsolatedPreview(sourceFrame, fileText);
       } else {
         sourceFrame.hidden = true;
-        sourceFrame.removeAttribute('srcdoc');
+        sourceFrame.src = 'about:blank';
+        delete sourceFrame.dataset.rdxPreviewReady;
         v.pause();
         frame.append(v);
       }

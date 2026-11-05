@@ -28,7 +28,11 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#list li')).toHaveCount(1);
 });
 test('accepte un fichier HTML', async ({ page }) => {
-  await page.locator('#file').setInputFiles({ name: 'animation-test.html', mimeType: 'text/html', buffer: Buffer.from('<!doctype html><html><body><h1>Test RENDRAX</h1></body></html>') });
+  await page.locator('#drop').evaluate(element => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(['<!doctype html><html><body><h1>Test RENDRAX</h1></body></html>'], 'animation-test.html', { type: 'text/html' }));
+    element.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+  });
   await expect(page.locator('#fileinfo')).toContainText('animation-test.html');
 });
 test('les réglages restent modifiables', async ({ page }) => {
@@ -55,4 +59,19 @@ test('applique le thème sombre du système', async ({ page }) => {
 test('ne déborde pas à 360 px', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('exécute le HTML dans un aperçu isolé', async ({ page }) => {
+  await page.evaluate(() => {
+    const frame = document.createElement('iframe');
+    frame.id = 'previewIsolationTest';
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.addEventListener('load', () => frame.contentWindow.postMessage({
+      type: 'RENDRAX_PREVIEW_HTML',
+      html: '<!doctype html><html><body><script>document.body.dataset.previewOk="yes"<\\/script></body></html>'
+    }, '*'), { once: true });
+    document.body.append(frame);
+    frame.src = '/preview.html';
+  });
+  await expect.poll(() => page.frameLocator('#previewIsolationTest').frameLocator('#content').locator('body').getAttribute('data-preview-ok')).toBe('yes');
 });

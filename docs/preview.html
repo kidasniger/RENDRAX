@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Aperçu HTML isolé · RENDRAX</title>
+  <style>
+    html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden}
+    #content{display:block;width:100%;height:100%;border:0;background:#fff}
+  </style>
+</head>
+<body>
+  <iframe id="content" title="Contenu HTML importé" sandbox="allow-scripts" allow="autoplay"></iframe>
+  <script>
+    const content = document.getElementById('content');
+    window.addEventListener('message', event => {
+      if (event.source !== parent || !event.data || event.data.type !== 'RENDRAX_PREVIEW_HTML') return;
+      content.srcdoc = typeof event.data.html === 'string' ? event.data.html : '';
+    });
+  </script>
+</body>
+</html>
