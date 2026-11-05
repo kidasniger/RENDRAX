@@ -25,6 +25,7 @@ technologies:
   - "Cloudflare Turnstile"
 github: "https://github.com/kidasniger/RENDRAX"
 demo: "https://rendrax.vercel.app"
+video: "https://youtube.com/shorts/DHVj8d5E98g?si=lCbVwbi9G8aPP0yD"
 website: "https://rendrax.vercel.app"
 documentation: "https://rendrax.vercel.app/preparer-html.html"
 download: "Application web et PWA ; aucun installateur autonome ni APK publié"
@@ -144,7 +145,8 @@ Aucune capture d'écran dédiée n'est actuellement référencée dans le dépô
 
 # Vidéos de présentation
 
-Aucune vidéo de présentation officielle n'est actuellement référencée.
+- **Présentation officielle (YouTube Shorts)** : https://youtube.com/shorts/DHVj8d5E98g?si=lCbVwbi9G8aPP0yD
+
 
 # Téléchargements et installation
 
@@ -174,7 +176,7 @@ RENDRAX est distribué sous forme d'application web et de PWA. Il n'existe actue
 - Guide HTML : https://rendrax.vercel.app/preparer-html.html
 - Informations et conditions : https://rendrax.vercel.app/legal.html
 - Documentation complémentaire : aucune documentation distincte publiée à ce jour.
-- YouTube : aucune chaîne ou vidéo officielle renseignée.
+- YouTube : vidéo officielle de présentation — https://youtube.com/shorts/DHVj8d5E98g?si=lCbVwbi9G8aPP0yD
 - Réseaux sociaux : aucun lien officiel renseigné.
 
 # Version et mises à jour
@@ -205,7 +207,7 @@ RENDRAX est actuellement déployé comme application web à mise à jour continu
 
 # Changelog
 
-## 2026-11-05 — Interface et documentation
+## 2026-11-05 — Interface, documentation et présentation
 
 - Intégration des améliorations d'interface et des tokens de design.
 - Harmonisation des boutons et de leurs états.
@@ -214,6 +216,8 @@ RENDRAX est actuellement déployé comme application web à mise à jour continu
 - Ajout du signalement de problème depuis l'application.
 - Mise à jour de la documentation du projet et de son architecture de stockage.
 - Ajout de la licence propriétaire bilingue.
+- Ajout du lien vers la vidéo officielle de présentation YouTube Shorts.
+- Centralisation des liens de démonstration et de présentation dans la documentation.
 
 # SEO
 
@@ -253,6 +257,6 @@ https://rendrax.vercel.app/
 - Le workflow de rendu est déclenché via GitHub Actions.
 - Le déploiement de production des modifications documentées le 5 novembre 2026 a été signalé comme READY sur Vercel.
 - Le projet est propriétaire et sa licence est disponible dans le fichier LICENSE.
-- Aucun numéro de version public, APK, installateur autonome, capture d'écran dédiée, vidéo de présentation, chaîne YouTube ou lien de réseau social officiel n'est actuellement déclaré dans le dépôt.
+- Aucun numéro de version public, APK, installateur autonome, capture d'écran dédiée, chaîne YouTube ou lien de réseau social officiel n'est actuellement déclaré dans le dépôt. Une vidéo officielle de présentation est désormais référencée dans cette documentation.
 - L'identité juridique complète et les coordonnées officielles de l'exploitant ne sont pas précisées dans les fichiers du projet.
 - Les pages légales constituent une information générale et doivent être complétées par les informations officielles de l'exploitant si une conformité juridique complète est requise.
