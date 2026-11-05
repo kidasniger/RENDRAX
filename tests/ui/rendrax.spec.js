@@ -23,8 +23,8 @@ test.beforeEach(async ({ page }) => {
     return route.fulfill({ contentType: 'application/javascript', body: 'const React={createElement(){return null;}}; export default React; export function useEffect(){}; export function useState(){return [0,()=>{}];}' });
   });
   await page.goto('/');
-  const skipTutorial = page.locator('#rdxTutorialSkip');
-  if (await skipTutorial.isVisible().catch(() => false)) await skipTutorial.click();
+  await page.waitForFunction(() => document.querySelector('#rdxTutorial')?.open === true);
+  await page.locator('#rdxTutorialSkip').click();
   await expect(page.locator('#list li')).toHaveCount(1);
 });
 test('accepte un fichier HTML', async ({ page }) => {
@@ -39,6 +39,7 @@ test('les réglages restent modifiables', async ({ page }) => {
 });
 test('la suppression affiche un toast annulable', async ({ page }) => {
   await expect(page.locator('#list li')).toHaveCount(1);
+  await page.locator('.rdx-history-card > summary').click();
   await page.locator('#rdxSelectAll').click();
   await page.locator('#rdxBulkDelete').click();
   await page.locator('#rdxDeleteConfirm').click();

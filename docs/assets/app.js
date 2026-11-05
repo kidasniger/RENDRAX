@@ -1981,7 +1981,7 @@ function renderHistoryList() {
     const select=document.createElement('input');select.type='checkbox';select.dataset.videoSelect='';select.value=r.id||'';select.setAttribute('aria-label','Sélectionner '+a.name);select.addEventListener('change',updateBulkBar);
     selectLabel.append(select);
     const thumb=document.createElement('div');thumb.className='video-thumb';
-    if(a.thumbnail_url){const image=document.createElement('img');image.src=a.thumbnail_url;image.alt='Aperçu de la vidéo : '+a.name;image.loading='lazy';image.decoding='async';image.onerror=()=>{image.remove();const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);};thumb.append(image);}
+    if(a.thumbnail_url){const image=document.createElement('img');image.src=a.thumbnail_url;image.alt='Aperçu de la vidéo : '+a.name;image.loading='lazy';image.decoding='async';image.width=176;image.height=112;image.onerror=()=>{image.remove();const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);};thumb.append(image);}
     else{const fallback=document.createElement('span');fallback.className='video-thumb-fallback';fallback.textContent='Aperçu indisponible';thumb.append(fallback);}
     const meta=document.createElement('div');meta.className='meta';
     const link=document.createElement('a');link.href=r.id?'/d/'+encodeURIComponent(r.id):a.browser_download_url;link.textContent=a.name;
