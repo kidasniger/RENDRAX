@@ -24,6 +24,9 @@
 <script defer src="/_vercel/insights/script.js"></script>
 <script src="/assets/theme-init.js?v=20261105-perf81"></script>
 <title>HTML → MP4 · RENDRAX</title>
+<link rel="alternate" hreflang="fr" href="https://rendrax.vercel.app/">
+<link rel="alternate" hreflang="en" href="https://rendrax.vercel.app/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://rendrax.vercel.app/">
 <link rel="stylesheet" href="/assets/app.css?v=20261105-perf81">
 <style>
 :root{
@@ -85,6 +88,7 @@ svg{flex:none}
         <span>Sans compte</span>
       </div>
       <div class="rdx-hero-actions">
+        <button type="button" class="sec rdx-language-toggle" id="rdxLanguageToggle" aria-label="Changer la langue">EN</button>
         <button type="button" class="rdx-primary-link" id="rdx-hero-file-cta" aria-controls="fileCard">
           Choisir mon fichier HTML <span aria-hidden="true">→</span>
         </button>
@@ -125,7 +129,7 @@ svg{flex:none}
   </div>
 
   <section id="fileCard" class="card rdx-file-card" aria-labelledby="h-file">
-    <div class="head"><h2 id="h-file">Choisir un fichier</h2></div>
+    <div class="head"><span class="num" aria-hidden="true" data-section-number>01</span><h2 id="h-file" data-i18n="file.title">Choisir un fichier</h2></div>
     <div class="rdx-source-tabs" role="tablist" aria-label="Méthode d’import HTML">
       <button class="sec rdx-source-tab is-active" id="rdx-file-tab" type="button" role="tab" aria-selected="true" aria-controls="rdx-file-panel">Choisir un fichier</button>
       <button class="sec rdx-source-tab" id="rdx-paste-tab" type="button" role="tab" aria-selected="false" aria-controls="rdx-paste-panel">Coller du code</button>
@@ -168,6 +172,7 @@ svg{flex:none}
     <p id="verdict" role="status" hidden></p>
     <div class="rdx-analysis-layout">
       <section id="compatReport" aria-labelledby="compatReportTitle" hidden>
+        <a class="rdx-guide-inline" href="/preparer-html.html" data-i18n="guide.compatLink">Préparer mon HTML avant le rendu →</a>
         <div class="compat-report-head">
           <h3 id="compatReportTitle">Analyse du fichier</h3>
           <p id="compatSummary" class="compat-summary" aria-live="polite"></p>
@@ -208,7 +213,7 @@ svg{flex:none}
   </section>
 
   <section id="settingsCard" class="card rdx-settings-card" aria-labelledby="h-set" hidden>
-    <div class="head"><span class="num" aria-hidden="true">02</span><h2 id="h-set">Réglages</h2></div>
+    <div class="head"><span class="num" aria-hidden="true" data-section-number>02</span><h2 id="h-set" data-i18n="settings.title">Réglages</h2></div>
     <div class="grid">
       <div class="field field-wide">
         <span class="mode-label" id="presetLabel">Préréglages d’usage</span>
@@ -313,7 +318,7 @@ svg{flex:none}
   </section>
 
   <section class="card" aria-labelledby="h-prog" id="progCard" hidden>
-    <div class="head"><span class="num" aria-hidden="true">03</span><h2 id="h-prog">Rendu</h2></div>
+    <div class="head"><span class="num" aria-hidden="true" data-section-number>03</span><h2 id="h-prog" data-i18n="render.title">Rendu</h2></div>
     <div id="rdx-upload-progress" class="rdx-upload-progress" hidden role="status" aria-live="polite">
       <div class="rdx-upload-progress-head">
         <strong id="rdx-upload-label">Envoi sécurisé du fichier</strong>
@@ -350,7 +355,8 @@ svg{flex:none}
   </section>
 
   <details class="card examples-card" aria-labelledby="h-examples">
-    <summary class="examples-toggle"><span class="head" style="margin:0"><span class="num" aria-hidden="true">05</span><span><h2 id="h-examples">Exemples HTML complets</h2></span></span></summary>
+    <summary class="examples-toggle" hidden></summary>
+    <summary class="examples-toggle"><span class="head" style="margin:0"><span class="num" aria-hidden="true" data-section-number>04</span><span><h2 id="h-examples">Exemples HTML complets</h2></span></span></summary>
     <p class="examples-intro">Voici cinq fichiers HTML complets déjà présents dans le dépôt. Leurs animations, scripts et pistes audio intégrées sont conservés : ce ne sont pas des modèles recréés ou simplifiés.</p>
     <ul class="example-list">
       <li class="example-row"><span class="example-copy"><strong>10 Technologies pour créer ton site web</strong><span>Portrait 1080 × 1920 · 69,96 s · GSAP · audio MP3 intégré.</span></span><button class="example-try" type="button" data-example-path="exemples/10-technologies-motion.html">Essayer cet exemple</button></li>
@@ -363,7 +369,7 @@ svg{flex:none}
   </details>
 
   <details class="card rdx-history-card" aria-labelledby="h-hist">
-    <summary class="row"><h2 id="h-hist">Historique des vidéos</h2><span class="mut">Afficher</span></summary>
+    <summary class="row"><span class="num" aria-hidden="true" data-section-number>05</span><h2 id="h-hist">Historique des vidéos</h2><span class="mut">Afficher</span></summary>
     <div class="row"><span class="mut">Vidéos générées</span><button class="sec" id="refresh" type="button">Actualiser</button></div>
     <div class="rdx-history-tools">
       <label class="rdx-history-search" for="rdxHistorySearch">Rechercher une vidéo</label>
@@ -391,6 +397,30 @@ svg{flex:none}
   </details>
 
 </main>
+
+<section class="card rdx-faq-card" id="rdx-faq" aria-labelledby="rdx-faq-title">
+  <div class="head"><h2 id="rdx-faq-title" data-i18n="faq.title">Questions fréquentes</h2></div>
+  <details><summary data-i18n="faq.formats.q">Quels formats puis-je importer ?</summary><p data-i18n="faq.formats.a">Un fichier HTML, HTM ou une archive ZIP contenant ta page et ses ressources. La taille du fichier importé est limitée à 50 Mo.</p></details>
+  <details><summary data-i18n="faq.audio.q">Le son est-il conservé ?</summary><p data-i18n="faq.audio.a">Oui, si la piste audio est accessible et lisible pendant le rendu. Vérifie les chemins des fichiers audio et teste d’abord un rendu de 10 secondes.</p></details>
+  <details><summary data-i18n="faq.duration.q">Quelle durée puis-je produire ?</summary><p data-i18n="faq.duration.a">Tu peux choisir Automatique ou une limite allant jusqu’à 5 minutes dans les réglages avancés. Le mode Aperçu est limité à 10 secondes.</p></details>
+  <details><summary data-i18n="faq.external.q">Les ressources externes sont-elles acceptées ?</summary><p data-i18n="faq.external.a">Les polices, scripts, images et bibliothèques distants peuvent nécessiter une connexion et autoriser leur chargement depuis l’environnement de rendu. Intègre les ressources essentielles dans ton projet lorsque c’est possible.</p></details>
+  <details><summary data-i18n="faq.retention.q">Combien de temps mes fichiers sont-ils conservés ?</summary><p data-i18n="faq.retention.a">Les vidéos générées sont disponibles pendant 30 jours au maximum. Tu peux les supprimer depuis le résultat ou l’historique. Les fichiers sources temporaires sont nettoyés séparément.</p></details>
+  <p class="rdx-faq-guide"><a href="/preparer-html.html" data-i18n="guide.link">Lire le guide pour préparer ton HTML →</a></p>
+</section>
+
+<footer class="rdx-site-footer">
+  <span>© RENDRAX</span>
+  <nav aria-label="Liens utiles">
+    <a href="/legal.html#privacy" data-i18n="footer.privacy">Confidentialité</a>
+    <a href="/legal.html#terms" data-i18n="footer.terms">Conditions</a>
+    <a href="#rdx-service-status" data-i18n="footer.status">État du service</a>
+    <a href="https://github.com/kidasniger/RENDRAX" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/kidasniger/RENDRAX/issues/new" target="_blank" rel="noopener" data-i18n="footer.contact">Contact</a>
+    <a href="/preparer-html.html" data-i18n="guide.link">Guide HTML</a>
+  </nav>
+</footer>
+<a class="rdx-feedback-fab" id="rdxFeedback" href="https://github.com/kidasniger/RENDRAX/issues/new" target="_blank" rel="noopener" data-i18n="feedback.button">Signaler un problème</a>
+<p id="rdx-render-disabled-help" class="rdx-sr-only">Choisis un fichier valide et vérifie que le service est disponible avant de lancer le rendu.</p>
 
 <dialog id="rdxDeleteDialog" class="rdx-history-dialog" aria-labelledby="rdxDeleteTitle" aria-describedby="rdxDeleteDescription">
   <div class="rdx-dialog-content">
@@ -478,6 +508,7 @@ svg{flex:none}
 </dialog>
 
 <script defer src="/assets/rendrax-qr.js?v=20261104"></script>
+<script defer src="/assets/rendrax-i18n.js?v=20261105"></script>
 <script defer src="/assets/app.js?v=20261105-perf84"></script>
 <script type="module" src="/assets/rendrax-motion.js?v=20261025-fix3"></script>
 
