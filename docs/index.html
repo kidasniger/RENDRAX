@@ -18,19 +18,6 @@
 <meta name="theme-color" content="#080b18" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="/manifest.webmanifest">
 <noscript><style>.rdx-splash{display:none!important}
-.rdx-mobile-steps{display:none}.rdx-offline-banner,.rdx-update-banner,.rdx-install-prompt{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 13px;border:1px solid var(--bd);border-radius:13px;background:var(--surf);color:var(--tx);font-size:.82rem}.rdx-offline-banner{border-color:color-mix(in srgb,var(--warn) 45%,var(--bd));background:color-mix(in srgb,var(--warn) 8%,var(--surf))}.rdx-update-banner button,.rdx-install-prompt button{width:auto;margin:0;min-height:40px;padding:7px 13px}
-.rdx-sticky-generate{position:sticky;z-index:20;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);margin:12px -4px 0;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:17px;box-shadow:0 8px 28px rgba(0,0,0,.12)}.rdx-sticky-generate button.go{margin:0}#fileCard,#settingsCard,#progCard,#res{scroll-margin-top:90px}
-@media(max-width:700px){.rdx-mobile-steps{position:sticky;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:30;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px;border:1px solid var(--bd);border-radius:14px;background:color-mix(in srgb,var(--surf) 94%,transparent);backdrop-filter:blur(14px)}.rdx-mobile-steps a{display:flex;align-items:center;justify-content:center;min-width:0;min-height:40px;padding:6px 3px;border-radius:9px;color:var(--mut);font-size:.72rem;font-weight:700;text-decoration:none;text-align:center}.rdx-mobile-steps a[aria-current=step]{background:color-mix(in srgb,var(--ac) 12%,var(--surf));color:var(--ac)}.rdx-main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}}
-@supports not (height:100svh){body{min-height:100vh}}@supports not (height:100dvh){body{min-height:100svh}}
-
-
-.rdx-row-actions-dialog{width:min(100% - 24px,420px);margin:auto;padding:0;border:1px solid var(--bd);border-radius:20px;background:var(--surf);color:var(--tx);box-shadow:0 22px 70px rgba(0,0,0,.28)}
-.rdx-row-actions-dialog::backdrop{background:rgba(4,8,18,.55);backdrop-filter:blur(3px)}
-.rdx-row-actions-sheet{padding:18px}.rdx-row-actions-sheet h2{margin:0 0 12px}
-#rdxRowActionsButtons{display:grid;gap:8px}#rdxRowActionsButtons button{margin:0;width:100%;justify-content:flex-start}
-.rdx-row-menu{display:none;flex:0 0 44px;width:44px;min-height:44px;margin:0;padding:0;border:1px solid var(--bd);background:var(--surf2);color:var(--tx);font-size:1.35rem}
-@media(max-width:600px){.video-list-actions{display:none!important}.rdx-row-menu{display:inline-flex}.rdx-row-actions-dialog{position:fixed;inset:auto 0 0;width:100%;max-width:none;margin:0;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px)}.rdx-row-actions-sheet{padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px))}}
-
 </style></noscript>
 <!-- Vercel Web Analytics -->
 <script>
@@ -404,6 +391,20 @@ ul#list button{box-shadow:none}
 .advanced-settings-summary{display:flex;align-items:center;gap:8px;margin:7px 0 14px;padding:0 3px;color:var(--mut);font-size:.82rem;line-height:1.45;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .advanced-settings-summary .advanced-settings-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 15%,transparent)}
 .advanced-settings-summary .advanced-settings-dot[hidden]{display:none}
+
+/* Mobile/PWA — styles moved into the active application stylesheet */
+.rdx-mobile-steps{display:none}.rdx-offline-banner,.rdx-update-banner,.rdx-install-prompt{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 13px;border:1px solid var(--bd);border-radius:13px;background:var(--surf);color:var(--tx);font-size:.82rem}.rdx-offline-banner{border-color:color-mix(in srgb,var(--warn) 45%,var(--bd));background:color-mix(in srgb,var(--warn) 8%,var(--surf))}.rdx-update-banner button,.rdx-install-prompt button{width:auto;margin:0;min-height:40px;padding:7px 13px}
+.rdx-sticky-generate{position:sticky;z-index:20;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);margin:12px -4px 0;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:17px;box-shadow:0 8px 28px rgba(0,0,0,.12)}.rdx-sticky-generate button.go{margin:0}#fileCard,#settingsCard,#progCard,#res{scroll-margin-top:90px}
+@media(max-width:700px){.rdx-mobile-steps{position:sticky;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:30;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px;border:1px solid var(--bd);border-radius:14px;background:color-mix(in srgb,var(--surf) 94%,transparent);backdrop-filter:blur(14px)}.rdx-mobile-steps a{display:flex;align-items:center;justify-content:center;min-width:0;min-height:40px;padding:6px 3px;border-radius:9px;color:var(--mut);font-size:.72rem;font-weight:700;text-decoration:none;text-align:center}.rdx-mobile-steps a[aria-current=step]{background:color-mix(in srgb,var(--ac) 12%,var(--surf));color:var(--ac)}.rdx-main{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}}
+@supports not (height:100svh){body{min-height:100vh}}@supports not (height:100dvh){body{min-height:100svh}}
+
+
+.rdx-row-actions-dialog{width:min(100% - 24px,420px);margin:auto;padding:0;border:1px solid var(--bd);border-radius:20px;background:var(--surf);color:var(--tx);box-shadow:0 22px 70px rgba(0,0,0,.28)}
+.rdx-row-actions-dialog::backdrop{background:rgba(4,8,18,.55);backdrop-filter:blur(3px)}
+.rdx-row-actions-sheet{padding:18px}.rdx-row-actions-sheet h2{margin:0 0 12px}
+#rdxRowActionsButtons{display:grid;gap:8px}#rdxRowActionsButtons button{margin:0;width:100%;justify-content:flex-start}
+.rdx-row-menu{display:none;flex:0 0 44px;width:44px;min-height:44px;margin:0;padding:0;border:1px solid var(--bd);background:var(--surf2);color:var(--tx);font-size:1.35rem}
+@media(max-width:600px){.video-list-actions{display:none!important}.rdx-row-menu{display:inline-flex}.rdx-row-actions-dialog{position:fixed;inset:auto 0 0;width:100%;max-width:none;margin:0;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px)}.rdx-row-actions-sheet{padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px))}}
 </style>
 <link rel="stylesheet" href="/assets/rendrax-redesign.css?v=20261105-a11y70b">
 <script type="importmap">
