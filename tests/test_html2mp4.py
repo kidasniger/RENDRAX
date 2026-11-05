@@ -340,7 +340,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('sandbox="allow-scripts" allow="autoplay"', page)
         self.assertNotIn('sandbox="allow-scripts allow-same-origin"', page)
         self.assertIn("function renderPreview(source)", page)
-        self.assertIn("frame.srcdoc = source", page)
+        self.assertIn("loadIsolatedPreview(frame, source)", page)
 
     def test_watermark_is_optional_from_ui_through_workflow(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
@@ -478,7 +478,7 @@ class Html2Mp4Tests(unittest.TestCase):
         self.assertIn('id="rdx-paste-create"', page)
         self.assertIn('id="file"', page)
         self.assertIn("uploadPrivateBlobWithRecovery", page)
-        self.assertIn("frame.srcdoc = source", page)
+        self.assertIn("loadIsolatedPreview(frame, source)", page)
 
     def test_favicon_uses_root_icon_pack_and_existing_repository_logos(self):
         page = (ROOT / "docs" / "index.html").read_text(encoding="utf-8") + "\\n" + (ROOT / "docs" / "assets" / "app.js").read_text(encoding="utf-8")
