@@ -523,6 +523,13 @@ function setRdxServiceStatus(state, label) {
   badge.dataset.state = state;
   text.textContent = label;
 }
+window.addEventListener('rendrax:languagechange', () => {
+  const badge = $('#rdx-service-status');
+  if (!badge) return;
+  const state = badge.dataset.state;
+  const keys = { online: 'service.online', degraded: 'service.degraded', offline: 'service.offline' };
+  if (keys[state] && window.rdxT) setRdxServiceStatus(state, window.rdxT(keys[state]));
+});
 async function initSecurity() {
   const statusEl = $('#securityStatus');
   let configReceived = false;
