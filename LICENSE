@@ -1,0 +1,122 @@
+PROPRIETARY LICENSE — RENDRAX
+Copyright (c) 2026 KIDAS. All rights reserved.
+
+1. OWNERSHIP
+
+RENDRAX, including its source code, object code, interface, design, visual assets,
+documentation, configuration, workflows, and other project materials (the
+"Project"), is proprietary and is not released under an open-source license.
+
+All rights not expressly granted in writing by the copyright holder are reserved.
+
+2. NO PERMISSION TO COPY OR MODIFY
+
+Unless you have obtained prior, explicit written permission from the copyright
+holder, you may not:
+
+- copy, reproduce, or redistribute the Project or any substantial part of it;
+- modify, adapt, translate, or create derivative works from the Project;
+- publish, sublicense, sell, rent, or otherwise make the Project available to
+  third parties;
+- use the Project or any part of it to build, train, or distribute a competing
+  product or service;
+- remove or alter copyright, ownership, or proprietary notices.
+
+These restrictions apply to source code, binaries, assets, documentation, and
+modified or derivative versions.
+
+3. LIMITED ACCESS
+
+Viewing the public repository or using the hosted RENDRAX service does not grant
+permission to copy, modify, redistribute, or commercially exploit the Project.
+Access to the hosted service is subject to any applicable terms published for
+that service.
+
+4. PERMISSIONS
+
+Any exception to this license must be granted in advance and in writing by the
+copyright holder. Permission may be limited to a specific person, purpose,
+version, territory, or period.
+
+5. DISCLAIMER
+
+The Project is provided "AS IS", to the extent permitted by applicable law,
+without warranties of any kind. The copyright holder is not liable for damages
+arising from use of the Project, except where such limitation is prohibited by
+applicable law.
+
+6. GOVERNING LAW
+
+This notice does not specify a governing law or jurisdiction. Applicable rights
+and remedies are determined by the laws that govern the relevant dispute.
+
+7. CONTACT
+
+For written permission or licensing enquiries, contact the project owner through
+the official repository:
+https://github.com/kidasniger/RENDRAX
+
+French version (informative translation):
+
+LICENCE PROPRIÉTAIRE — RENDRAX
+Copyright (c) 2026 KIDAS. Tous droits réservés.
+
+1. PROPRIÉTÉ
+
+RENDRAX, y compris son code source, son code exécutable, son interface, son
+design, ses ressources visuelles, sa documentation, sa configuration, ses
+workflows et les autres éléments du projet (le « Projet »), est un logiciel
+propriétaire. Il n'est publié sous aucune licence open source.
+
+Tous les droits qui ne sont pas expressément accordés par écrit par le titulaire
+des droits sont réservés.
+
+2. INTERDICTION DE COPIER OU DE MODIFIER
+
+Sans autorisation écrite, préalable et explicite du titulaire des droits, il est
+interdit de :
+
+- copier, reproduire ou redistribuer le Projet, en tout ou partie substantielle ;
+- modifier, adapter, traduire le Projet ou créer des œuvres dérivées ;
+- publier, sous-licencier, vendre, louer ou mettre le Projet à disposition de tiers ;
+- utiliser le Projet ou l'une de ses parties pour créer, entraîner ou distribuer
+  un produit ou service concurrent ;
+- supprimer ou modifier les mentions de droit d'auteur, de propriété ou de
+  caractère propriétaire.
+
+Ces restrictions s'appliquent au code source, aux exécutables, aux ressources,
+à la documentation ainsi qu'aux versions modifiées ou dérivées.
+
+3. ACCÈS LIMITÉ
+
+La consultation du dépôt public ou l'utilisation du service RENDRAX hébergé
+n'accorde aucun droit de copier, modifier, redistribuer ou exploiter
+commercialement le Projet. L'utilisation du service hébergé reste soumise aux
+conditions applicables publiées pour ce service.
+
+4. AUTORISATIONS
+
+Toute exception doit faire l'objet d'une autorisation écrite préalable du
+titulaire des droits. Cette autorisation peut être limitée à une personne, un
+usage, une version, un territoire ou une durée déterminés.
+
+5. ABSENCE DE GARANTIE
+
+Dans les limites autorisées par la loi applicable, le Projet est fourni « en
+l'état », sans garantie d'aucune sorte. Le titulaire des droits ne pourra être
+tenu responsable des dommages liés à son utilisation, sauf lorsque la loi
+applicable interdit une telle limitation.
+
+6. DROIT APPLICABLE
+
+La présente notice ne désigne aucun droit applicable ni aucune juridiction.
+Les droits et recours applicables dépendent des règles qui régissent le litige
+concerné.
+
+7. CONTACT
+
+Pour toute demande d'autorisation ou question de licence, contactez le
+propriétaire du projet via le dépôt officiel :
+https://github.com/kidasniger/RENDRAX
+
+END OF LICENSE
