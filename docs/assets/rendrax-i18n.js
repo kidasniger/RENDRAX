@@ -2,7 +2,12 @@
   'use strict';
   const dictionaries = {
     fr: {
-      'file.title':'Choisir un fichier','settings.title':'Réglages','render.title':'Rendu',
+      'hero.title':'Convertir HTML en MP4','hero.subtitle':'Passe de l’animation HTML au MP4 prêt à publier.','hero.choose':'Choisir mon fichier HTML →',
+      'file.tab':'Choisir un fichier','paste.tab':'Coller du code','paste.submit':'Utiliser ce code',
+      'settings.title':'Réglages','render.title':'Rendu','render.generate':'Générer MP4','render.test':'Rendu test de 10 s',
+      'examples.title':'Exemples HTML complets','history.title':'Historique des vidéos',
+      'service.online':'ATELIER DE RENDU · EN LIGNE','service.degraded':'ATELIER DE RENDU · Service dégradé','service.offline':'ATELIER DE RENDU · Service indisponible',
+      'file.title':'Choisir un fichier',
       'faq.title':'Questions fréquentes',
       'faq.formats.q':'Quels formats puis-je importer ?',
       'faq.formats.a':'Un fichier HTML, HTM ou une archive ZIP contenant ta page et ses ressources. La taille du fichier importé est limitée à 50 Mo.',
@@ -22,7 +27,12 @@
       'legal.privacy':'Confidentialité','legal.terms':'Conditions d’utilisation'
     },
     en: {
-      'file.title':'Choose a file','settings.title':'Settings','render.title':'Render',
+      'hero.title':'Convert HTML to MP4','hero.subtitle':'Turn your HTML animation into a publish-ready MP4.','hero.choose':'Choose my HTML file →',
+      'file.tab':'Choose a file','paste.tab':'Paste code','paste.submit':'Use this code',
+      'settings.title':'Settings','render.title':'Render','render.generate':'Generate MP4','render.test':'10-second test render',
+      'examples.title':'Complete HTML examples','history.title':'Video history',
+      'service.online':'RENDER WORKSPACE · ONLINE','service.degraded':'RENDER WORKSPACE · Degraded service','service.offline':'RENDER WORKSPACE · Service unavailable',
+      'file.title':'Choose a file',
       'faq.title':'Frequently asked questions',
       'faq.formats.q':'Which formats can I import?',
       'faq.formats.a':'An HTML or HTM file, or a ZIP archive containing your page and its resources. Imported files are limited to 50 MB.',
